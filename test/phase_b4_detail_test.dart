@@ -170,19 +170,14 @@ void main() {
 
         final initialPos = tester.getTopLeft(backBtnFinder);
 
-        // Verify back button decoration background is AppColors.olive (PRD §15.6)
-        final container = tester.widget<Container>(
-          find
-              .descendant(of: backBtnFinder, matching: find.byType(Container))
-              .first,
+        // Verify back button has icon arrow left in AppColors.olive
+        final iconFinder = find.descendant(
+          of: backBtnFinder,
+          matching: find.byIcon(LucideIcons.arrowLeft),
         );
-        final decoration = container.decoration as BoxDecoration;
-        expect(
-          decoration.color,
-          AppColors.olive,
-          reason: 'Back button background must be AppColors.olive',
-        );
-        expect(decoration.shape, BoxShape.circle);
+        expect(iconFinder, findsOneWidget);
+        final icon = tester.widget<Icon>(iconFinder);
+        expect(icon.color, equals(AppColors.olive));
 
         // Scroll the SingleChildScrollView down by 400 dp
         await tester.drag(

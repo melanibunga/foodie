@@ -19,6 +19,7 @@ import '../widgets/page_with_header.dart';
 import '../widgets/ui/app_bottom_sheet.dart';
 import '../widgets/ui/app_button.dart';
 import '../widgets/ui/smart_image.dart';
+import '../widgets/ui/sticky_bottom_bar.dart';
 
 /// Halaman Create Recipe (/add) sesuai PRD §6.6, §7.3, §7.4, §7.5, §10 dan design/add.jpg:
 /// - AppHeader global di atas.
@@ -669,131 +670,179 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
     final titleCtrl = TextEditingController();
     final descCtrl = TextEditingController();
     final durationCtrl = TextEditingController();
+    String? titleError;
 
     showDialog<void>(
       context: context,
       barrierColor: AppColors.dialogBarrier,
       builder: (dlgContext) {
-        return Dialog(
-          shape: const RoundedRectangleBorder(
-            borderRadius: AppRadius.cardLarge,
-          ),
-          backgroundColor: AppColors.white,
-          child: Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Detail Langkah', style: AppText.sectionTitle),
-                  const SizedBox(height: 12.0),
-                  const Text('Judul Langkah', style: AppText.formLabel),
-                  const SizedBox(height: 4.0),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                    decoration: BoxDecoration(
-                      color: AppColors.chipGray,
-                      borderRadius: BorderRadius.circular(8.0),
-                    ),
-                    child: TextField(
-                      controller: titleCtrl,
-                      style: AppText.body,
-                      decoration: const InputDecoration(
-                        hintText: 'Mis. Tumis Bawang',
-                        border: InputBorder.none,
-                        isDense: true,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12.0),
-                  const Text('Deskripsi', style: AppText.formLabel),
-                  const SizedBox(height: 4.0),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12.0,
-                      vertical: 8.0,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.chipGray,
-                      borderRadius: BorderRadius.circular(8.0),
-                    ),
-                    child: TextField(
-                      controller: descCtrl,
-                      maxLines: 3,
-                      style: AppText.body,
-                      decoration: const InputDecoration(
-                        hintText: 'Tuliskan detail langkah...',
-                        border: InputBorder.none,
-                        isDense: true,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12.0),
-                  const Text(
-                    'Durasi Menit (Opsional)',
-                    style: AppText.formLabel,
-                  ),
-                  const SizedBox(height: 4.0),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                    decoration: BoxDecoration(
-                      color: AppColors.chipGray,
-                      borderRadius: BorderRadius.circular(8.0),
-                    ),
-                    child: TextField(
-                      controller: durationCtrl,
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      style: AppText.body,
-                      decoration: const InputDecoration(
-                        hintText: '0',
-                        border: InputBorder.none,
-                        isDense: true,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20.0),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
+        return StatefulBuilder(
+          builder: (dialogCtx, setDlgState) {
+            return Dialog(
+              shape: const RoundedRectangleBorder(
+                borderRadius: AppRadius.cardLarge,
+              ),
+              backgroundColor: AppColors.white,
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      TextButton(
-                        onPressed: () => Navigator.of(dlgContext).pop(),
-                        child: const Text(
-                          'Batal',
-                          style: TextStyle(color: AppColors.sage),
+                      Text('Detail Langkah', style: AppText.sectionTitle),
+                      const SizedBox(height: 12.0),
+                      Row(
+                        children: const [
+                          Text('Judul Langkah', style: AppText.formLabel),
+                          SizedBox(width: 4.0),
+                          Text(
+                            '*',
+                            style: TextStyle(
+                              color: AppColors.maroon,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4.0),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                        decoration: BoxDecoration(
+                          color: AppColors.chipGray,
+                          borderRadius: BorderRadius.circular(8.0),
+                          border: Border.all(
+                            color: titleError != null
+                                ? AppColors.maroon
+                                : Colors.transparent,
+                            width: 1.0,
+                          ),
+                        ),
+                        child: TextField(
+                          controller: titleCtrl,
+                          style: AppText.body,
+                          onChanged: (_) {
+                            if (titleError != null) {
+                              setDlgState(() => titleError = null);
+                            }
+                          },
+                          decoration: const InputDecoration(
+                            hintText: 'Mis. Tumis Bawang',
+                            border: InputBorder.none,
+                            isDense: true,
+                          ),
                         ),
                       ),
-                      const SizedBox(width: 8.0),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.olive,
-                          foregroundColor: AppColors.white,
+                      if (titleError != null) ...[
+                        const SizedBox(height: 4.0),
+                        Text(
+                          titleError!,
+                          style: const TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 11.0,
+                            color: AppColors.maroon,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
-                        onPressed: () {
-                          final title = titleCtrl.text.trim();
-                          final desc = descCtrl.text.trim();
-                          if (title.isEmpty && desc.isEmpty) return;
-
-                          final dur = int.tryParse(durationCtrl.text.trim());
-                          onAdded(
-                            RecipeStep(
-                              id: 'step-${DateTime.now().millisecondsSinceEpoch}',
-                              title: title.isNotEmpty ? title : 'Langkah',
-                              description: desc,
-                              durationMin: dur,
+                      ],
+                      const SizedBox(height: 12.0),
+                      const Text('Deskripsi', style: AppText.formLabel),
+                      const SizedBox(height: 4.0),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12.0,
+                          vertical: 8.0,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.chipGray,
+                          borderRadius: BorderRadius.circular(8.0),
+                        ),
+                        child: TextField(
+                          controller: descCtrl,
+                          maxLines: 3,
+                          style: AppText.body,
+                          decoration: const InputDecoration(
+                            hintText: 'Tuliskan detail langkah...',
+                            border: InputBorder.none,
+                            isDense: true,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12.0),
+                      const Text(
+                        'Durasi Menit (Opsional)',
+                        style: AppText.formLabel,
+                      ),
+                      const SizedBox(height: 4.0),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                        decoration: BoxDecoration(
+                          color: AppColors.chipGray,
+                          borderRadius: BorderRadius.circular(8.0),
+                        ),
+                        child: TextField(
+                          controller: durationCtrl,
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                          ],
+                          style: AppText.body,
+                          decoration: const InputDecoration(
+                            hintText: '0',
+                            border: InputBorder.none,
+                            isDense: true,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20.0),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () => Navigator.of(dialogCtx).pop(),
+                            child: const Text(
+                              'Batal',
+                              style: TextStyle(color: AppColors.sage),
                             ),
-                          );
-                          Navigator.of(dlgContext).pop();
-                        },
-                        child: const Text('Tambahkan'),
+                          ),
+                          const SizedBox(width: 8.0),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.olive,
+                              foregroundColor: AppColors.white,
+                            ),
+                            onPressed: () {
+                              final title = titleCtrl.text.trim();
+                              if (title.isEmpty) {
+                                setDlgState(() {
+                                  titleError = 'Judul langkah wajib diisi';
+                                });
+                                return;
+                              }
+                              final desc = descCtrl.text.trim();
+                              final dur = int.tryParse(
+                                durationCtrl.text.trim(),
+                              );
+                              onAdded(
+                                RecipeStep(
+                                  id: 'step-${DateTime.now().millisecondsSinceEpoch}',
+                                  title: title,
+                                  description: desc,
+                                  durationMin: dur,
+                                ),
+                              );
+                              Navigator.of(dialogCtx).pop();
+                            },
+                            child: const Text('Tambahkan'),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
+                ),
               ),
-            ),
-          ),
+            );
+          },
         );
       },
     );
@@ -1495,20 +1544,22 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
             ),
           ),
 
-          // Tombol DONE di ujung form dengan padding bawah ±120 agar tidak tertutup nav (PRD §15.5)
+          // Tombol DONE di ujung form: lebar lebih kecil dari navbar (300 < 365)
+          // dan padding bawah cukup (bottomGap + 75 + 32) agar tidak tertutup navbar (PRD §15.5)
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.only(
+              padding: EdgeInsets.only(
                 left: 24.0,
                 right: 24.0,
                 top: 8.0,
-                bottom: 120.0,
+                bottom: bottomGap(context) + 75.0 + 32.0,
               ),
               child: Center(
                 child: SizedBox(
-                  width: 362.0,
-                  height: 55.0,
+                  width: 300.0,
+                  height: 52.0,
                   child: ElevatedButton(
+                    key: const Key('add-done-button'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.olive,
                       foregroundColor: AppColors.white,

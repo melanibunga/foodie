@@ -77,7 +77,7 @@ void main() {
 
   group('Fase C4 — Widget Tests (Detail Menu Fixed Bar & Ingredients Bullet)', () {
     testWidgets(
-      'D1: Fixed sage top bar with olive back button stays fixed during scroll',
+      'D1: Dynamic scroll floating top bar with back, share, and favorite buttons stays fixed during scroll',
       (tester) async {
         tester.view.physicalSize = const Size(440, 956);
         tester.view.devicePixelRatio = 1.0;
@@ -105,47 +105,50 @@ void main() {
         await tester.pump(const Duration(milliseconds: 250));
         await tester.pumpAndSettle();
 
-        // 1. Verifikasi Bar Sage fixed selebar layar
-        final sageBarFinder = find.byWidgetPredicate(
-          (widget) => widget is Container && widget.color == AppColors.sage,
+        // 1. Verifikasi Header Bar selebar layar
+        final headerBarFinder = find.byKey(
+          const Key('recipe-detail-header-bar'),
         );
-        expect(sageBarFinder, findsOneWidget);
-        final barBox = tester.getRect(sageBarFinder);
+        expect(headerBarFinder, findsOneWidget);
+        final barBox = tester.getRect(headerBarFinder);
         expect(barBox.left, equals(0.0));
         expect(barBox.width, equals(440.0));
 
-        // 2. Verifikasi tombol back lingkaran olive 44 dengan panah putih di x=25
+        // Keadaan awal (offset 0): background transparan (alpha = 0)
+        final initialContainer = tester.widget<Container>(headerBarFinder);
+        final initialDecoration = initialContainer.decoration as BoxDecoration;
+        expect(
+          initialDecoration.color,
+          equals(AppColors.white.withValues(alpha: 0.0)),
+        );
+
+        // 2. Verifikasi tombol back, share, dan favorite ada di header
         final backBtnFinder = find.bySemanticsLabel('Kembali');
         expect(backBtnFinder, findsOneWidget);
+        expect(find.bySemanticsLabel('Bagikan resep'), findsOneWidget);
+        expect(find.bySemanticsLabel('Hapus dari favorit'), findsOneWidget);
 
         final initialBackPos = tester.getTopLeft(backBtnFinder);
-        expect(initialBackPos.dx, equals(25.0));
 
-        final oliveCircleFinder = find.descendant(
-          of: backBtnFinder,
-          matching: find.byWidgetPredicate(
-            (w) =>
-                w is Container &&
-                w.decoration is BoxDecoration &&
-                (w.decoration as BoxDecoration).color == AppColors.olive &&
-                (w.decoration as BoxDecoration).shape == BoxShape.circle,
-          ),
-        );
-        expect(oliveCircleFinder, findsOneWidget);
-
-        // 3. Scroll SingleChildScrollView sejauh 400 dp
+        // 3. Scroll SingleChildScrollView sejauh 400 dp (scroll ke bawah)
         await tester.drag(
           find.byType(SingleChildScrollView),
           const Offset(0, -400),
         );
         await tester.pumpAndSettle();
 
-        // Posisi tombol back dan bar sage TETAP FIXED
+        // 4. Setelah di-scroll: Header bertransisi menjadi background putih solid (AppColors.white)
+        final scrolledContainer = tester.widget<Container>(headerBarFinder);
+        final scrolledDecoration =
+            scrolledContainer.decoration as BoxDecoration;
+        expect(scrolledDecoration.color, equals(AppColors.white));
+
+        // Posisi tombol back dan header bar TETAP FIXED di atas layar
         final scrolledBackPos = tester.getTopLeft(backBtnFinder);
         expect(scrolledBackPos.dy, equals(initialBackPos.dy));
         expect(scrolledBackPos.dx, equals(initialBackPos.dx));
 
-        final scrolledBarBox = tester.getRect(sageBarFinder);
+        final scrolledBarBox = tester.getRect(headerBarFinder);
         expect(scrolledBarBox.top, equals(barBox.top));
       },
     );
