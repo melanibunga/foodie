@@ -299,7 +299,7 @@ class _RecipeDetailPageState extends ConsumerState<RecipeDetailPage> {
     final favorites = ref.watch(favoritesProvider);
     final isFavorite = favorites.contains(widget.recipeId);
     final topInset = MediaQuery.paddingOf(context).top;
-    final barHeight = topInset + 56.0;
+    final barHeight = topInset + 44.0;
     final double t = (_scrollOffset / 120.0).clamp(0.0, 1.0);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
@@ -349,13 +349,14 @@ class _RecipeDetailPageState extends ConsumerState<RecipeDetailPage> {
                 top: 0,
                 left: 0,
                 right: 0,
-                height: barHeight,
+                height: barHeight + 5.0,
                 child: Container(
+                  margin: const EdgeInsets.only(bottom: 5.0),
                   padding: EdgeInsets.only(top: topInset),
                   child: Align(
                     alignment: Alignment.centerLeft,
                     child: Padding(
-                      padding: const EdgeInsets.only(left: 20.0),
+                      padding: const EdgeInsets.only(left: 16.0),
                       child: Semantics(
                         label: 'Kembali',
                         button: true,
@@ -368,8 +369,8 @@ class _RecipeDetailPageState extends ConsumerState<RecipeDetailPage> {
                             }
                           },
                           child: Container(
-                            width: 40.0,
-                            height: 40.0,
+                            width: 36.0,
+                            height: 36.0,
                             decoration: BoxDecoration(
                               color: AppColors.white.withValues(alpha: 0.85),
                               shape: BoxShape.circle,
@@ -378,7 +379,7 @@ class _RecipeDetailPageState extends ConsumerState<RecipeDetailPage> {
                             child: const Icon(
                               LucideIcons.arrowLeft,
                               color: AppColors.olive,
-                              size: 20.0,
+                              size: 18.0,
                             ),
                           ),
                         ),
@@ -1064,6 +1065,7 @@ class _RecipeDetailPageState extends ConsumerState<RecipeDetailPage> {
                 ),
 
                 // Bar DINAMIS lebar penuh di atas halaman (Floating Scroll Header):
+                // - Lebih ramping (height: 44.0) dan mepet ke atas dalam batas space yang wajar
                 // - Awal (unscrolled / t=0): background transparan di atas foto hero
                 // - Saat scroll ke bawah (t -> 1): background fade in ke putih solid (AppColors.white) + shadow halus
                 // - Tombol Back di kiri, Share & Favorit di kanan selalu fixed di top bar
@@ -1071,20 +1073,21 @@ class _RecipeDetailPageState extends ConsumerState<RecipeDetailPage> {
                   top: 0,
                   left: 0,
                   right: 0,
-                  height: barHeight,
+                  height: barHeight + 5.0,
                   child: Container(
                     key: const Key('recipe-detail-header-bar'),
+                    margin: const EdgeInsets.only(bottom: 5.0),
                     decoration: BoxDecoration(
                       color: AppColors.white.withValues(alpha: t),
                       borderRadius: BorderRadius.only(
-                        bottomLeft: Radius.circular(16.0 * t),
-                        bottomRight: Radius.circular(16.0 * t),
+                        bottomLeft: Radius.circular(14.0 * t),
+                        bottomRight: Radius.circular(14.0 * t),
                       ),
                       boxShadow: t > 0.05
                           ? [
                               BoxShadow(
                                 color: Colors.black.withValues(alpha: 0.08 * t),
-                                blurRadius: 8.0 * t,
+                                blurRadius: 6.0 * t,
                                 offset: Offset(0, 2.0 * t),
                               ),
                             ]
@@ -1092,9 +1095,9 @@ class _RecipeDetailPageState extends ConsumerState<RecipeDetailPage> {
                     ),
                     padding: EdgeInsets.only(top: topInset),
                     child: SizedBox(
-                      height: 56.0,
+                      height: 44.0,
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           crossAxisAlignment: CrossAxisAlignment.center,
@@ -1112,8 +1115,8 @@ class _RecipeDetailPageState extends ConsumerState<RecipeDetailPage> {
                                   }
                                 },
                                 child: Container(
-                                  width: 40.0,
-                                  height: 40.0,
+                                  width: 36.0,
+                                  height: 36.0,
                                   decoration: BoxDecoration(
                                     color: t > 0.6
                                         ? Colors.transparent
@@ -1126,7 +1129,7 @@ class _RecipeDetailPageState extends ConsumerState<RecipeDetailPage> {
                                   child: const Icon(
                                     LucideIcons.arrowLeft,
                                     color: AppColors.olive,
-                                    size: 20.0,
+                                    size: 18.0,
                                   ),
                                 ),
                               ),
@@ -1143,8 +1146,8 @@ class _RecipeDetailPageState extends ConsumerState<RecipeDetailPage> {
                                   child: GestureDetector(
                                     onTap: () => _shareRecipe(context, recipe),
                                     child: Container(
-                                      width: 40.0,
-                                      height: 40.0,
+                                      width: 36.0,
+                                      height: 36.0,
                                       decoration: BoxDecoration(
                                         color: t > 0.6
                                             ? Colors.transparent
@@ -1157,13 +1160,13 @@ class _RecipeDetailPageState extends ConsumerState<RecipeDetailPage> {
                                       child: const Icon(
                                         LucideIcons.share2,
                                         color: AppColors.olive,
-                                        size: 20.0,
+                                        size: 18.0,
                                       ),
                                     ),
                                   ),
                                 ),
 
-                                const SizedBox(width: 8.0),
+                                const SizedBox(width: 6.0),
 
                                 // Heart / Bookmark button
                                 Semantics(
@@ -1176,8 +1179,8 @@ class _RecipeDetailPageState extends ConsumerState<RecipeDetailPage> {
                                         .read(favoritesProvider.notifier)
                                         .toggle(recipe.id),
                                     child: Container(
-                                      width: 40.0,
-                                      height: 40.0,
+                                      width: 36.0,
+                                      height: 36.0,
                                       decoration: BoxDecoration(
                                         color: t > 0.6
                                             ? Colors.transparent
@@ -1194,7 +1197,7 @@ class _RecipeDetailPageState extends ConsumerState<RecipeDetailPage> {
                                         color: isFavorite
                                             ? AppColors.maroon
                                             : AppColors.olive,
-                                        size: 20.0,
+                                        size: 18.0,
                                       ),
                                     ),
                                   ),

@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
-import '../app/app_shell.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_radius.dart';
 import '../core/theme/app_text.dart';
@@ -74,13 +73,17 @@ class AppHeader extends ConsumerWidget {
               .firstWhere((w) => w.isNotEmpty, orElse: () => 'Teman')
         : 'Teman';
 
-    final topPadding = includeTopPadding ? AppShell.topChrome(context) : 0.0;
+    final topInset = MediaQuery.paddingOf(context).top;
+    // Jarak header berjarak sekitar 45px dengan logo baterai hp di status bar
+    final headerTop = includeTopPadding
+        ? (topInset > 0 ? (topInset + 16.0) : 45.0)
+        : 0.0;
     final now = currentTime ?? DateTime.now();
 
     return Container(
       color: bg,
       padding: EdgeInsets.only(
-        top: topPadding + 14.0,
+        top: headerTop,
         left: 24.0,
         right: 24.0,
         bottom: 12.0,
