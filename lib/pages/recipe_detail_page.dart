@@ -56,7 +56,7 @@ class RecipeDetailPage extends ConsumerWidget {
       showHandle: true,
       builder: (sheetContext) {
         return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -174,7 +174,7 @@ class RecipeDetailPage extends ConsumerWidget {
                   },
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 8),
             ],
           ),
         );

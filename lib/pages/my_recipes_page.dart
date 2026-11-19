@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -16,6 +14,7 @@ import '../widgets/recipe_cards.dart';
 import '../widgets/ui/app_badge.dart';
 import '../widgets/ui/app_button.dart';
 import '../widgets/ui/empty_state.dart';
+import '../widgets/ui/sticky_bottom_bar.dart';
 
 /// Halaman Resep Saya (/my-recipes) sesuai PRD §7.8:
 /// - Meniru halaman Favorites:
@@ -76,9 +75,12 @@ class _MyRecipesPageState extends ConsumerState<MyRecipesPage> {
     }).toList();
 
     final topInset = AppShell.topChrome(context);
-    final bottomInset = math.max(MediaQuery.paddingOf(context).bottom, 24.0);
+    final scrollBottomPadding =
+        StickyBottomBar.scrollPadding(context, barHeight: 48.0, extra: 24.0) +
+        MediaQuery.viewInsetsOf(context).bottom;
 
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       backgroundColor: AppColors.bg,
       body: Stack(
         children: [
@@ -260,42 +262,37 @@ class _MyRecipesPageState extends ConsumerState<MyRecipesPage> {
                     ),
                   ),
 
-                // 4. Padding Bawah agar tidak tertutup tombol sticky
+                // 4. Padding Bawah agar tidak tertutup tombol sticky (+ keyboard)
                 SliverToBoxAdapter(
-                  child: SizedBox(height: bottomInset + 48.0 + 32.0),
+                  child: SizedBox(height: scrollBottomPadding),
                 ),
               ],
             ),
           ),
 
-          // Tombol Sticky "Kembali Ke Beranda" di Bawah Layar (bottom ≈ 24, lebar ≈ 355, tinggi 48, tebal 700)
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: bottomInset,
-            child: Center(
-              child: SizedBox(
-                width: 355.0,
-                height: 48.0,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.olive,
-                    foregroundColor: AppColors.white,
-                    elevation: 6.0,
-                    shadowColor: AppColors.olive.withValues(alpha: 0.35),
-                    shape: const RoundedRectangleBorder(
-                      borderRadius: AppRadius.pill,
-                    ),
+          // Tombol Sticky "Kembali Ke Beranda" di Bawah Layar
+          StickyBottomBar(
+            child: SizedBox(
+              width: 355.0,
+              height: 48.0,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.olive,
+                  foregroundColor: AppColors.white,
+                  elevation: 6.0,
+                  shadowColor: AppColors.olive.withValues(alpha: 0.35),
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: AppRadius.pill,
                   ),
-                  onPressed: () => context.go('/home'),
-                  child: const Text(
-                    'Kembali Ke Beranda',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 14.0,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.white,
-                    ),
+                ),
+                onPressed: () => context.go('/home'),
+                child: const Text(
+                  'Kembali Ke Beranda',
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 14.0,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.white,
                   ),
                 ),
               ),

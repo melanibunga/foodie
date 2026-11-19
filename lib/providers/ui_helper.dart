@@ -1,21 +1,96 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_radius.dart';
 import '../core/theme/app_shadows.dart';
 import '../core/theme/app_text.dart';
+import '../widgets/ui/sticky_bottom_bar.dart';
 
-/// Helper Toast pill olive kustom sesuai PRD §7.9 (menggunakan OverlayEntry, bukan SnackBar biasa).
+/// Anchor posisi Toast sesuai PRD §14.5
+enum ToastAnchor { auto, bottomNav, stickyButton, bottom }
+
+/// Menghitung jarak bawah toast secara otomatis:
+/// - Di halaman ber-nav: bottomGap(context) + 75 + 16
+/// - Di halaman ber-tombol-sticky: bottomGap(context) + stickyHeight + 16
+/// - Tanpa keduanya: bottomGap(context)
+double calculateToastBottomOffset(
+  BuildContext context, {
+  ToastAnchor anchor = ToastAnchor.auto,
+  double? customOffset,
+  double stickyHeight = 55.0,
+}) {
+  if (customOffset != null) return customOffset;
+
+  final gap = bottomGap(context);
+
+  if (anchor == ToastAnchor.bottomNav) {
+    return gap + 75.0 + 16.0;
+  }
+  if (anchor == ToastAnchor.stickyButton) {
+    return gap + stickyHeight + 16.0;
+  }
+  if (anchor == ToastAnchor.bottom) {
+    return gap;
+  }
+
+  // ToastAnchor.auto: deteksi otomatis berdasarkan route
+  try {
+    final route = GoRouterState.of(context).matchedLocation;
+    // Halaman dengan BottomNav: /home, /search, /meal-plan, /nearby
+    if (route.startsWith('/home') ||
+        route.startsWith('/search') ||
+        route.startsWith('/meal-plan') ||
+        route.startsWith('/nearby')) {
+      return gap + 75.0 + 16.0;
+    }
+    // Halaman Add (DONE: tinggi 55)
+    if (route.startsWith('/add')) {
+      return gap + 55.0 + 16.0;
+    }
+    // Halaman dengan tombol sticky "Kembali Ke Beranda" (Favorites, My Recipes, Cooked: tinggi 52)
+    if (route.startsWith('/favorites') ||
+        route.startsWith('/my-recipes') ||
+        route.startsWith('/cooked')) {
+      return gap + 52.0 + 16.0;
+    }
+    // Halaman Groceries (panel ringkasan: tinggi ≈ 90)
+    if (route.startsWith('/groceries')) {
+      return gap + 90.0 + 16.0;
+    }
+    // Detail resep: tombol aksi bawah (tinggi ≈ 55)
+    if (route.startsWith('/recipe/')) {
+      return gap + 55.0 + 16.0;
+    }
+  } catch (_) {}
+
+  return gap;
+}
+
+/// Helper Toast pill amberSoft kustom sesuai PRD §7.9, §14.5:
+/// - Background amberSoft, teks olive 12/600, radius pill, bayangan kartu
+/// - Posisi 16 px di atas elemen fixed paling bawah halaman itu
+/// - Durasi 2.2 detik (2200 ms)
 void showAppToast(
   BuildContext context,
   String message, {
   Duration duration = const Duration(milliseconds: 2200),
-  double bottomOffset = 120.0,
+  ToastAnchor anchor = ToastAnchor.auto,
+  double? bottomOffset,
+  double stickyHeight = 55.0,
 }) {
   final overlay = Overlay.maybeOf(context);
   if (overlay == null) return;
+
+  final resolvedBottom =
+      bottomOffset ??
+      calculateToastBottomOffset(
+        context,
+        anchor: anchor,
+        stickyHeight: stickyHeight,
+      );
 
   late final OverlayEntry entry;
   entry = OverlayEntry(
@@ -23,20 +98,26 @@ void showAppToast(
       return Positioned(
         left: 24,
         right: 24,
-        bottom: bottomOffset,
+        bottom: resolvedBottom,
         child: Material(
           color: Colors.transparent,
           child: Center(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              decoration: BoxDecoration(
-                color: AppColors.olive,
+              decoration: const BoxDecoration(
+                color: AppColors.amberSoft,
                 borderRadius: AppRadius.pill,
-                boxShadow: AppShadows.bottomNav,
+                boxShadow: AppShadows.card,
               ),
               child: Text(
                 message,
-                style: AppText.buttonMd.copyWith(color: AppColors.white),
+                style: const TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 12.0,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.olive,
+                  decoration: TextDecoration.none,
+                ),
                 textAlign: TextAlign.center,
               ),
             ),

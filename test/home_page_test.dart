@@ -9,6 +9,7 @@ import 'package:foodie/pages/recipe_detail_page.dart';
 import 'package:foodie/providers/auth_provider.dart';
 import 'package:foodie/providers/favorites_provider.dart';
 import 'package:foodie/providers/storage_provider.dart';
+import 'package:foodie/widgets/app_header.dart';
 import 'package:foodie/widgets/recipe_cards.dart';
 import 'package:foodie/widgets/ui/photo_overlay.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -59,8 +60,14 @@ void main() {
         expect(find.byType(FeaturedRecipeCard), findsWidgets);
         expect(find.byType(GridRecipeCard), findsWidgets);
 
-        // Bookmark & cart counts from seed
-        expect(find.byIcon(LucideIcons.bookmark), findsOneWidget);
+        // Favorit & cart counts from seed
+        expect(
+          find.descendant(
+            of: find.byType(AppHeader),
+            matching: find.byIcon(Icons.favorite),
+          ),
+          findsOneWidget,
+        );
         expect(find.byIcon(LucideIcons.shoppingCart), findsOneWidget);
       },
     );

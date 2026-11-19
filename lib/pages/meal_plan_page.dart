@@ -13,7 +13,7 @@ import '../providers/favorites_provider.dart';
 import '../providers/meal_plan_provider.dart';
 import '../providers/recipes_provider.dart';
 import '../providers/ui_helper.dart';
-import '../widgets/app_header.dart';
+import '../widgets/page_with_header.dart';
 import '../widgets/recipe_cards.dart';
 
 /// Halaman Meal Plan (/meal-plan) sesuai PRD §6.7, §7.6 dan design/meal plan.jpg:
@@ -96,15 +96,12 @@ class _MealPlanPageState extends ConsumerState<MealPlanPage> {
     final weekDays = WeekUtils.getWeekDays(_currentWeekStart);
     final weekLabel = WeekUtils.getWeekLabel(_currentWeekStart);
 
-    return Scaffold(
-      backgroundColor: AppColors.bg,
+    return PageWithHeader(
+      resizeToAvoidBottomInset: false,
       body: CustomScrollView(
         key: const PageStorageKey<String>('meal_plan_scroll_view'),
         slivers: [
-          // 1. AppHeader global
-          const SliverToBoxAdapter(child: AppHeader(includeTopPadding: true)),
-
-          // 2. Pemilih Minggu (Tombol bulat olive 35px + Judul 22/700)
+          // 1. Pemilih Minggu (Tombol bulat olive 35px + Judul 22/700)
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.symmetric(

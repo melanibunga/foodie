@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -8,13 +6,16 @@ import '../core/theme/app_colors.dart';
 import '../core/theme/app_radius.dart';
 import '../core/theme/app_shadows.dart';
 import '../core/theme/app_text.dart';
+import 'ui/sticky_bottom_bar.dart';
 
 enum NavTab {
   home('/home', 'Home', LucideIcons.home),
   search('/search', 'Search', LucideIcons.search),
   add('/add', 'Add', LucideIcons.plus),
   plan('/meal-plan', 'Plan', LucideIcons.calendarDays),
-  loc('/nearby', 'Loc', LucideIcons.refrigerator);
+  nearby('/nearby', 'Nearby', LucideIcons.mapPin);
+
+  static const NavTab loc = nearby;
 
   final String route;
   final String label;
@@ -23,9 +24,9 @@ enum NavTab {
   const NavTab(this.route, this.label, this.icon);
 }
 
-/// Floating bottom navigation bar (365 × 75 pada lebar 440) sesuai PRD §5.2.
+/// Floating bottom navigation bar (365 × 75 pada lebar 440) sesuai PRD §5.2, §14.4.
 /// - Floating overlay dengan bayangan halus
-/// - 5 tab: Home · Search · Add · Plan · Loc
+/// - 5 tab: Home · Search · Add · Plan · Nearby
 /// - Item aktif = lingkaran amber 59 × 57 di dalam bar (berisi ikon + label warna olive)
 class AppBottomNav extends StatelessWidget {
   final String currentRoute;
@@ -36,14 +37,13 @@ class AppBottomNav extends StatelessWidget {
     if (currentRoute.startsWith('/home')) return NavTab.home;
     if (currentRoute.startsWith('/search')) return NavTab.search;
     if (currentRoute.startsWith('/meal-plan')) return NavTab.plan;
-    if (currentRoute.startsWith('/nearby')) return NavTab.loc;
+    if (currentRoute.startsWith('/nearby')) return NavTab.nearby;
     return null;
   }
 
   @override
   Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.paddingOf(context).bottom;
-    final bottomMargin = math.max(21.0, bottomInset);
+    final bottomMargin = bottomGap(context);
     final activeTab = _activeTab;
 
     return Positioned(
@@ -100,6 +100,8 @@ class AppBottomNav extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   tab.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.clip,
                   style: AppText.bottomNav.copyWith(
                     color: AppColors.olive,
                     fontSize: 10.0,
@@ -136,6 +138,8 @@ class AppBottomNav extends StatelessWidget {
               const SizedBox(height: 2),
               Text(
                 tab.label,
+                maxLines: 1,
+                overflow: TextOverflow.clip,
                 style: AppText.bottomNav.copyWith(
                   color: AppColors.white,
                   fontSize: 10.0,

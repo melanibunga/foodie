@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -17,6 +15,7 @@ import '../widgets/recipe_cards.dart';
 import '../widgets/ui/app_badge.dart';
 import '../widgets/ui/app_chip.dart';
 import '../widgets/ui/empty_state.dart';
+import '../widgets/ui/sticky_bottom_bar.dart';
 
 /// Halaman Menu Favoritmu (/favorites) sesuai PRD §6.9, §7.6 dan design/bookmark.jpg:
 /// - Tanpa header global dan tanpa bottom nav.
@@ -98,9 +97,12 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage> {
     }).toList();
 
     final topInset = AppShell.topChrome(context);
-    final bottomInset = math.max(MediaQuery.paddingOf(context).bottom, 24.0);
+    final scrollBottomPadding =
+        StickyBottomBar.scrollPadding(context, barHeight: 48.0, extra: 24.0) +
+        MediaQuery.viewInsetsOf(context).bottom;
 
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       backgroundColor: AppColors.bg,
       body: Stack(
         children: [
@@ -282,7 +284,7 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage> {
                     child: Padding(
                       padding: EdgeInsets.only(top: 40.0),
                       child: EmptyState(
-                        icon: LucideIcons.bookmark,
+                        icon: LucideIcons.heart,
                         title: 'Belum Ada Menu Favorit',
                         subtitle: 'Simpan idenya, masak kapan saja dengan menekan ikon hati pada resep.',
                       ),
@@ -338,42 +340,37 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage> {
                     ),
                   ),
 
-                // 5. Padding Bawah agar konten terakhir tidak tertutup tombol sticky
+                // 5. Padding Bawah agar konten terakhir tidak tertutup tombol sticky (+ keyboard)
                 SliverToBoxAdapter(
-                  child: SizedBox(height: bottomInset + 48.0 + 32.0),
+                  child: SizedBox(height: scrollBottomPadding),
                 ),
               ],
             ),
           ),
 
-          // Tombol Sticky "Kembali Ke Beranda" di Bawah Layar (bottom ≈ 24, lebar ≈ 355, tinggi 48, tebal 700)
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: bottomInset,
-            child: Center(
-              child: SizedBox(
-                width: 355.0,
-                height: 48.0,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.olive,
-                    foregroundColor: AppColors.white,
-                    elevation: 6.0,
-                    shadowColor: AppColors.olive.withValues(alpha: 0.35),
-                    shape: const RoundedRectangleBorder(
-                      borderRadius: AppRadius.pill,
-                    ),
+          // Tombol Sticky "Kembali Ke Beranda" di Bawah Layar
+          StickyBottomBar(
+            child: SizedBox(
+              width: 355.0,
+              height: 48.0,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.olive,
+                  foregroundColor: AppColors.white,
+                  elevation: 6.0,
+                  shadowColor: AppColors.olive.withValues(alpha: 0.35),
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: AppRadius.pill,
                   ),
-                  onPressed: () => context.go('/home'),
-                  child: const Text(
-                    'Kembali Ke Beranda',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 14.0,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.white,
-                    ),
+                ),
+                onPressed: () => context.go('/home'),
+                child: const Text(
+                  'Kembali Ke Beranda',
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 14.0,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.white,
                   ),
                 ),
               ),

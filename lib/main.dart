@@ -10,6 +10,16 @@ import 'providers/storage_provider.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Mode edge-to-edge Android dengan system bar transparan sesuai PRD §14.2
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      systemNavigationBarColor: Colors.transparent,
+      systemNavigationBarDividerColor: Colors.transparent,
+    ),
+  );
+
   // Kunci orientasi portrait sesuai PRD §11 & §12
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,

@@ -93,6 +93,7 @@ GoRouter createRouter({
       ShellRoute(
         builder: (context, state, child) {
           return Scaffold(
+            resizeToAvoidBottomInset: false,
             backgroundColor: AppColors.bg,
             body: Stack(
               children: [

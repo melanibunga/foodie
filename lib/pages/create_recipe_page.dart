@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -15,10 +14,11 @@ import '../core/theme/app_text.dart';
 import '../models/models.dart';
 import '../providers/recipes_provider.dart';
 import '../providers/ui_helper.dart';
-import '../widgets/app_header.dart';
+import '../widgets/page_with_header.dart';
 import '../widgets/ui/app_bottom_sheet.dart';
 import '../widgets/ui/app_button.dart';
 import '../widgets/ui/smart_image.dart';
+import '../widgets/ui/sticky_bottom_bar.dart';
 
 /// Halaman Create Recipe (/add) sesuai PRD §6.6, §7.3, §7.4, §7.5, §10 dan design/add.jpg:
 /// - AppHeader global di atas.
@@ -41,6 +41,7 @@ class CreateRecipePage extends ConsumerStatefulWidget {
 
 class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
   final TextEditingController _titleController = TextEditingController();
+  final FocusNode _titleFocusNode = FocusNode();
 
   String? _coverImageUri;
   final List<Ingredient> _ingredients = [];
@@ -54,6 +55,7 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
   @override
   void dispose() {
     _titleController.dispose();
+    _titleFocusNode.dispose();
     super.dispose();
   }
 
@@ -172,276 +174,265 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
       builder: (sheetContext) {
         return StatefulBuilder(
           builder: (context, setSheetState) {
-            final bottomInset = MediaQuery.viewInsetsOf(sheetContext).bottom;
-
             return Padding(
-              padding: EdgeInsets.only(
-                left: 24.0,
-                right: 24.0,
-                top: 8.0,
-                bottom: math.max(bottomInset, 24.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24.0,
+                vertical: 8.0,
               ),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('Tambah Bahan', style: AppText.sectionTitle),
-                        IconButton(
-                          icon: const Icon(
-                            LucideIcons.x,
-                            color: AppColors.olive,
-                          ),
-                          onPressed: () => Navigator.of(sheetContext).pop(),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12.0),
-
-                    // Input Nama Bahan
-                    const Text('Nama Bahan', style: AppText.formLabel),
-                    const SizedBox(height: 6.0),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14.0),
-                      decoration: BoxDecoration(
-                        color: AppColors.chipGray,
-                        borderRadius: BorderRadius.circular(10.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Tambah Bahan', style: AppText.sectionTitle),
+                      IconButton(
+                        icon: const Icon(LucideIcons.x, color: AppColors.olive),
+                        onPressed: () => Navigator.of(sheetContext).pop(),
                       ),
-                      child: TextField(
-                        controller: nameController,
-                        style: AppText.body,
-                        decoration: const InputDecoration(
-                          hintText: 'Mis. Bawang merah',
-                          border: InputBorder.none,
-                          isDense: true,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12.0),
-
-                    // Input Jumlah & Satuan
-                    Row(
-                      children: [
-                        Expanded(
-                          flex: 3,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('Jumlah', style: AppText.formLabel),
-                              const SizedBox(height: 6.0),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 14.0,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.chipGray,
-                                  borderRadius: BorderRadius.circular(10.0),
-                                ),
-                                child: TextField(
-                                  controller: qtyController,
-                                  style: AppText.body,
-                                  decoration: const InputDecoration(
-                                    hintText: 'Mis. 4',
-                                    border: InputBorder.none,
-                                    isDense: true,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 12.0),
-                        Expanded(
-                          flex: 3,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('Satuan', style: AppText.formLabel),
-                              const SizedBox(height: 6.0),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12.0,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.chipGray,
-                                  borderRadius: BorderRadius.circular(10.0),
-                                ),
-                                child: DropdownButtonHideUnderline(
-                                  child: DropdownButton<String>(
-                                    value: selectedUnit,
-                                    isExpanded: true,
-                                    items: units.map((u) {
-                                      return DropdownMenuItem(
-                                        value: u,
-                                        child: Text(u, style: AppText.body),
-                                      );
-                                    }).toList(),
-                                    onChanged: (val) {
-                                      if (val != null) {
-                                        setSheetState(() => selectedUnit = val);
-                                      }
-                                    },
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12.0),
-
-                    // Input Estimasi Harga
-                    const Text(
-                      'Estimasi Harga (Rp, opsional)',
-                      style: AppText.formLabel,
-                    ),
-                    const SizedBox(height: 6.0),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14.0),
-                      decoration: BoxDecoration(
-                        color: AppColors.chipGray,
-                        borderRadius: BorderRadius.circular(10.0),
-                      ),
-                      child: TextField(
-                        controller: priceController,
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                        ],
-                        style: AppText.body,
-                        decoration: const InputDecoration(
-                          hintText: '0',
-                          border: InputBorder.none,
-                          isDense: true,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 14.0),
-
-                    // Tombol Tambah ke daftar
-                    SizedBox(
-                      width: double.infinity,
-                      height: 44.0,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.amber,
-                          foregroundColor: AppColors.olive,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10.0),
-                          ),
-                        ),
-                        onPressed: () {
-                          final name = nameController.text.trim();
-                          final qty = qtyController.text.trim();
-                          if (name.isEmpty) return;
-
-                          final price =
-                              int.tryParse(priceController.text.trim()) ?? 0;
-                          setSheetState(() {
-                            tempIngredients.add(
-                              Ingredient(
-                                id: 'ing-${DateTime.now().millisecondsSinceEpoch}',
-                                name: name,
-                                qty: qty.isNotEmpty ? qty : '1',
-                                unit: selectedUnit,
-                                price: price,
-                              ),
-                            );
-                            nameController.clear();
-                            qtyController.clear();
-                            priceController.clear();
-                          });
-                        },
-                        child: const Text(
-                          '+ Tambah ke Daftar',
-                          style: TextStyle(
-                            fontFamily: 'Poppins',
-                            fontSize: 13.0,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.olive,
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 16.0),
-
-                    // Daftar bahan yang sudah ditambahkan
-                    if (tempIngredients.isNotEmpty) ...[
-                      const Text('Bahan Terdaftar:', style: AppText.formLabel),
-                      const SizedBox(height: 8.0),
-                      ...tempIngredients.asMap().entries.map((entry) {
-                        final idx = entry.key;
-                        final ing = entry.value;
-
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 6.0),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12.0,
-                            vertical: 8.0,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.white,
-                            borderRadius: BorderRadius.circular(8.0),
-                            border: Border.all(color: AppColors.border),
-                          ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  '${ing.name} (${ing.qty} ${ing.unit ?? ''})',
-                                  style: const TextStyle(
-                                    fontFamily: 'Poppins',
-                                    fontSize: 13.0,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.olive,
-                                  ),
-                                ),
-                              ),
-                              GestureDetector(
-                                onTap: () {
-                                  setSheetState(() {
-                                    tempIngredients.removeAt(idx);
-                                  });
-                                },
-                                child: const Icon(
-                                  LucideIcons.trash2,
-                                  size: 16.0,
-                                  color: AppColors.maroon,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }),
-                      const SizedBox(height: 16.0),
                     ],
+                  ),
+                  const SizedBox(height: 12.0),
 
-                    // Tombol Simpan
-                    AppButton(
-                      label: 'Simpan',
-                      variant: AppButtonVariant.primary,
-                      size: AppButtonSize.lg,
-                      fullWidth: true,
-                      onPressed: () {
-                        setState(() {
-                          _ingredients.clear();
-                          _ingredients.addAll(tempIngredients);
-                          if (_ingredients.isNotEmpty) {
-                            _ingredientsError = null;
-                          }
-                        });
-                        Navigator.of(sheetContext).pop();
-                      },
+                  // Input Nama Bahan
+                  const Text('Nama Bahan', style: AppText.formLabel),
+                  const SizedBox(height: 6.0),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14.0),
+                    decoration: BoxDecoration(
+                      color: AppColors.chipGray,
+                      borderRadius: BorderRadius.circular(10.0),
                     ),
-                    const SizedBox(height: 12.0),
+                    child: TextField(
+                      controller: nameController,
+                      style: AppText.body,
+                      decoration: const InputDecoration(
+                        hintText: 'Mis. Bawang merah',
+                        border: InputBorder.none,
+                        isDense: true,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12.0),
+
+                  // Input Jumlah & Satuan
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Jumlah', style: AppText.formLabel),
+                            const SizedBox(height: 6.0),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14.0,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.chipGray,
+                                borderRadius: BorderRadius.circular(10.0),
+                              ),
+                              child: TextField(
+                                controller: qtyController,
+                                style: AppText.body,
+                                decoration: const InputDecoration(
+                                  hintText: 'Mis. 4',
+                                  border: InputBorder.none,
+                                  isDense: true,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12.0),
+                      Expanded(
+                        flex: 3,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Satuan', style: AppText.formLabel),
+                            const SizedBox(height: 6.0),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12.0,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.chipGray,
+                                borderRadius: BorderRadius.circular(10.0),
+                              ),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<String>(
+                                  value: selectedUnit,
+                                  isExpanded: true,
+                                  items: units.map((u) {
+                                    return DropdownMenuItem(
+                                      value: u,
+                                      child: Text(u, style: AppText.body),
+                                    );
+                                  }).toList(),
+                                  onChanged: (val) {
+                                    if (val != null) {
+                                      setSheetState(() => selectedUnit = val);
+                                    }
+                                  },
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12.0),
+
+                  // Input Estimasi Harga
+                  const Text(
+                    'Estimasi Harga (Rp, opsional)',
+                    style: AppText.formLabel,
+                  ),
+                  const SizedBox(height: 6.0),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14.0),
+                    decoration: BoxDecoration(
+                      color: AppColors.chipGray,
+                      borderRadius: BorderRadius.circular(10.0),
+                    ),
+                    child: TextField(
+                      controller: priceController,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      style: AppText.body,
+                      decoration: const InputDecoration(
+                        hintText: '0',
+                        border: InputBorder.none,
+                        isDense: true,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14.0),
+
+                  // Tombol Tambah ke daftar
+                  SizedBox(
+                    width: double.infinity,
+                    height: 44.0,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.amber,
+                        foregroundColor: AppColors.olive,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10.0),
+                        ),
+                      ),
+                      onPressed: () {
+                        final name = nameController.text.trim();
+                        final qty = qtyController.text.trim();
+                        if (name.isEmpty) return;
+
+                        final price =
+                            int.tryParse(priceController.text.trim()) ?? 0;
+                        setSheetState(() {
+                          tempIngredients.add(
+                            Ingredient(
+                              id: 'ing-${DateTime.now().millisecondsSinceEpoch}',
+                              name: name,
+                              qty: qty.isNotEmpty ? qty : '1',
+                              unit: selectedUnit,
+                              price: price,
+                            ),
+                          );
+                          nameController.clear();
+                          qtyController.clear();
+                          priceController.clear();
+                        });
+                      },
+                      child: const Text(
+                        '+ Tambah ke Daftar',
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 13.0,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.olive,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 16.0),
+
+                  // Daftar bahan yang sudah ditambahkan
+                  if (tempIngredients.isNotEmpty) ...[
+                    const Text('Bahan Terdaftar:', style: AppText.formLabel),
+                    const SizedBox(height: 8.0),
+                    ...tempIngredients.asMap().entries.map((entry) {
+                      final idx = entry.key;
+                      final ing = entry.value;
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 6.0),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12.0,
+                          vertical: 8.0,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.white,
+                          borderRadius: BorderRadius.circular(8.0),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                '${ing.name} (${ing.qty} ${ing.unit ?? ''})',
+                                style: const TextStyle(
+                                  fontFamily: 'Poppins',
+                                  fontSize: 13.0,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.olive,
+                                ),
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: () {
+                                setSheetState(() {
+                                  tempIngredients.removeAt(idx);
+                                });
+                              },
+                              child: const Icon(
+                                LucideIcons.trash2,
+                                size: 16.0,
+                                color: AppColors.maroon,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                    const SizedBox(height: 16.0),
                   ],
-                ),
+
+                  // Tombol Simpan
+                  AppButton(
+                    label: 'Simpan',
+                    variant: AppButtonVariant.primary,
+                    size: AppButtonSize.lg,
+                    fullWidth: true,
+                    onPressed: () {
+                      setState(() {
+                        _ingredients.clear();
+                        _ingredients.addAll(tempIngredients);
+                        if (_ingredients.isNotEmpty) {
+                          _ingredientsError = null;
+                        }
+                      });
+                      Navigator.of(sheetContext).pop();
+                    },
+                  ),
+                  const SizedBox(height: 8.0),
+                ],
               ),
             );
           },
@@ -459,191 +450,182 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
       builder: (sheetContext) {
         return StatefulBuilder(
           builder: (context, setSheetState) {
-            final bottomInset = MediaQuery.viewInsetsOf(sheetContext).bottom;
-
             return Padding(
-              padding: EdgeInsets.only(
-                left: 24.0,
-                right: 24.0,
-                top: 8.0,
-                bottom: math.max(bottomInset, 24.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24.0,
+                vertical: 8.0,
               ),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('Langkah Memasak', style: AppText.sectionTitle),
-                        IconButton(
-                          icon: const Icon(
-                            LucideIcons.x,
-                            color: AppColors.olive,
-                          ),
-                          onPressed: () => Navigator.of(sheetContext).pop(),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Langkah Memasak', style: AppText.sectionTitle),
+                      IconButton(
+                        icon: const Icon(LucideIcons.x, color: AppColors.olive),
+                        onPressed: () => Navigator.of(sheetContext).pop(),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12.0),
 
-                    // Daftar langkah
-                    if (tempSteps.isEmpty)
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 16.0),
-                        child: Center(
-                          child: Text(
-                            'Belum ada langkah. Tekan "+ Tambah Langkah" di bawah.',
-                            style: TextStyle(
-                              fontFamily: 'Poppins',
-                              fontSize: 12.0,
-                              color: AppColors.sage,
-                            ),
+                  // Daftar langkah
+                  if (tempSteps.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 16.0),
+                      child: Center(
+                        child: Text(
+                          'Belum ada langkah. Tekan "+ Tambah Langkah" di bawah.',
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 12.0,
+                            color: AppColors.sage,
                           ),
                         ),
-                      )
-                    else
-                      ...tempSteps.asMap().entries.map((entry) {
-                        final idx = entry.key;
-                        final step = entry.value;
+                      ),
+                    )
+                  else
+                    ...tempSteps.asMap().entries.map((entry) {
+                      final idx = entry.key;
+                      final step = entry.value;
 
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 12.0),
-                          padding: const EdgeInsets.all(12.0),
-                          decoration: BoxDecoration(
-                            color: AppColors.white,
-                            borderRadius: BorderRadius.circular(12.0),
-                            border: Border.all(color: AppColors.border),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Container(
-                                    width: 24.0,
-                                    height: 24.0,
-                                    decoration: const BoxDecoration(
-                                      color: AppColors.amber,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    alignment: Alignment.center,
-                                    child: Text(
-                                      '${idx + 1}',
-                                      style: const TextStyle(
-                                        fontFamily: 'Poppins',
-                                        fontSize: 12.0,
-                                        fontWeight: FontWeight.w700,
-                                        color: AppColors.olive,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8.0),
-                                  Expanded(
-                                    child: Text(
-                                      step.title.isNotEmpty
-                                          ? step.title
-                                          : 'Langkah ${idx + 1}',
-                                      style: const TextStyle(
-                                        fontFamily: 'Poppins',
-                                        fontSize: 13.0,
-                                        fontWeight: FontWeight.w700,
-                                        color: AppColors.olive,
-                                      ),
-                                    ),
-                                  ),
-                                  GestureDetector(
-                                    onTap: () {
-                                      setSheetState(() {
-                                        tempSteps.removeAt(idx);
-                                      });
-                                    },
-                                    child: const Icon(
-                                      LucideIcons.trash2,
-                                      size: 16.0,
-                                      color: AppColors.maroon,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 6.0),
-                              Text(
-                                step.description,
-                                style: const TextStyle(
-                                  fontFamily: 'Poppins',
-                                  fontSize: 12.0,
-                                  color: AppColors.sage,
-                                ),
-                              ),
-                              if (step.durationMin != null &&
-                                  step.durationMin! > 0) ...[
-                                const SizedBox(height: 4.0),
-                                Text(
-                                  '⏱ ${step.durationMin} menit',
-                                  style: const TextStyle(
-                                    fontFamily: 'Poppins',
-                                    fontSize: 11.0,
-                                    fontWeight: FontWeight.w600,
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12.0),
+                        padding: const EdgeInsets.all(12.0),
+                        decoration: BoxDecoration(
+                          color: AppColors.white,
+                          borderRadius: BorderRadius.circular(12.0),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  width: 24.0,
+                                  height: 24.0,
+                                  decoration: const BoxDecoration(
                                     color: AppColors.amber,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    '${idx + 1}',
+                                    style: const TextStyle(
+                                      fontFamily: 'Poppins',
+                                      fontSize: 12.0,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.olive,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8.0),
+                                Expanded(
+                                  child: Text(
+                                    step.title.isNotEmpty
+                                        ? step.title
+                                        : 'Langkah ${idx + 1}',
+                                    style: const TextStyle(
+                                      fontFamily: 'Poppins',
+                                      fontSize: 13.0,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.olive,
+                                    ),
+                                  ),
+                                ),
+                                GestureDetector(
+                                  onTap: () {
+                                    setSheetState(() {
+                                      tempSteps.removeAt(idx);
+                                    });
+                                  },
+                                  child: const Icon(
+                                    LucideIcons.trash2,
+                                    size: 16.0,
+                                    color: AppColors.maroon,
                                   ),
                                 ),
                               ],
+                            ),
+                            const SizedBox(height: 6.0),
+                            Text(
+                              step.description,
+                              style: const TextStyle(
+                                fontFamily: 'Poppins',
+                                fontSize: 12.0,
+                                color: AppColors.sage,
+                              ),
+                            ),
+                            if (step.durationMin != null &&
+                                step.durationMin! > 0) ...[
+                              const SizedBox(height: 4.0),
+                              Text(
+                                '⏱ ${step.durationMin} menit',
+                                style: const TextStyle(
+                                  fontFamily: 'Poppins',
+                                  fontSize: 11.0,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.amber,
+                                ),
+                              ),
                             ],
-                          ),
-                        );
-                      }),
-
-                    // Tombol Tambah Langkah
-                    OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.olive,
-                        side: const BorderSide(color: AppColors.olive),
-                        minimumSize: const Size(double.infinity, 44.0),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10.0),
+                          ],
                         ),
-                      ),
-                      icon: const Icon(LucideIcons.plus, size: 16.0),
-                      label: const Text(
-                        'Tambah Langkah',
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 13.0,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      onPressed: () {
-                        _showAddStepDialog(context, (newStep) {
-                          setSheetState(() {
-                            tempSteps.add(newStep);
-                          });
-                        });
-                      },
-                    ),
+                      );
+                    }),
 
-                    const SizedBox(height: 20.0),
-
-                    // Tombol Simpan
-                    AppButton(
-                      label: 'Simpan',
-                      variant: AppButtonVariant.primary,
-                      size: AppButtonSize.lg,
-                      fullWidth: true,
-                      onPressed: () {
-                        setState(() {
-                          _steps.clear();
-                          _steps.addAll(tempSteps);
-                          if (_steps.isNotEmpty) {
-                            _stepsError = null;
-                          }
-                        });
-                        Navigator.of(sheetContext).pop();
-                      },
+                  // Tombol Tambah Langkah
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.olive,
+                      side: const BorderSide(color: AppColors.olive),
+                      minimumSize: const Size(double.infinity, 44.0),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10.0),
+                      ),
                     ),
-                    const SizedBox(height: 12.0),
-                  ],
-                ),
+                    icon: const Icon(LucideIcons.plus, size: 16.0),
+                    label: const Text(
+                      'Tambah Langkah',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 13.0,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    onPressed: () {
+                      _showAddStepDialog(context, (newStep) {
+                        setSheetState(() {
+                          tempSteps.add(newStep);
+                        });
+                      });
+                    },
+                  ),
+
+                  const SizedBox(height: 20.0),
+
+                  // Tombol Simpan
+                  AppButton(
+                    label: 'Simpan',
+                    variant: AppButtonVariant.primary,
+                    size: AppButtonSize.lg,
+                    fullWidth: true,
+                    onPressed: () {
+                      setState(() {
+                        _steps.clear();
+                        _steps.addAll(tempSteps);
+                        if (_steps.isNotEmpty) {
+                          _stepsError = null;
+                        }
+                      });
+                      Navigator.of(sheetContext).pop();
+                    },
+                  ),
+                  const SizedBox(height: 8.0),
+                ],
               ),
             );
           },
@@ -848,22 +830,19 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
 
   @override
   Widget build(BuildContext context) {
-    final bottomInset = math.max(MediaQuery.paddingOf(context).bottom, 24.0);
+    final scrollBottomPadding =
+        StickyBottomBar.scrollPadding(context, barHeight: 55.0, extra: 24.0) +
+        MediaQuery.viewInsetsOf(context).bottom;
 
-    return Scaffold(
-      backgroundColor: AppColors.bg,
+    return PageWithHeader(
+      resizeToAvoidBottomInset: false,
       body: Stack(
         children: [
           // Konten Scrollable
           Positioned.fill(
             child: CustomScrollView(
               slivers: [
-                // 1. AppHeader global
-                const SliverToBoxAdapter(
-                  child: AppHeader(includeTopPadding: true),
-                ),
-
-                // 2. Baris Judul: "<  Create Recipe"
+                // 1. Baris Judul: "<  Create Recipe"
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.only(
@@ -941,6 +920,9 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                           alignment: Alignment.centerLeft,
                           child: TextField(
                             controller: _titleController,
+                            focusNode: _titleFocusNode,
+                            onTapOutside: (_) =>
+                                FocusManager.instance.primaryFocus?.unfocus(),
                             style: const TextStyle(
                               fontFamily: 'Poppins',
                               fontSize: 14.0,
@@ -1322,43 +1304,38 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                   ),
                 ),
 
-                // Padding Bawah agar tidak tertutup tombol DONE
+                // Padding Bawah agar tidak tertutup tombol DONE (+ keyboard)
                 SliverToBoxAdapter(
-                  child: SizedBox(height: bottomInset + 55.0 + 32.0),
+                  child: SizedBox(height: scrollBottomPadding),
                 ),
               ],
             ),
           ),
 
-          // Tombol Olive Pill "DONE" Sticky di Bawah Layar (lebar penuh ≈ 362 × 55)
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: bottomInset,
-            child: Center(
-              child: SizedBox(
-                width: 362.0,
-                height: 55.0,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.olive,
-                    foregroundColor: AppColors.white,
-                    elevation: 6.0,
-                    shadowColor: AppColors.olive.withValues(alpha: 0.35),
-                    shape: const RoundedRectangleBorder(
-                      borderRadius: AppRadius.pill,
-                    ),
+          // Tombol Olive Pill "DONE" Sticky di Bawah Layar
+          StickyBottomBar(
+            child: SizedBox(
+              width: 362.0,
+              height: 55.0,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.olive,
+                  foregroundColor: AppColors.white,
+                  elevation: 6.0,
+                  shadowColor: AppColors.olive.withValues(alpha: 0.35),
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: AppRadius.pill,
                   ),
-                  onPressed: _handleSubmit,
-                  child: const Text(
-                    'DONE',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 16.0,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.0,
-                      color: AppColors.white,
-                    ),
+                ),
+                onPressed: _handleSubmit,
+                child: const Text(
+                  'DONE',
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 16.0,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.0,
+                    color: AppColors.white,
                   ),
                 ),
               ),

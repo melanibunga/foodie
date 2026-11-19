@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,6 +14,7 @@ import '../providers/cart_provider.dart';
 import '../providers/ui_helper.dart';
 import '../widgets/ui/app_checkbox.dart';
 import '../widgets/ui/empty_state.dart';
+import '../widgets/ui/sticky_bottom_bar.dart';
 
 /// Halaman My Groceries (/groceries) sesuai PRD §6.11, §7.6 dan design/Daftar Belanja.jpg:
 /// - Tanpa header global dan tanpa bottom nav.
@@ -126,9 +125,13 @@ class _GroceriesPageState extends ConsumerState<GroceriesPage> {
     final totalUnchecked = ref.watch(cartTotalUncheckedProvider);
 
     final topInset = AppShell.topChrome(context);
-    final bottomInset = math.max(MediaQuery.paddingOf(context).bottom, 24.0);
+    final bottomInset = bottomGap(context);
+    final scrollBottomPadding =
+        (cartGroups.isNotEmpty ? (bottomInset + 88.0 + 24.0) : 40.0) +
+        MediaQuery.viewInsetsOf(context).bottom;
 
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       backgroundColor: AppColors.bg,
       body: Stack(
         children: [
@@ -375,9 +378,9 @@ class _GroceriesPageState extends ConsumerState<GroceriesPage> {
                     ),
                   ),
 
-                // 5. Padding Bawah agar konten terakhir tidak tertutup sticky panel
+                // 5. Padding Bawah agar konten terakhir tidak tertutup sticky panel (+ keyboard)
                 SliverToBoxAdapter(
-                  child: SizedBox(height: bottomInset + 88.0 + 24.0),
+                  child: SizedBox(height: scrollBottomPadding),
                 ),
               ],
             ),

@@ -11,7 +11,7 @@ import '../providers/cart_provider.dart';
 import '../providers/favorites_provider.dart';
 import '../providers/recipes_provider.dart';
 import '../providers/ui_helper.dart';
-import '../widgets/app_header.dart';
+import '../widgets/page_with_header.dart';
 import '../widgets/recipe_cards.dart';
 import '../widgets/ui/app_button.dart';
 import '../widgets/ui/skeleton.dart';
@@ -26,15 +26,12 @@ class HomePage extends ConsumerWidget {
     final popularAsync = ref.watch(popularRecipesProvider);
     final favorites = ref.watch(favoritesProvider);
 
-    return Scaffold(
-      backgroundColor: AppColors.bg,
+    return PageWithHeader(
+      resizeToAvoidBottomInset: false,
       body: CustomScrollView(
         key: const PageStorageKey<String>('home_scroll_view'),
         slivers: [
-          // 1. AppHeader global
-          const SliverToBoxAdapter(child: AppHeader(includeTopPadding: true)),
-
-          // 2. Judul Section: Daily Inspiration
+          // 1. Judul Section: Daily Inspiration
           const SliverToBoxAdapter(
             child: Padding(
               padding: EdgeInsets.only(

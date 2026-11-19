@@ -12,21 +12,30 @@ import '../providers/cart_provider.dart';
 import '../providers/favorites_provider.dart';
 import 'ui/smart_image.dart';
 
-/// Header global Foodie.id (Home, Search, Meal Plan, Nearby) sesuai PRD §5.1.
+/// Header global Foodie.id (Home, Search, Add, Meal Plan, Nearby) sesuai PRD §5.1, §14.3, §14.4.
 /// - Kiri: Foto profil bulat ≈ 48 (inisial olive di atas photoGray). Tap -> /profile
 /// - Kanan:
-///   - Pill Bookmark: bg olive, ikon bookmark putih + angka putih, 59 × 38. Tap -> /favorites
+///   - Pill Favorit: bg olive, ikon heart terisi putih + angka putih, 59 × 38. Tap -> /favorites
 ///   - Keranjang: ikon cart olive + angka olive (tanpa bg). Tap -> /groceries
 class AppHeader extends ConsumerWidget {
   final bool includeTopPadding;
+  final Color? backgroundColor;
 
-  const AppHeader({super.key, this.includeTopPadding = true});
+  const AppHeader({
+    super.key,
+    this.includeTopPadding = true,
+    this.backgroundColor,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
     final favCount = ref.watch(favoriteCountProvider);
     final cartCount = ref.watch(cartCountProvider);
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bg =
+        backgroundColor ?? (isDark ? AppColors.surfaceDark : AppColors.bg);
 
     final initials = user?.name.isNotEmpty == true
         ? user!.name
@@ -39,7 +48,8 @@ class AppHeader extends ConsumerWidget {
 
     final topPadding = includeTopPadding ? AppShell.topChrome(context) : 0.0;
 
-    return Padding(
+    return Container(
+      color: bg,
       padding: EdgeInsets.only(
         top: topPadding + 14.0,
         left: 24.0,
@@ -66,14 +76,14 @@ class AppHeader extends ConsumerWidget {
             ),
           ),
 
-          // Sisi Kanan: Pill Bookmark + Ikon Keranjang
+          // Sisi Kanan: Pill Favorit + Ikon Keranjang
           Row(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Pill Bookmark (59 × 38, radius pill, bg olive)
+              // Pill Favorit (59 × 38, radius pill, bg olive, ikon heart terisi putih)
               Semantics(
-                label: 'Menu Favoritmu ($favCount item)',
+                label: 'Favorit',
                 button: true,
                 child: GestureDetector(
                   onTap: () => context.push('/favorites'),
@@ -89,7 +99,7 @@ class AppHeader extends ConsumerWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         const Icon(
-                          LucideIcons.bookmark,
+                          Icons.favorite,
                           color: AppColors.white,
                           size: 16.0,
                         ),

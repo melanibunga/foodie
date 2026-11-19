@@ -70,6 +70,8 @@ foodie/
 
 ## 3. Referensi Desain
 
+Bagian §14 (Perubahan Pasca-Desain) MENANG atas gambar desain dan bagian PRD lain bila bentrok.
+
 | File | Halaman | Ukuran (px) | Route |
 |---|---|---|---|
 | `splash.jpg` | Splash / Onboarding | 440×960 | `/` |
@@ -516,12 +518,12 @@ Semua foto sementara **abu-abu**. Sumber foto asli (API resep) menyusul di luar 
 
 ## 12. Keputusan & Asumsi (ubah di sini kalau tidak setuju)
 
-1. **Label tab ke-5**: workflow menyebut "Nearby", style guide menyebut "My Pantry", layar menyebut "Loc". **Keputusan: ikuti layar → label "Loc", ikon kulkas seperti gambar, route `/nearby`.**
+1. **Label tab ke-5** *(digantikan oleh §14.4 dan §14.12)*: workflow menyebut "Nearby", style guide menyebut "My Pantry", layar menyebut "Loc". **Keputusan: ikuti layar → label "Loc", ikon kulkas seperti gambar, route `/nearby`.**
 2. **Ikon `+` di kartu Popular**: tidak dijelaskan di workflow. Asumsi: *quick-add* semua bahan ke keranjang.
 3. **Bookmark = Favorit**: tombol hati/"Tambah ke favorit" dan pill bookmark memakai daftar yang sama.
 4. **Halaman Add memakai field abu `#D6D6D6`** (berbeda dari field putih di Login). Diikuti persis sesuai desain; bisa dirapikan nanti.
 5. **Search by Meal tanpa label** diikuti persis; tile tetap fungsional via `Semantics`.
-6. **Peta Nearby = ilustrasi statis (`CustomPaint`)** sesuai desain. Peta sungguhan (`flutter_map`/Google Maps) ditunda.
+6. **Peta Nearby = ilustrasi statis (`CustomPaint`)** *(digantikan oleh §14.4 dan §14.12)* sesuai desain. Peta sungguhan (`flutter_map`/Google Maps) ditunda.
 7. **Meal Plan di desain hanya memperlihatkan Senin–Sabtu** karena gambar terpotong; implementasi tetap 7 hari.
 8. **Auth mock**: sandi apa pun ≥ 8 karakter lolos; user demo di §9. "Ingat saya" dicentang → session disimpan permanen; tidak dicentang → session hanya di memori (hilang saat app ditutup).
 9. **Pill bookmark/keranjang**: angka tampil walau 0 (sesuai desain).
@@ -559,3 +561,50 @@ Semua foto sementara **abu-abu**. Sumber foto asli (API resep) menyusul di luar 
 - [ ] `flutter test` hijau.
 - [ ] `flutter build apk --debug` (atau `flutter build web` bila Android SDK tidak tersedia) sukses.
 - [ ] Tidak ada `Color(0x…)` / `Colors.xxx` (selain `Colors.transparent`) di luar `core/theme/` (semua lewat token).
+
+---
+
+## 14. Perubahan Pasca-Desain (Bug Fix Round 1)
+
+14.0 Prioritas: §14 menang atas desain JPG dan bagian lain PRD.
+
+14.1 Istilah: "kasus keyboard" (sheet/form ikut terdorong naik sampai hanya layer putih), "kasus button naik" (tombol/nav fixed ikut naik di atas keyboard), "kasus no space" (tombol/alert/sheet mepet atau tertutup navigasi HP).
+
+14.2 Aturan layout global (insets & keyboard):
+- Semua elemen sticky di bawah (tombol "Kembali Ke Beranda", DONE, panel ringkasan Groceries, tombol aksi di sheet): jarak bawah = max(24, MediaQuery.viewPadding.bottom + 16). Tidak boleh tertutup gesture bar / 3 tombol navigasi.
+- Halaman yang punya elemen sticky bawah (termasuk BottomNav di ShellRoute) memakai Scaffold(resizeToAvoidBottomInset: false). Elemen sticky TIDAK bergerak saat keyboard muncul. Area scroll diberi padding bawah = viewInsets.bottom supaya field yang fokus tetap terlihat (ensureVisible).
+- Bottom sheet (isScrollControlled: true): tinggi maksimum = tinggi layar − topChrome; isi di dalam scroll view; padding bawah = viewInsets.bottom saat keyboard terbuka, dan = viewPadding.bottom + 16 saat tidak; tombol aksi sheet tidak boleh tertutup navigasi sistem. Tidak boleh tampil area putih kosong.
+- Fokus: membuka sheet/dialog atau menutupnya TIDAK boleh membuat field lain otomatis fokus; keyboard tidak boleh muncul sendiri. Sebelum membuka sheet: unfocus. Setelah sheet ditutup: unfocus. Tap area kosong = tutup keyboard.
+- Android: mode edge-to-edge dengan system bar transparan; selalu pakai viewPadding/viewInsets dari MediaQuery.
+
+14.3 AppHeader (avatar + pill favorit + keranjang) di Home, Search, Add, Meal Plan, Nearby bersifat FIXED: berada di luar area scroll, tidak ikut ter-scroll, background bg.
+
+14.4 Tab ke-5 berlabel "Nearby" (bukan "Loc") dengan ikon map-pin; route tetap /nearby. Pill di header memakai ikon heart (terisi putih) menggantikan bookmark, label semantik "Favorit", agar konsisten dengan hati di kartu dan judul "Menu Favoritmu".
+
+14.5 Toast: muncul 16 px DI ATAS elemen fixed paling bawah pada halaman itu (BottomNav = tinggi 75 + jaraknya; atau tombol sticky). Warna: background amberSoft, teks olive 12/600, radius pill, bayangan kartu; TIDAK sama dengan warna bottom nav. Hilang 2.2 s.
+
+14.6 Detail Menu:
+- Deskripsi singkat resep tampil tepat di bawah judul (13/400 sage, tinggi baris 20), maksimal 3 baris; bila lebih panjang tampil tautan "Lihat semua" (maroon 12/600) yang membuka teks penuh, lalu menjadi "Tutup". Bila deskripsi kosong (resep buatan user), bagian disembunyikan.
+- Tombol back FIXED di kiri atas (tidak ikut scroll), lingkaran 44, background sage, panah putih. Share & heart tetap di hero.
+- "Tambah ke keranjang": bila resep sudah ada di keranjang, tombol tampil gaya non-aktif (bg amberSoft, teks olive, ikon centang, label "Sudah di keranjang") TAPI tetap bisa di-tap: tap = keluarkan grup resep dari keranjang + toast "Dikeluarkan dari keranjang" dan tombol kembali ke gaya semula.
+- Ikon calendar-plus: bila resep sudah terjadwal (ada entri meal plan dengan tanggal >= hari ini), ikon berubah menjadi calendar-check dengan latar amberSoft.
+
+14.7 Meal Plan:
+- Lebar kartu di carousel selalu ≈ 330 (sama untuk 1 atau lebih menu), rata kiri; kartu berikutnya mengintip bila ada.
+- Tidak boleh ada resep yang sama pada tanggal yang sama. mealPlanProvider.add mengembalikan status added/exists; bila exists: tidak menambah, toast "Menu sudah ada di meal plan". Berlaku dari jalur plus (/search?pick=) maupun dari ikon di detail. Resep yang sama pada tanggal berbeda diperbolehkan.
+- Sheet pilih tanggal di detail: tanggal yang sudah berisi resep ini tampil dengan centang dan non-aktif (tap = toast "Menu sudah ada di meal plan"). Di mode /search?pick=, kartu resep yang sudah ada di tanggal itu menampilkan tombol non-aktif "Sudah ada".
+
+14.8 Add Recipe: daftar bahan yang sudah ditambahkan tampil sebagai list langsung di bawah baris dua kolom (nama + takaran, tombol hapus), menampilkan 3 item pertama dan tautan "Lihat semua (N)" bila lebih dari 3 (expand inline, lalu "Sembunyikan"). Kotak "Ingredients" tetap sebagai pemicu sheet.
+
+14.9 Rating:
+- Di layar selesai Start Cooking ("Selamat, masakanmu siap!") tampil pemilih 5 bintang amber ("Beri rating untuk {judul}"), tombol olive "Kirim rating" (non-aktif sampai memilih) dan "Lewati". Setelah kirim: toast "Terima kasih atas ratingmu".
+- Disimpan di ratingsProvider (resepId → 1..5, persist). Rating yang ditampilkan di kartu & detail = (ratingDasar × ulasanDasar + ratingUser) / (ulasanDasar + 1), 1 desimal, ulasan +1; bila user memberi rating lagi untuk resep yang sama, nilainya MENGGANTI (tidak dihitung dobel).
+- v1: rating dasar = data dummy/seed + rating user lokal. API resep tidak wajib menyediakan rating; rating asli multi-user menunggu backend.
+
+14.10 Riwayat Dimasak: route /cooked (tanpa AppHeader & bottom nav), meniru Favorites: judul "Riwayat Masak" + badge amber jumlah resep unik, sub "Resep yang sudah kamu masak.", search "Cari riwayat masak...", grid kartu (FavoriteRecipeCard tanpa trash; caption "Dimasak N× · {tanggal terakhir}" dan "Rating kamu ★N" bila ada), tombol sticky "Kembali Ke Beranda", EmptyState "Belum ada yang dimasak. Yuk mulai masak!". Model CookedEntry {id, recipeId, date}; cookedProvider (persist); selesai Start Cooking menambah entri. Statistik "Dimasak" di Profil = jumlah entri; seed 12 entri (dari resep seed, tanggal mundur).
+
+14.11 Profil: ketiga kolom statistik interaktif: tap = Favorit → /favorites, Dimasak → /cooked, Resep Saya → /my-recipes. Feedback: efek tekan (ripple/highlight maroonSoft) dan hover + kursor pointer di web/desktop.
+
+14.12 Nearby peta nyata: peta OpenStreetMap (flutter_map + latlong2), lokasi pengguna (geolocator; izin lokasi; bila ditolak → pusat default area desain + toast), rute jalan kaki ke tempat terpilih digambar mengikuti jalan sungguhan (OSRM, profil foot, geometri geojson), bukan garis lurus. Tampilan overlay (pill "Radius 1 km", pin bernomor amber/olive, titik pengguna berhalo, tombol "Pusatkan") dipertahankan seperti desain. Atribusi "© OpenStreetMap contributors" wajib tampil. Bila tile/rute gagal: fallback ke IllustratedMap / garis putus-putus lurus + toast. Model Place ditambah lat & lng; data tempat v1 masih mock (diletakkan relatif terhadap lokasi pengguna) di balik interface PlaceService supaya nanti diganti sumber nyata. Menggantikan §12 butir 6.
+
+14.13 Rating & data dari API: lihat 14.9 (v1 dummy + lokal).

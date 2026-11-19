@@ -216,7 +216,7 @@ class _DevComponentsPageState extends ConsumerState<DevComponentsPage> {
                           AppBadge.pill(
                             count: 12,
                             icon: const Icon(
-                              Icons.bookmark,
+                              Icons.favorite,
                               color: AppColors.white,
                               size: 14,
                             ),
@@ -419,7 +419,7 @@ class _DevComponentsPageState extends ConsumerState<DevComponentsPage> {
                           border: Border.all(color: AppColors.border),
                         ),
                         child: EmptyState(
-                          icon: LucideIcons.bookmark,
+                          icon: LucideIcons.heart,
                           title: 'Belum Ada Menu Favorit',
                           subtitle: 'Simpan resep favoritmu agar mudah ditemukan kembali.',
                           action: AppButton(

@@ -104,6 +104,7 @@ class _AppInputState extends State<AppInput> {
             maxLines: widget.maxLines,
             onChanged: widget.onChanged,
             onSubmitted: widget.onSubmitted,
+            onTapOutside: (_) => FocusManager.instance.primaryFocus?.unfocus(),
             style: AppText.body,
             decoration: InputDecoration(
               isDense: true,

@@ -15,7 +15,7 @@ import '../providers/favorites_provider.dart';
 import '../providers/meal_plan_provider.dart';
 import '../providers/ui_helper.dart';
 import '../services/recipe_service.dart';
-import '../widgets/app_header.dart';
+import '../widgets/page_with_header.dart';
 import '../widgets/recipe_cards.dart';
 import '../widgets/ui/app_bottom_sheet.dart';
 import '../widgets/ui/app_button.dart';
@@ -170,185 +170,180 @@ class _SearchPageState extends ConsumerState<SearchPage> {
             return Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: 24.0,
-                vertical: 12.0,
+                vertical: 8.0,
               ),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Header Filter & Reset
-                    Row(
-                      children: [
-                        const Expanded(
-                          child: Text('Filter', style: AppText.sectionTitle),
-                        ),
-                        GestureDetector(
-                          onTap: () {
-                            setSheetState(() {
-                              tempDifficulty = null;
-                              tempTimeRange = null;
-                              tempMainIngredient = null;
-                            });
-                          },
-                          child: const Text(
-                            'Reset',
-                            style: TextStyle(
-                              fontFamily: 'Poppins',
-                              color: AppColors.maroon,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                            ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header Filter & Reset
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: Text('Filter', style: AppText.sectionTitle),
+                      ),
+                      GestureDetector(
+                        onTap: () {
+                          setSheetState(() {
+                            tempDifficulty = null;
+                            tempTimeRange = null;
+                            tempMainIngredient = null;
+                          });
+                        },
+                        child: const Text(
+                          'Reset',
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            color: AppColors.maroon,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
+                  ),
 
-                    const SizedBox(height: 20),
+                  const SizedBox(height: 20),
 
-                    // Section: Tingkat Kesulitan
-                    const Text('Tingkat kesulitan', style: AppText.formLabel),
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 8.0,
-                      runSpacing: 8.0,
-                      children: [
-                        AppChip(
-                          label: 'Mudah',
-                          selected: tempDifficulty == Difficulty.mudah,
-                          onTap: () {
-                            setSheetState(() {
-                              tempDifficulty =
-                                  tempDifficulty == Difficulty.mudah
-                                  ? null
-                                  : Difficulty.mudah;
-                            });
-                          },
-                        ),
-                        AppChip(
-                          label: 'Sedang',
-                          selected: tempDifficulty == Difficulty.sedang,
-                          onTap: () {
-                            setSheetState(() {
-                              tempDifficulty =
-                                  tempDifficulty == Difficulty.sedang
-                                  ? null
-                                  : Difficulty.sedang;
-                            });
-                          },
-                        ),
-                        AppChip(
-                          label: 'Sulit',
-                          selected: tempDifficulty == Difficulty.sulit,
-                          onTap: () {
-                            setSheetState(() {
-                              tempDifficulty =
-                                  tempDifficulty == Difficulty.sulit
-                                  ? null
-                                  : Difficulty.sulit;
-                            });
-                          },
-                        ),
-                      ],
-                    ),
+                  // Section: Tingkat Kesulitan
+                  const Text('Tingkat kesulitan', style: AppText.formLabel),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8.0,
+                    runSpacing: 8.0,
+                    children: [
+                      AppChip(
+                        label: 'Mudah',
+                        selected: tempDifficulty == Difficulty.mudah,
+                        onTap: () {
+                          setSheetState(() {
+                            tempDifficulty = tempDifficulty == Difficulty.mudah
+                                ? null
+                                : Difficulty.mudah;
+                          });
+                        },
+                      ),
+                      AppChip(
+                        label: 'Sedang',
+                        selected: tempDifficulty == Difficulty.sedang,
+                        onTap: () {
+                          setSheetState(() {
+                            tempDifficulty = tempDifficulty == Difficulty.sedang
+                                ? null
+                                : Difficulty.sedang;
+                          });
+                        },
+                      ),
+                      AppChip(
+                        label: 'Sulit',
+                        selected: tempDifficulty == Difficulty.sulit,
+                        onTap: () {
+                          setSheetState(() {
+                            tempDifficulty = tempDifficulty == Difficulty.sulit
+                                ? null
+                                : Difficulty.sulit;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
 
-                    const SizedBox(height: 20),
+                  const SizedBox(height: 20),
 
-                    // Section: Waktu Masak
-                    const Text('Waktu masak', style: AppText.formLabel),
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 8.0,
-                      runSpacing: 8.0,
-                      children: [
-                        AppChip(
-                          label: '< 15 menit',
-                          selected: tempTimeRange == '< 15',
-                          onTap: () {
-                            setSheetState(() {
-                              tempTimeRange = tempTimeRange == '< 15'
-                                  ? null
-                                  : '< 15';
-                            });
-                          },
-                        ),
-                        AppChip(
-                          label: '15–30 menit',
-                          selected: tempTimeRange == '15-30',
-                          onTap: () {
-                            setSheetState(() {
-                              tempTimeRange = tempTimeRange == '15-30'
-                                  ? null
-                                  : '15-30';
-                            });
-                          },
-                        ),
-                        AppChip(
-                          label: '> 30 menit',
-                          selected: tempTimeRange == '> 30',
-                          onTap: () {
-                            setSheetState(() {
-                              tempTimeRange = tempTimeRange == '> 30'
-                                  ? null
-                                  : '> 30';
-                            });
-                          },
-                        ),
-                      ],
-                    ),
+                  // Section: Waktu Masak
+                  const Text('Waktu masak', style: AppText.formLabel),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8.0,
+                    runSpacing: 8.0,
+                    children: [
+                      AppChip(
+                        label: '< 15 menit',
+                        selected: tempTimeRange == '< 15',
+                        onTap: () {
+                          setSheetState(() {
+                            tempTimeRange = tempTimeRange == '< 15'
+                                ? null
+                                : '< 15';
+                          });
+                        },
+                      ),
+                      AppChip(
+                        label: '15–30 menit',
+                        selected: tempTimeRange == '15-30',
+                        onTap: () {
+                          setSheetState(() {
+                            tempTimeRange = tempTimeRange == '15-30'
+                                ? null
+                                : '15-30';
+                          });
+                        },
+                      ),
+                      AppChip(
+                        label: '> 30 menit',
+                        selected: tempTimeRange == '> 30',
+                        onTap: () {
+                          setSheetState(() {
+                            tempTimeRange = tempTimeRange == '> 30'
+                                ? null
+                                : '> 30';
+                          });
+                        },
+                      ),
+                    ],
+                  ),
 
-                    const SizedBox(height: 20),
+                  const SizedBox(height: 20),
 
-                    // Section: Bahan Utama
-                    const Text('Bahan utama', style: AppText.formLabel),
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 8.0,
-                      runSpacing: 8.0,
-                      children:
-                          [
-                            'Ayam',
-                            'Telur',
-                            'Sapi',
-                            'Ikan',
-                            'Sayur',
-                            'Kangkung',
-                          ].map((ing) {
-                            final isSelected = tempMainIngredient == ing;
-                            return AppChip(
-                              label: ing,
-                              selected: isSelected,
-                              onTap: () {
-                                setSheetState(() {
-                                  tempMainIngredient = isSelected ? null : ing;
-                                });
-                              },
-                            );
-                          }).toList(),
-                    ),
+                  // Section: Bahan Utama
+                  const Text('Bahan utama', style: AppText.formLabel),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8.0,
+                    runSpacing: 8.0,
+                    children:
+                        [
+                          'Ayam',
+                          'Telur',
+                          'Sapi',
+                          'Ikan',
+                          'Sayur',
+                          'Kangkung',
+                        ].map((ing) {
+                          final isSelected = tempMainIngredient == ing;
+                          return AppChip(
+                            label: ing,
+                            selected: isSelected,
+                            onTap: () {
+                              setSheetState(() {
+                                tempMainIngredient = isSelected ? null : ing;
+                              });
+                            },
+                          );
+                        }).toList(),
+                  ),
 
-                    const SizedBox(height: 28),
+                  const SizedBox(height: 28),
 
-                    // Tombol Terapkan
-                    AppButton(
-                      label: 'Terapkan',
-                      variant: AppButtonVariant.primary,
-                      size: AppButtonSize.lg,
-                      fullWidth: true,
-                      onPressed: () {
-                        setState(() {
-                          _selectedDifficulty = tempDifficulty;
-                          _selectedTimeRange = tempTimeRange;
-                          _selectedMainIngredient = tempMainIngredient;
-                        });
-                        Navigator.of(sheetContext).pop();
-                        _executeSearch();
-                      },
-                    ),
+                  // Tombol Terapkan
+                  AppButton(
+                    label: 'Terapkan',
+                    variant: AppButtonVariant.primary,
+                    size: AppButtonSize.lg,
+                    fullWidth: true,
+                    onPressed: () {
+                      setState(() {
+                        _selectedDifficulty = tempDifficulty;
+                        _selectedTimeRange = tempTimeRange;
+                        _selectedMainIngredient = tempMainIngredient;
+                      });
+                      Navigator.of(sheetContext).pop();
+                      _executeSearch();
+                    },
+                  ),
 
-                    const SizedBox(height: 16),
-                  ],
-                ),
+                  const SizedBox(height: 8.0),
+                ],
               ),
             );
           },
@@ -499,14 +494,11 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   Widget build(BuildContext context) {
     final favorites = ref.watch(favoritesProvider);
 
-    return Scaffold(
-      backgroundColor: AppColors.bg,
+    return PageWithHeader(
+      resizeToAvoidBottomInset: false,
       body: CustomScrollView(
         key: const PageStorageKey<String>('search_scroll_view'),
         slivers: [
-          // 1. AppHeader global
-          const SliverToBoxAdapter(child: AppHeader(includeTopPadding: true)),
-
           // Banner Pick Mode (bila datang dari Meal Plan)
           SliverToBoxAdapter(child: _buildPickBanner()),
 
@@ -861,9 +853,13 @@ class _SearchPageState extends ConsumerState<SearchPage> {
               ),
           ],
 
-          // Padding bawah agar konten tidak tertutup floating bottom nav (120 px)
-          const SliverToBoxAdapter(
-            child: SizedBox(height: AppShell.bottomNavPadding),
+          // Padding bawah agar konten tidak tertutup floating bottom nav (120 px) + keyboard
+          SliverToBoxAdapter(
+            child: SizedBox(
+              height:
+                  AppShell.bottomNavPadding +
+                  MediaQuery.viewInsetsOf(context).bottom,
+            ),
           ),
         ],
       ),

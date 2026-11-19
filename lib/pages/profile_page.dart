@@ -99,176 +99,172 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 : 'NC';
 
             return Padding(
-              padding: EdgeInsets.only(
-                left: 24.0,
-                right: 24.0,
-                top: 8.0,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 24.0,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24.0,
+                vertical: 8.0,
               ),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      'Edit Profil',
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: 20.0,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.olive,
-                      ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Edit Profil',
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 20.0,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.olive,
                     ),
-                    const SizedBox(height: 20.0),
+                  ),
+                  const SizedBox(height: 20.0),
 
-                    // Foto Avatar + Tombol Ganti Foto
-                    Stack(
-                      alignment: Alignment.bottomRight,
-                      children: [
-                        SmartImage(
-                          src: tempAvatar,
-                          initials: initials,
-                          isCircle: true,
-                          width: 88.0,
-                          height: 88.0,
-                        ),
-                        Semantics(
-                          label: 'Ganti foto profil',
-                          button: true,
-                          child: GestureDetector(
-                            onTap: () async {
-                              final picked = await _picker.pickImage(
-                                source: ImageSource.gallery,
-                                maxWidth: 1080,
-                                imageQuality: 80,
-                              );
-                              if (picked != null) {
-                                final bytes = await picked.readAsBytes();
-                                if (bytes.length > 1024 * 1024) {
-                                  if (context.mounted) {
-                                    showAppToast(
-                                      context,
-                                      'Ukuran foto maksimal 1MB',
-                                    );
-                                  }
-                                  return;
+                  // Foto Avatar + Tombol Ganti Foto
+                  Stack(
+                    alignment: Alignment.bottomRight,
+                    children: [
+                      SmartImage(
+                        src: tempAvatar,
+                        initials: initials,
+                        isCircle: true,
+                        width: 88.0,
+                        height: 88.0,
+                      ),
+                      Semantics(
+                        label: 'Ganti foto profil',
+                        button: true,
+                        child: GestureDetector(
+                          onTap: () async {
+                            final picked = await _picker.pickImage(
+                              source: ImageSource.gallery,
+                              maxWidth: 1080,
+                              imageQuality: 80,
+                            );
+                            if (picked != null) {
+                              final bytes = await picked.readAsBytes();
+                              if (bytes.length > 1024 * 1024) {
+                                if (context.mounted) {
+                                  showAppToast(
+                                    context,
+                                    'Ukuran foto maksimal 1MB',
+                                  );
                                 }
-                                final dataUri =
-                                    'data:image/jpeg;base64,${base64Encode(bytes)}';
-                                setSheetState(() {
-                                  tempAvatar = dataUri;
-                                });
+                                return;
                               }
-                            },
-                            child: Container(
-                              width: 32.0,
-                              height: 32.0,
-                              decoration: const BoxDecoration(
-                                color: AppColors.olive,
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: AppColors.shadowShell,
-                                    blurRadius: 4.0,
-                                    offset: Offset(0, 1),
-                                  ),
-                                ],
-                              ),
-                              alignment: Alignment.center,
-                              child: const Icon(
-                                LucideIcons.camera,
-                                size: 16.0,
-                                color: AppColors.white,
-                              ),
+                              final dataUri =
+                                  'data:image/jpeg;base64,${base64Encode(bytes)}';
+                              setSheetState(() {
+                                tempAvatar = dataUri;
+                              });
+                            }
+                          },
+                          child: Container(
+                            width: 32.0,
+                            height: 32.0,
+                            decoration: const BoxDecoration(
+                              color: AppColors.olive,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.shadowShell,
+                                  blurRadius: 4.0,
+                                  offset: Offset(0, 1),
+                                ),
+                              ],
+                            ),
+                            alignment: Alignment.center,
+                            child: const Icon(
+                              LucideIcons.camera,
+                              size: 16.0,
+                              color: AppColors.white,
                             ),
                           ),
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 8.0),
-                    TextButton(
-                      onPressed: () async {
-                        final picked = await _picker.pickImage(
-                          source: ImageSource.gallery,
-                          maxWidth: 1080,
-                          imageQuality: 80,
-                        );
-                        if (picked != null) {
-                          final bytes = await picked.readAsBytes();
-                          if (bytes.length > 1024 * 1024) {
-                            if (context.mounted) {
-                              showAppToast(context, 'Ukuran foto maksimal 1MB');
-                            }
-                            return;
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8.0),
+                  TextButton(
+                    onPressed: () async {
+                      final picked = await _picker.pickImage(
+                        source: ImageSource.gallery,
+                        maxWidth: 1080,
+                        imageQuality: 80,
+                      );
+                      if (picked != null) {
+                        final bytes = await picked.readAsBytes();
+                        if (bytes.length > 1024 * 1024) {
+                          if (context.mounted) {
+                            showAppToast(context, 'Ukuran foto maksimal 1MB');
                           }
-                          final dataUri =
-                              'data:image/jpeg;base64,${base64Encode(bytes)}';
-                          setSheetState(() {
-                            tempAvatar = dataUri;
-                          });
-                        }
-                      },
-                      child: const Text(
-                        'Ganti foto',
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 12.0,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.maroon,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16.0),
-
-                    // Input Nama
-                    AppInput(
-                      label: 'Nama Lengkap',
-                      controller: nameController,
-                      prefixIcon: const Icon(
-                        LucideIcons.user,
-                        size: 18.0,
-                        color: AppColors.sage,
-                      ),
-                    ),
-                    const SizedBox(height: 14.0),
-
-                    // Input Email (Readonly)
-                    AppInput(
-                      label: 'Email (tidak dapat diubah)',
-                      controller: emailController,
-                      prefixIcon: const Icon(
-                        LucideIcons.mail,
-                        size: 18.0,
-                        color: AppColors.sage,
-                      ),
-                      readOnly: true,
-                    ),
-                    const SizedBox(height: 24.0),
-
-                    // Tombol Simpan
-                    AppButton(
-                      label: 'Simpan',
-                      variant: AppButtonVariant.primary,
-                      size: AppButtonSize.lg,
-                      fullWidth: true,
-                      onPressed: () async {
-                        final newName = nameController.text.trim();
-                        if (newName.isEmpty) {
-                          showAppToast(context, 'Nama tidak boleh kosong');
                           return;
                         }
-
-                        await ref
-                            .read(authProvider.notifier)
-                            .updateProfile(name: newName, avatar: tempAvatar);
-
-                        if (context.mounted) {
-                          Navigator.pop(sheetContext);
-                          showAppToast(context, 'Profil berhasil diperbarui');
-                        }
-                      },
+                        final dataUri =
+                            'data:image/jpeg;base64,${base64Encode(bytes)}';
+                        setSheetState(() {
+                          tempAvatar = dataUri;
+                        });
+                      }
+                    },
+                    child: const Text(
+                      'Ganti foto',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 12.0,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.maroon,
+                      ),
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 16.0),
+
+                  // Input Nama
+                  AppInput(
+                    label: 'Nama Lengkap',
+                    controller: nameController,
+                    prefixIcon: const Icon(
+                      LucideIcons.user,
+                      size: 18.0,
+                      color: AppColors.sage,
+                    ),
+                  ),
+                  const SizedBox(height: 14.0),
+
+                  // Input Email (Readonly)
+                  AppInput(
+                    label: 'Email (tidak dapat diubah)',
+                    controller: emailController,
+                    prefixIcon: const Icon(
+                      LucideIcons.mail,
+                      size: 18.0,
+                      color: AppColors.sage,
+                    ),
+                    readOnly: true,
+                  ),
+                  const SizedBox(height: 24.0),
+
+                  // Tombol Simpan
+                  AppButton(
+                    label: 'Simpan',
+                    variant: AppButtonVariant.primary,
+                    size: AppButtonSize.lg,
+                    fullWidth: true,
+                    onPressed: () async {
+                      final newName = nameController.text.trim();
+                      if (newName.isEmpty) {
+                        showAppToast(context, 'Nama tidak boleh kosong');
+                        return;
+                      }
+
+                      await ref
+                          .read(authProvider.notifier)
+                          .updateProfile(name: newName, avatar: tempAvatar);
+
+                      if (context.mounted) {
+                        Navigator.pop(sheetContext);
+                        showAppToast(context, 'Profil berhasil diperbarui');
+                      }
+                    },
+                  ),
+                ],
               ),
             );
           },

@@ -10,8 +10,8 @@ import '../models/models.dart';
 import '../providers/location_provider.dart';
 import '../providers/places_provider.dart';
 import '../providers/ui_helper.dart';
-import '../widgets/app_header.dart';
 import '../widgets/illustrated_map.dart';
+import '../widgets/page_with_header.dart';
 import '../widgets/real_map_view.dart';
 import '../widgets/ui/app_bottom_sheet.dart';
 import '../widgets/ui/app_button.dart';
@@ -133,7 +133,7 @@ class _NearbyPageState extends ConsumerState<NearbyPage> {
                 left: 24.0,
                 right: 24.0,
                 top: 8.0,
-                bottom: 24.0,
+                bottom: 8.0,
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -369,15 +369,12 @@ class _NearbyPageState extends ConsumerState<NearbyPage> {
           : null;
     }
 
-    return Scaffold(
-      backgroundColor: AppColors.bg,
+    return PageWithHeader(
+      resizeToAvoidBottomInset: false,
       body: CustomScrollView(
         key: const PageStorageKey<String>('nearby_scroll_view'),
         slivers: [
-          // 1. AppHeader global
-          const SliverToBoxAdapter(child: AppHeader(includeTopPadding: true)),
-
-          // 2. Baris Pencarian & Tombol Filter Bulat
+          // 1. Baris Pencarian & Tombol Filter Bulat
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24.0),

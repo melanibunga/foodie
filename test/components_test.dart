@@ -168,7 +168,7 @@ void main() {
       expect(find.text('Search'), findsOneWidget);
       expect(find.text('Add'), findsOneWidget);
       expect(find.text('Plan'), findsOneWidget);
-      expect(find.text('Loc'), findsOneWidget);
+      expect(find.text('Nearby'), findsOneWidget);
     });
 
     testWidgets(
