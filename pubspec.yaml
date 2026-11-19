@@ -41,6 +41,10 @@ dependencies:
   image_picker: ^1.2.4
   share_plus: ^13.3.1
   wakelock_plus: ^1.8.2
+  lucide_icons_flutter: ^4.0.3
+  flutter_map: ^8.3.2
+  latlong2: ^0.10.1
+  geolocator: ^14.0.1
 
 dev_dependencies:
   flutter_test:

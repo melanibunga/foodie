@@ -66,5 +66,13 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Aplikasi memerlukan akses galeri untuk memilih foto sampul resep.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Aplikasi memerlukan akses kamera untuk mengambil foto sampul resep.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Foodie.id membutuhkan lokasi Anda untuk menampilkan rekomendasi tempat makan terdekat.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Foodie.id membutuhkan lokasi Anda untuk menampilkan rekomendasi tempat makan terdekat.</string>
 </dict>
 </plist>

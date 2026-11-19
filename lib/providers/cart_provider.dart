@@ -1,0 +1,205 @@
+import 'dart:convert';
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../data/seed_data.dart';
+import '../models/models.dart';
+import 'storage_provider.dart';
+
+enum AddRecipeStatus { added, exists }
+
+/// State Notifier untuk keranjang belanja bahan masakan (My Groceries).
+class CartNotifier extends Notifier<List<CartGroup>> {
+  static const String prefKey = 'foodie:cart';
+  static const String customGroupName = 'Belanjaan Kamu Nich';
+
+  @override
+  List<CartGroup> build() {
+    _loadFromStorage();
+    return seedCartGroups;
+  }
+
+  void _loadFromStorage() {
+    try {
+      final prefs = ref.read(sharedPreferencesProvider);
+      final jsonStr = prefs.getString(prefKey);
+      if (jsonStr != null && jsonStr.isNotEmpty) {
+        final decoded = jsonDecode(jsonStr) as List<dynamic>;
+        state = decoded
+            .map((item) => CartGroup.fromJson(item as Map<String, dynamic>))
+            .toList();
+      } else {
+        state = seedCartGroups;
+      }
+    } catch (_) {
+      state = seedCartGroups;
+    }
+  }
+
+  Future<void> _saveToStorage() async {
+    try {
+      final prefs = ref.read(sharedPreferencesProvider);
+      await prefs.setString(
+        prefKey,
+        jsonEncode(state.map((g) => g.toJson()).toList()),
+      );
+    } catch (_) {}
+  }
+
+  /// Tambah semua bahan dari resep ke dalam satu grup resep di keranjang.
+  /// Jika resep sudah ada di keranjang, tidak menduplikasi dan mengembalikan [AddRecipeStatus.exists].
+  Future<AddRecipeStatus> addRecipe(Recipe recipe) async {
+    final alreadyExists = state.any((g) => g.recipeId == recipe.id);
+    if (alreadyExists) {
+      return AddRecipeStatus.exists;
+    }
+
+    final newItems = recipe.ingredients.map((ing) {
+      final unitStr = ing.unit != null && ing.unit!.isNotEmpty
+          ? ' ${ing.unit}'
+          : '';
+      return CartItem(
+        id: 'ci-${recipe.id}-${ing.id}',
+        name: ing.name,
+        qty: '${ing.qty}$unitStr',
+        price: ing.price,
+        checked: false,
+      );
+    }).toList();
+
+    final newGroup = CartGroup(
+      id: 'cg-${recipe.id}',
+      recipeId: recipe.id,
+      name: recipe.title,
+      items: newItems,
+    );
+
+    state = [...state, newGroup];
+    await _saveToStorage();
+    return AddRecipeStatus.added;
+  }
+
+  /// Tambah item belanja custom ke grup "Belanjaan Kamu Nich"
+  Future<void> addCustomItem({
+    required String name,
+    required String qty,
+    required int price,
+  }) async {
+    final groups = List<CartGroup>.from(state);
+    final customIndex = groups.indexWhere((g) => g.recipeId == null);
+
+    final newItem = CartItem(
+      id: 'ci-custom-${DateTime.now().millisecondsSinceEpoch}',
+      name: name,
+      qty: qty,
+      price: price,
+      checked: false,
+    );
+
+    if (customIndex >= 0) {
+      final existingGroup = groups[customIndex];
+      final updatedItems = [...existingGroup.items, newItem];
+      groups[customIndex] = existingGroup.copyWith(items: updatedItems);
+    } else {
+      final newCustomGroup = CartGroup(
+        id: 'cg-custom-${DateTime.now().millisecondsSinceEpoch}',
+        recipeId: null,
+        name: customGroupName,
+        items: [newItem],
+      );
+      groups.add(newCustomGroup);
+    }
+
+    state = groups;
+    await _saveToStorage();
+  }
+
+  /// Toggle status centang item
+  Future<void> toggleItem(String groupId, String itemId) async {
+    final groups = state.map((group) {
+      if (group.id == groupId) {
+        final updatedItems = group.items.map((item) {
+          if (item.id == itemId) {
+            return item.copyWith(checked: !item.checked);
+          }
+          return item;
+        }).toList();
+        return group.copyWith(items: updatedItems);
+      }
+      return group;
+    }).toList();
+
+    state = groups;
+    await _saveToStorage();
+  }
+
+  /// Ubah estimasi harga item
+  Future<void> updatePrice(String groupId, String itemId, int newPrice) async {
+    final groups = state.map((group) {
+      if (group.id == groupId) {
+        final updatedItems = group.items.map((item) {
+          if (item.id == itemId) {
+            return item.copyWith(price: newPrice);
+          }
+          return item;
+        }).toList();
+        return group.copyWith(items: updatedItems);
+      }
+      return group;
+    }).toList();
+
+    state = groups;
+    await _saveToStorage();
+  }
+
+  /// Hapus satu grup menu dari keranjang
+  Future<void> removeGroup(String groupId) async {
+    state = state.where((g) => g.id != groupId).toList();
+    await _saveToStorage();
+  }
+
+  /// Kosongkan semua item di keranjang
+  Future<void> clearAll() async {
+    state = [];
+    await _saveToStorage();
+  }
+
+  /// Reset ke seed demo
+  Future<void> resetToSeed() async {
+    final prefs = ref.read(sharedPreferencesProvider);
+    await prefs.remove(prefKey);
+    state = seedCartGroups;
+  }
+}
+
+final cartProvider = NotifierProvider<CartNotifier, List<CartGroup>>(() {
+  return CartNotifier();
+});
+
+/// Jumlah semua CartItem di semua grup (untuk badge keranjang header)
+final cartCountProvider = Provider<int>((ref) {
+  final groups = ref.watch(cartProvider);
+  return groups.fold<int>(0, (sum, g) => sum + g.items.length);
+});
+
+/// Subtotal satu grup menu = jumlah SEMUA item di grup (sesuai PRD §6.11 & §13)
+final cartSubtotalProvider = Provider.family<int, String>((ref, groupId) {
+  final groups = ref.watch(cartProvider);
+  final group = groups.where((g) => g.id == groupId).firstOrNull;
+  if (group == null) return 0;
+  return group.items.fold<int>(0, (sum, item) => sum + item.price);
+});
+
+/// Total estimasi keranjang = jumlah item yang BELUM DICENTANG di semua grup
+final cartTotalUncheckedProvider = Provider<int>((ref) {
+  final groups = ref.watch(cartProvider);
+  var total = 0;
+  for (final group in groups) {
+    for (final item in group.items) {
+      if (!item.checked) {
+        total += item.price;
+      }
+    }
+  }
+  return total;
+});

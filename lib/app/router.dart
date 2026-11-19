@@ -1,0 +1,244 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../core/theme/app_colors.dart';
+import '../core/theme/app_text.dart';
+import '../pages/about_page.dart';
+import '../pages/cook_page.dart';
+import '../pages/create_recipe_page.dart';
+import '../pages/dev_components_page.dart';
+import '../pages/dev_tokens_page.dart';
+import '../pages/favorites_page.dart';
+import '../pages/forgot_page.dart';
+import '../pages/groceries_page.dart';
+import '../pages/home_page.dart';
+import '../pages/login_page.dart';
+import '../pages/meal_plan_page.dart';
+import '../pages/my_recipes_page.dart';
+import '../pages/nearby_page.dart';
+import '../pages/profile_page.dart';
+import '../pages/recipe_detail_page.dart';
+import '../pages/register_page.dart';
+import '../pages/search_page.dart';
+import '../pages/splash_page.dart';
+import '../providers/auth_provider.dart';
+import '../widgets/app_bottom_nav.dart';
+
+/// Listenable untuk memberitahu GoRouter bila status auth berubah sesuai PRD §8.
+class RouterNotifier extends ChangeNotifier {
+  final Ref _ref;
+
+  RouterNotifier(this._ref) {
+    _ref.listen<AuthState>(authProvider, (previous, next) {
+      if (previous?.isLoggedIn != next.isLoggedIn) {
+        notifyListeners();
+      }
+    });
+  }
+}
+
+final routerNotifierProvider = Provider<RouterNotifier>((ref) {
+  return RouterNotifier(ref);
+});
+
+/// Factory pembuat GoRouter yang mendukung guard otentikasi.
+GoRouter createRouter({
+  Listenable? refreshListenable,
+  AuthState Function()? getAuthState,
+  String initialLocation = '/',
+}) {
+  return GoRouter(
+    initialLocation: initialLocation,
+    refreshListenable: refreshListenable,
+    redirect: (context, state) {
+      final auth = getAuthState != null ? getAuthState() : null;
+      final isLoggedIn = auth?.isLoggedIn ?? false;
+      final path = state.uri.path;
+
+      final isPublic =
+          path == '/' ||
+          path == '/login' ||
+          path == '/register' ||
+          path == '/forgot' ||
+          path.startsWith('/dev');
+
+      // Guard: tanpa session -> redirect ke /login (kecuali /, /login, /register, /forgot, /dev/*)
+      if (!isLoggedIn && !isPublic) {
+        return '/login';
+      }
+
+      // Guard: sudah login dan buka "/" -> langsung /home
+      if (isLoggedIn && path == '/') {
+        return '/home';
+      }
+
+      return null;
+    },
+    routes: [
+      // Splash / Onboarding
+      GoRoute(path: '/', builder: (context, state) => const SplashPage()),
+
+      // Auth
+      GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
+      GoRoute(
+        path: '/register',
+        builder: (context, state) => const RegisterPage(),
+      ),
+      GoRoute(path: '/forgot', builder: (context, state) => const ForgotPage()),
+
+      // ShellRoute untuk tab utama dengan floating bottom nav (Home, Search, Meal Plan, Nearby)
+      // /add berada di luar shell (tanpa bottom nav) sesuai PRD §5.2
+      ShellRoute(
+        builder: (context, state, child) {
+          return Scaffold(
+            backgroundColor: AppColors.bg,
+            body: Stack(
+              children: [
+                Positioned.fill(child: child),
+                AppBottomNav(currentRoute: state.uri.path),
+              ],
+            ),
+          );
+        },
+        routes: [
+          GoRoute(path: '/home', builder: (context, state) => const HomePage()),
+          GoRoute(
+            path: '/search',
+            builder: (context, state) {
+              final pickDate = state.uri.queryParameters['pick'];
+              return SearchPage(pickDate: pickDate);
+            },
+          ),
+          GoRoute(
+            path: '/meal-plan',
+            builder: (context, state) => const MealPlanPage(),
+          ),
+          GoRoute(
+            path: '/nearby',
+            builder: (context, state) => const NearbyPage(),
+          ),
+        ],
+      ),
+
+      // Create Recipe (Add) — di luar shell
+      GoRoute(
+        path: '/add',
+        builder: (context, state) => const CreateRecipePage(),
+      ),
+
+      // My Recipes
+      GoRoute(
+        path: '/my-recipes',
+        builder: (context, state) => const MyRecipesPage(),
+      ),
+
+      // Favorites
+      GoRoute(
+        path: '/favorites',
+        builder: (context, state) => const FavoritesPage(),
+      ),
+
+      // Groceries (Keranjang)
+      GoRoute(
+        path: '/groceries',
+        builder: (context, state) => const GroceriesPage(),
+      ),
+
+      // Profile & Info
+      GoRoute(
+        path: '/profile',
+        builder: (context, state) => const ProfilePage(),
+      ),
+      GoRoute(path: '/about', builder: (context, state) => const AboutPage()),
+
+      // Detail & Cooking Mode
+      GoRoute(
+        path: '/recipe/:id',
+        builder: (context, state) {
+          final id = state.pathParameters['id'] ?? '';
+          return RecipeDetailPage(recipeId: id);
+        },
+        routes: [
+          GoRoute(
+            path: 'cook',
+            builder: (context, state) {
+              final id = state.pathParameters['id'] ?? '';
+              return CookPage(recipeId: id);
+            },
+          ),
+        ],
+      ),
+
+      // Halaman inspeksi dev tokens & dev components (hanya aktif saat kDebugMode)
+      if (kDebugMode) ...[
+        GoRoute(
+          path: '/dev/tokens',
+          builder: (context, state) => const DevTokensPage(),
+        ),
+        GoRoute(
+          path: '/dev/components',
+          builder: (context, state) => const DevComponentsPage(),
+        ),
+      ],
+    ],
+
+    // 404 Error handler
+    errorBuilder: (context, state) => Scaffold(
+      backgroundColor: AppColors.bg,
+      appBar: AppBar(
+        title: const Text('404 Not Found', style: AppText.pageTitle),
+      ),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.error_outline,
+                size: 48,
+                color: AppColors.maroon,
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Halaman tidak ditemukan',
+                style: AppText.sectionTitle,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                state.uri.toString(),
+                style: AppText.caption.copyWith(color: AppColors.sage),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.olive,
+                  foregroundColor: AppColors.white,
+                ),
+                onPressed: () => context.go('/home'),
+                child: const Text(
+                  'Kembali ke Beranda',
+                  style: AppText.buttonMd,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+/// Instance default router untuk kompatibilitas
+final GoRouter appRouter = createRouter();
+
+/// Provider router utama dengan auth guard aktif
+final routerProvider = Provider<GoRouter>((ref) {
+  final notifier = ref.watch(routerNotifierProvider);
+  return createRouter(
+    refreshListenable: notifier,
+    getAuthState: () => ref.read(authProvider),
+  );
+});

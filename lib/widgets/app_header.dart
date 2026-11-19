@@ -1,0 +1,152 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:lucide_icons/lucide_icons.dart';
+
+import '../app/app_shell.dart';
+import '../core/theme/app_colors.dart';
+import '../core/theme/app_radius.dart';
+import '../core/theme/app_text.dart';
+import '../providers/auth_provider.dart';
+import '../providers/cart_provider.dart';
+import '../providers/favorites_provider.dart';
+import 'ui/smart_image.dart';
+
+/// Header global Foodie.id (Home, Search, Meal Plan, Nearby) sesuai PRD §5.1.
+/// - Kiri: Foto profil bulat ≈ 48 (inisial olive di atas photoGray). Tap -> /profile
+/// - Kanan:
+///   - Pill Bookmark: bg olive, ikon bookmark putih + angka putih, 59 × 38. Tap -> /favorites
+///   - Keranjang: ikon cart olive + angka olive (tanpa bg). Tap -> /groceries
+class AppHeader extends ConsumerWidget {
+  final bool includeTopPadding;
+
+  const AppHeader({super.key, this.includeTopPadding = true});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(currentUserProvider);
+    final favCount = ref.watch(favoriteCountProvider);
+    final cartCount = ref.watch(cartCountProvider);
+
+    final initials = user?.name.isNotEmpty == true
+        ? user!.name
+              .trim()
+              .split(' ')
+              .map((w) => w.isNotEmpty ? w[0] : '')
+              .take(2)
+              .join()
+        : 'NC';
+
+    final topPadding = includeTopPadding ? AppShell.topChrome(context) : 0.0;
+
+    return Padding(
+      padding: EdgeInsets.only(
+        top: topPadding + 14.0,
+        left: 24.0,
+        right: 24.0,
+        bottom: 12.0,
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // Foto Profil / Avatar Kiri
+          Semantics(
+            label: 'Profil Saya',
+            button: true,
+            child: GestureDetector(
+              onTap: () => context.push('/profile'),
+              child: SmartImage(
+                src: user?.avatar,
+                initials: initials,
+                isCircle: true,
+                width: 48.0,
+                height: 48.0,
+              ),
+            ),
+          ),
+
+          // Sisi Kanan: Pill Bookmark + Ikon Keranjang
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Pill Bookmark (59 × 38, radius pill, bg olive)
+              Semantics(
+                label: 'Menu Favoritmu ($favCount item)',
+                button: true,
+                child: GestureDetector(
+                  onTap: () => context.push('/favorites'),
+                  child: Container(
+                    width: 59.0,
+                    height: 38.0,
+                    decoration: const BoxDecoration(
+                      color: AppColors.olive,
+                      borderRadius: AppRadius.pill,
+                    ),
+                    alignment: Alignment.center,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          LucideIcons.bookmark,
+                          color: AppColors.white,
+                          size: 16.0,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          favCount.toString(),
+                          style: AppText.caption.copyWith(
+                            color: AppColors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12.0,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(width: 14),
+
+              // Keranjang (ikon shoppingCart olive + angka olive)
+              Semantics(
+                label: 'Keranjang Belanja ($cartCount item)',
+                button: true,
+                child: GestureDetector(
+                  onTap: () => context.push('/groceries'),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4.0,
+                      vertical: 6.0,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          LucideIcons.shoppingCart,
+                          color: AppColors.olive,
+                          size: 20.0,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          cartCount.toString(),
+                          style: AppText.caption.copyWith(
+                            color: AppColors.olive,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12.0,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}

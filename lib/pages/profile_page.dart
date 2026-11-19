@@ -1,0 +1,889 @@
+import 'dart:convert';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:lucide_icons/lucide_icons.dart';
+
+import '../app/app_shell.dart';
+import '../core/theme/app_colors.dart';
+import '../core/theme/app_radius.dart';
+import '../core/theme/app_shadows.dart';
+import '../data/user.dart';
+import '../providers/auth_provider.dart';
+import '../providers/favorites_provider.dart';
+import '../providers/recipes_provider.dart';
+import '../providers/reset_data.dart';
+import '../providers/ui_helper.dart';
+import '../widgets/ui/app_bottom_sheet.dart';
+import '../widgets/ui/app_button.dart';
+import '../widgets/ui/app_input.dart';
+import '../widgets/ui/app_toggle.dart';
+import '../widgets/ui/smart_image.dart';
+
+/// Halaman Profil Saya (/profile) sesuai PRD §6.12, §7.7, §7.9, §11 dan design/akun.jpg:
+/// - Top bar panah kiri + "Profil Saya" (24/700).
+/// - Kartu profil (foto 80 placeholder bulat inisial, nama, email, chip "Edit profil" maroonSoft).
+/// - Kartu statistik 3 kolom pemisah vertikal: Favorit, Dimasak, Resep Saya (tap -> /my-recipes).
+/// - Judul "Pengaturan" (20/700).
+/// - Kartu pengaturan: Pengingat makan (toggle maroon), Mode gelap (toggle non-aktif).
+/// - Kartu "Tentang aplikasi" (tap -> /about).
+/// - Tombol Logout outline maroon -> hapus session -> /login.
+/// - "Versi 1.0.0" -> tekan lama = dialog "Reset data demo?".
+/// - Tanpa AppHeader global dan tanpa AppBottomNav.
+class ProfilePage extends ConsumerStatefulWidget {
+  const ProfilePage({super.key});
+
+  @override
+  ConsumerState<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends ConsumerState<ProfilePage> {
+  final ImagePicker _picker = ImagePicker();
+
+  Future<void> _handleLogout() async {
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: 'Keluar dari akun?',
+      message: 'Kamu perlu login kembali untuk mengakses data resep dan jadwal belanja.',
+      confirmLabel: 'Logout',
+      cancelLabel: 'Batal',
+      isDanger: true,
+    );
+
+    if (confirmed && mounted) {
+      await ref.read(authProvider.notifier).logout();
+      if (mounted) {
+        context.go('/login');
+      }
+    }
+  }
+
+  Future<void> _handleResetDemoData() async {
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: 'Reset data demo?',
+      message: 'Semua resep kustom, jadwal meal plan, favorit, dan keranjang belanja akan dikembalikan ke data awal.',
+      confirmLabel: 'Reset',
+      cancelLabel: 'Batal',
+      isDanger: true,
+    );
+
+    if (confirmed && mounted) {
+      await resetAllDataRef(ref);
+      if (mounted) {
+        showAppToast(context, 'Data demo berhasil di-reset');
+      }
+    }
+  }
+
+  void _showEditProfileSheet() {
+    final currentUser = ref.read(currentUserProvider) ?? seedUser;
+    final nameController = TextEditingController(text: currentUser.name);
+    final emailController = TextEditingController(text: currentUser.email);
+    String? tempAvatar = currentUser.avatar;
+
+    showAppBottomSheet(
+      context: context,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final initials = nameController.text.trim().isNotEmpty
+                ? nameController.text
+                      .trim()
+                      .split(' ')
+                      .map((w) => w.isNotEmpty ? w[0] : '')
+                      .take(2)
+                      .join()
+                : 'NC';
+
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 24.0,
+                right: 24.0,
+                top: 8.0,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 24.0,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'Edit Profil',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 20.0,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.olive,
+                      ),
+                    ),
+                    const SizedBox(height: 20.0),
+
+                    // Foto Avatar + Tombol Ganti Foto
+                    Stack(
+                      alignment: Alignment.bottomRight,
+                      children: [
+                        SmartImage(
+                          src: tempAvatar,
+                          initials: initials,
+                          isCircle: true,
+                          width: 88.0,
+                          height: 88.0,
+                        ),
+                        Semantics(
+                          label: 'Ganti foto profil',
+                          button: true,
+                          child: GestureDetector(
+                            onTap: () async {
+                              final picked = await _picker.pickImage(
+                                source: ImageSource.gallery,
+                                maxWidth: 1080,
+                                imageQuality: 80,
+                              );
+                              if (picked != null) {
+                                final bytes = await picked.readAsBytes();
+                                if (bytes.length > 1024 * 1024) {
+                                  if (context.mounted) {
+                                    showAppToast(
+                                      context,
+                                      'Ukuran foto maksimal 1MB',
+                                    );
+                                  }
+                                  return;
+                                }
+                                final dataUri =
+                                    'data:image/jpeg;base64,${base64Encode(bytes)}';
+                                setSheetState(() {
+                                  tempAvatar = dataUri;
+                                });
+                              }
+                            },
+                            child: Container(
+                              width: 32.0,
+                              height: 32.0,
+                              decoration: const BoxDecoration(
+                                color: AppColors.olive,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppColors.shadowShell,
+                                    blurRadius: 4.0,
+                                    offset: Offset(0, 1),
+                                  ),
+                                ],
+                              ),
+                              alignment: Alignment.center,
+                              child: const Icon(
+                                LucideIcons.camera,
+                                size: 16.0,
+                                color: AppColors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8.0),
+                    TextButton(
+                      onPressed: () async {
+                        final picked = await _picker.pickImage(
+                          source: ImageSource.gallery,
+                          maxWidth: 1080,
+                          imageQuality: 80,
+                        );
+                        if (picked != null) {
+                          final bytes = await picked.readAsBytes();
+                          if (bytes.length > 1024 * 1024) {
+                            if (context.mounted) {
+                              showAppToast(context, 'Ukuran foto maksimal 1MB');
+                            }
+                            return;
+                          }
+                          final dataUri =
+                              'data:image/jpeg;base64,${base64Encode(bytes)}';
+                          setSheetState(() {
+                            tempAvatar = dataUri;
+                          });
+                        }
+                      },
+                      child: const Text(
+                        'Ganti foto',
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 12.0,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.maroon,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16.0),
+
+                    // Input Nama
+                    AppInput(
+                      label: 'Nama Lengkap',
+                      controller: nameController,
+                      prefixIcon: const Icon(
+                        LucideIcons.user,
+                        size: 18.0,
+                        color: AppColors.sage,
+                      ),
+                    ),
+                    const SizedBox(height: 14.0),
+
+                    // Input Email (Readonly)
+                    AppInput(
+                      label: 'Email (tidak dapat diubah)',
+                      controller: emailController,
+                      prefixIcon: const Icon(
+                        LucideIcons.mail,
+                        size: 18.0,
+                        color: AppColors.sage,
+                      ),
+                      readOnly: true,
+                    ),
+                    const SizedBox(height: 24.0),
+
+                    // Tombol Simpan
+                    AppButton(
+                      label: 'Simpan',
+                      variant: AppButtonVariant.primary,
+                      size: AppButtonSize.lg,
+                      fullWidth: true,
+                      onPressed: () async {
+                        final newName = nameController.text.trim();
+                        if (newName.isEmpty) {
+                          showAppToast(context, 'Nama tidak boleh kosong');
+                          return;
+                        }
+
+                        await ref
+                            .read(authProvider.notifier)
+                            .updateProfile(name: newName, avatar: tempAvatar);
+
+                        if (context.mounted) {
+                          Navigator.pop(sheetContext);
+                          showAppToast(context, 'Profil berhasil diperbarui');
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final user = ref.watch(currentUserProvider) ?? seedUser;
+    final favCount = ref.watch(favoriteCountProvider);
+    final myRecipes = ref.watch(myRecipesProvider);
+    final myRecipesCount = myRecipes.length;
+
+    final initials = user.name.isNotEmpty
+        ? user.name
+              .trim()
+              .split(' ')
+              .map((w) => w.isNotEmpty ? w[0] : '')
+              .take(2)
+              .join()
+        : 'NC';
+
+    final topPadding = AppShell.topChrome(context);
+
+    return Scaffold(
+      backgroundColor: AppColors.bg,
+      body: SafeArea(
+        top: false,
+        child: CustomScrollView(
+          key: const PageStorageKey<String>('profile_scroll_view'),
+          slivers: [
+            // 1. Top Bar: Panah Kembali + Judul "Profil Saya"
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  top: topPadding + 14.0,
+                  left: 24.0,
+                  right: 24.0,
+                  bottom: 16.0,
+                ),
+                child: Row(
+                  children: [
+                    Semantics(
+                      label: 'Kembali',
+                      button: true,
+                      child: GestureDetector(
+                        onTap: () {
+                          if (context.canPop()) {
+                            context.pop();
+                          } else {
+                            context.go('/home');
+                          }
+                        },
+                        child: Container(
+                          width: 40.0,
+                          height: 40.0,
+                          decoration: const BoxDecoration(
+                            color: AppColors.white,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.shadowShell,
+                                blurRadius: 4.0,
+                                offset: Offset(0, 1),
+                              ),
+                            ],
+                          ),
+                          alignment: Alignment.center,
+                          child: const Icon(
+                            LucideIcons.arrowLeft,
+                            size: 20.0,
+                            color: AppColors.olive,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16.0),
+                    const Text(
+                      'Profil Saya',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 24.0,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.olive,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // 2. Konten Profil
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Kartu Profil (Putih, radius 20, padding 20)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20.0),
+                      decoration: const BoxDecoration(
+                        color: AppColors.white,
+                        borderRadius: AppRadius.cardLarge,
+                        boxShadow: AppShadows.card,
+                      ),
+                      child: Row(
+                        children: [
+                          // Foto Avatar 80px
+                          SmartImage(
+                            src: user.avatar,
+                            initials: initials,
+                            isCircle: true,
+                            width: 80.0,
+                            height: 80.0,
+                          ),
+                          const SizedBox(width: 16.0),
+
+                          // Kolom Info Nama, Email & Tombol Edit
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  user.name,
+                                  style: const TextStyle(
+                                    fontFamily: 'Poppins',
+                                    fontSize: 18.0,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.olive,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 2.0),
+                                Text(
+                                  user.email,
+                                  style: const TextStyle(
+                                    fontFamily: 'Poppins',
+                                    fontSize: 12.0,
+                                    fontWeight: FontWeight.w400,
+                                    color: AppColors.sage,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 10.0),
+
+                                // Chip "✎ Edit profil" (maroonSoft, teks maroon 12/600)
+                                Semantics(
+                                  label: 'Edit profil',
+                                  button: true,
+                                  child: GestureDetector(
+                                    onTap: _showEditProfileSheet,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 14.0,
+                                        vertical: 6.0,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.maroonSoft,
+                                        borderRadius: BorderRadius.circular(
+                                          999.0,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: const [
+                                          Icon(
+                                            LucideIcons.pencil,
+                                            size: 13.0,
+                                            color: AppColors.maroon,
+                                          ),
+                                          SizedBox(width: 6.0),
+                                          Text(
+                                            'Edit profil',
+                                            style: TextStyle(
+                                              fontFamily: 'Poppins',
+                                              fontSize: 12.0,
+                                              fontWeight: FontWeight.w600,
+                                              color: AppColors.maroon,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 16.0),
+
+                    // Kartu Statistik 3 Kolom
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 18.0),
+                      decoration: const BoxDecoration(
+                        color: AppColors.white,
+                        borderRadius: AppRadius.cardLarge,
+                        boxShadow: AppShadows.card,
+                      ),
+                      child: Row(
+                        children: [
+                          // Kolom Favorit
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () => context.push('/favorites'),
+                              behavior: HitTestBehavior.opaque,
+                              child: Column(
+                                children: [
+                                  const Icon(
+                                    LucideIcons.heart,
+                                    size: 20.0,
+                                    color: AppColors.maroon,
+                                  ),
+                                  const SizedBox(height: 6.0),
+                                  Text(
+                                    '$favCount',
+                                    style: const TextStyle(
+                                      fontFamily: 'Poppins',
+                                      fontSize: 22.0,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.olive,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2.0),
+                                  const Text(
+                                    'Favorit',
+                                    style: TextStyle(
+                                      fontFamily: 'Poppins',
+                                      fontSize: 12.0,
+                                      fontWeight: FontWeight.w400,
+                                      color: AppColors.sage,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+
+                          // Pemisah Vertikal 1
+                          Container(
+                            width: 1.0,
+                            height: 48.0,
+                            color: AppColors.border,
+                          ),
+
+                          // Kolom Dimasak
+                          Expanded(
+                            child: Column(
+                              children: [
+                                const Icon(
+                                  LucideIcons.chefHat,
+                                  size: 20.0,
+                                  color: AppColors.amber,
+                                ),
+                                const SizedBox(height: 6.0),
+                                Text(
+                                  '${user.cooked}',
+                                  style: const TextStyle(
+                                    fontFamily: 'Poppins',
+                                    fontSize: 22.0,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.olive,
+                                  ),
+                                ),
+                                const SizedBox(height: 2.0),
+                                const Text(
+                                  'Dimasak',
+                                  style: TextStyle(
+                                    fontFamily: 'Poppins',
+                                    fontSize: 12.0,
+                                    fontWeight: FontWeight.w400,
+                                    color: AppColors.sage,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          // Pemisah Vertikal 2
+                          Container(
+                            width: 1.0,
+                            height: 48.0,
+                            color: AppColors.border,
+                          ),
+
+                          // Kolom Resep Saya (Tap -> /my-recipes)
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () => context.push('/my-recipes'),
+                              behavior: HitTestBehavior.opaque,
+                              child: Column(
+                                children: [
+                                  const Icon(
+                                    LucideIcons.bookOpen,
+                                    size: 20.0,
+                                    color: AppColors.maroon,
+                                  ),
+                                  const SizedBox(height: 6.0),
+                                  Text(
+                                    '$myRecipesCount',
+                                    style: const TextStyle(
+                                      fontFamily: 'Poppins',
+                                      fontSize: 22.0,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.olive,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2.0),
+                                  const Text(
+                                    'Resep Saya',
+                                    style: TextStyle(
+                                      fontFamily: 'Poppins',
+                                      fontSize: 12.0,
+                                      fontWeight: FontWeight.w400,
+                                      color: AppColors.sage,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 24.0),
+
+                    // Judul "Pengaturan" (20/700)
+                    const Text(
+                      'Pengaturan',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 20.0,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.olive,
+                      ),
+                    ),
+                    const SizedBox(height: 12.0),
+
+                    // Kartu Pengaturan: Pengingat Makan + Mode Gelap
+                    Container(
+                      width: double.infinity,
+                      decoration: const BoxDecoration(
+                        color: AppColors.white,
+                        borderRadius: AppRadius.cardLarge,
+                        boxShadow: AppShadows.card,
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 18.0,
+                        vertical: 12.0,
+                      ),
+                      child: Column(
+                        children: [
+                          // Row 1: Pengingat Makan
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8.0),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  LucideIcons.bell,
+                                  size: 20.0,
+                                  color: AppColors.olive,
+                                ),
+                                const SizedBox(width: 14.0),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'Pengingat makan',
+                                        style: TextStyle(
+                                          fontFamily: 'Poppins',
+                                          fontSize: 14.0,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.olive,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2.0),
+                                      Text(
+                                        user.settings.mealReminder
+                                            ? 'Notifikasi jadwal makan aktif'
+                                            : 'Notifikasi jadwal makan nonaktif',
+                                        style: const TextStyle(
+                                          fontFamily: 'Poppins',
+                                          fontSize: 11.0,
+                                          fontWeight: FontWeight.w400,
+                                          color: AppColors.sage,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                AppToggle(
+                                  key: const ValueKey('toggle-meal-reminder'),
+                                  value: user.settings.mealReminder,
+                                  onChanged: (_) {
+                                    ref
+                                        .read(authProvider.notifier)
+                                        .toggleMealReminder();
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          const Divider(color: AppColors.border, height: 16.0),
+
+                          // Row 2: Mode Gelap
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8.0),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  LucideIcons.moon,
+                                  size: 20.0,
+                                  color: AppColors.olive,
+                                ),
+                                const SizedBox(width: 14.0),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'Mode gelap',
+                                        style: TextStyle(
+                                          fontFamily: 'Poppins',
+                                          fontSize: 14.0,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.olive,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2.0),
+                                      Text(
+                                        user.settings.darkMode
+                                            ? 'Tampilan gelap sedang digunakan'
+                                            : 'Tampilan terang sedang digunakan',
+                                        style: const TextStyle(
+                                          fontFamily: 'Poppins',
+                                          fontSize: 11.0,
+                                          fontWeight: FontWeight.w400,
+                                          color: AppColors.sage,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                AppToggle(
+                                  key: const ValueKey('toggle-dark-mode'),
+                                  value: user.settings.darkMode,
+                                  onChanged: (_) {
+                                    ref
+                                        .read(authProvider.notifier)
+                                        .toggleDarkMode();
+                                    showAppToast(
+                                      context,
+                                      'Mode gelap segera hadir',
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 14.0),
+
+                    // Kartu "Tentang aplikasi"
+                    GestureDetector(
+                      onTap: () => context.push('/about'),
+                      child: Container(
+                        width: double.infinity,
+                        decoration: const BoxDecoration(
+                          color: AppColors.white,
+                          borderRadius: AppRadius.cardLarge,
+                          boxShadow: AppShadows.card,
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 18.0,
+                          vertical: 16.0,
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              LucideIcons.info,
+                              size: 20.0,
+                              color: AppColors.olive,
+                            ),
+                            const SizedBox(width: 14.0),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: const [
+                                  Text(
+                                    'Tentang aplikasi',
+                                    style: TextStyle(
+                                      fontFamily: 'Poppins',
+                                      fontSize: 14.0,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.olive,
+                                    ),
+                                  ),
+                                  SizedBox(height: 2.0),
+                                  Text(
+                                    'Kenali teman masakmu lebih dekat',
+                                    style: TextStyle(
+                                      fontFamily: 'Poppins',
+                                      fontSize: 11.0,
+                                      fontWeight: FontWeight.w400,
+                                      color: AppColors.sage,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Icon(
+                              LucideIcons.chevronRight,
+                              size: 18.0,
+                              color: AppColors.sage,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 24.0),
+
+                    // Tombol Logout (Outline maroon 1.5px, radius 12, tinggi ≈ 48, lebar penuh)
+                    Semantics(
+                      label: 'Logout dari akun',
+                      button: true,
+                      child: GestureDetector(
+                        key: const ValueKey('logout-button'),
+                        onTap: _handleLogout,
+                        child: Container(
+                          width: double.infinity,
+                          height: 48.0,
+                          decoration: BoxDecoration(
+                            color: Colors.transparent,
+                            borderRadius: BorderRadius.circular(12.0),
+                            border: Border.all(
+                              color: AppColors.maroon,
+                              width: 1.5,
+                            ),
+                          ),
+                          alignment: Alignment.center,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: const [
+                              Icon(
+                                LucideIcons.logOut,
+                                size: 18.0,
+                                color: AppColors.maroon,
+                              ),
+                              SizedBox(width: 8.0),
+                              Text(
+                                'Logout',
+                                style: TextStyle(
+                                  fontFamily: 'Poppins',
+                                  fontSize: 14.0,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.maroon,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 24.0),
+
+                    // Footer Versi (Tekan lama = Reset data demo)
+                    Center(
+                      child: GestureDetector(
+                        onLongPress: _handleResetDemoData,
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 16.0,
+                            vertical: 8.0,
+                          ),
+                          child: Text(
+                            'Versi 1.0.0',
+                            style: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontSize: 11.0,
+                              fontWeight: FontWeight.w400,
+                              color: AppColors.sage,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 32.0),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

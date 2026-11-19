@@ -1,0 +1,105 @@
+/// Model tempat makan / warung sekitar (Nearby) sesuai PRD §9
+class Place {
+  final String id;
+  final String name;
+  final String cuisine;
+  final int priceMin;
+  final int priceMax;
+  final int distanceM;
+  final int walkMin;
+  final bool open;
+  final double x; // Posisi di peta ilustrasi (0–100)
+  final double y;
+  final double? lat;
+  final double? lng;
+
+  double get latitude => lat ?? (-7.7653 + (y - 50.0) * 0.00015);
+  double get longitude => lng ?? (110.3789 + (x - 50.0) * 0.00015);
+
+  const Place({
+    required this.id,
+    required this.name,
+    required this.cuisine,
+    required this.priceMin,
+    required this.priceMax,
+    required this.distanceM,
+    required this.walkMin,
+    required this.open,
+    required this.x,
+    required this.y,
+    this.lat,
+    this.lng,
+  });
+
+  Place copyWith({
+    String? id,
+    String? name,
+    String? cuisine,
+    int? priceMin,
+    int? priceMax,
+    int? distanceM,
+    int? walkMin,
+    bool? open,
+    double? x,
+    double? y,
+    double? lat,
+    double? lng,
+  }) {
+    return Place(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      cuisine: cuisine ?? this.cuisine,
+      priceMin: priceMin ?? this.priceMin,
+      priceMax: priceMax ?? this.priceMax,
+      distanceM: distanceM ?? this.distanceM,
+      walkMin: walkMin ?? this.walkMin,
+      open: open ?? this.open,
+      x: x ?? this.x,
+      y: y ?? this.y,
+      lat: lat ?? this.lat,
+      lng: lng ?? this.lng,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'cuisine': cuisine,
+      'priceMin': priceMin,
+      'priceMax': priceMax,
+      'distanceM': distanceM,
+      'walkMin': walkMin,
+      'open': open,
+      'x': x,
+      'y': y,
+      if (lat != null) 'lat': lat,
+      if (lng != null) 'lng': lng,
+    };
+  }
+
+  factory Place.fromJson(Map<String, dynamic> json) {
+    return Place(
+      id: json['id'] as String? ?? '',
+      name: json['name'] as String? ?? '',
+      cuisine: json['cuisine'] as String? ?? '',
+      priceMin: (json['priceMin'] as num?)?.toInt() ?? 0,
+      priceMax: (json['priceMax'] as num?)?.toInt() ?? 0,
+      distanceM: (json['distanceM'] as num?)?.toInt() ?? 0,
+      walkMin: (json['walkMin'] as num?)?.toInt() ?? 0,
+      open: json['open'] as bool? ?? false,
+      x: (json['x'] as num?)?.toDouble() ?? 0.0,
+      y: (json['y'] as num?)?.toDouble() ?? 0.0,
+      lat: (json['lat'] as num?)?.toDouble(),
+      lng: (json['lng'] as num?)?.toDouble(),
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Place && runtimeType == other.runtimeType && id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
+}
