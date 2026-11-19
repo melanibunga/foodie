@@ -1,18 +1,20 @@
-/// Model item belanja keranjang sesuai PRD §9
+/// Model item belanja keranjang sesuai PRD §9 & §15.8
 class CartItem {
   final String id;
   final String name;
   final String qty;
   final int price;
   final bool checked;
+  final DateTime addedAt;
 
-  const CartItem({
+  CartItem({
     required this.id,
     required this.name,
     required this.qty,
     required this.price,
     this.checked = false,
-  });
+    DateTime? addedAt,
+  }) : addedAt = addedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
 
   CartItem copyWith({
     String? id,
@@ -20,6 +22,7 @@ class CartItem {
     String? qty,
     int? price,
     bool? checked,
+    DateTime? addedAt,
   }) {
     return CartItem(
       id: id ?? this.id,
@@ -27,6 +30,7 @@ class CartItem {
       qty: qty ?? this.qty,
       price: price ?? this.price,
       checked: checked ?? this.checked,
+      addedAt: addedAt ?? this.addedAt,
     );
   }
 
@@ -37,16 +41,24 @@ class CartItem {
       'qty': qty,
       'price': price,
       'checked': checked,
+      'addedAt': addedAt.toIso8601String(),
     };
   }
 
-  factory CartItem.fromJson(Map<String, dynamic> json) {
+  factory CartItem.fromJson(
+    Map<String, dynamic> json, [
+    DateTime? fallbackAddedAt,
+  ]) {
+    final addedAtStr = json['addedAt'] as String?;
+    final parsed = addedAtStr != null ? DateTime.tryParse(addedAtStr) : null;
     return CartItem(
       id: json['id'] as String? ?? '',
       name: json['name'] as String? ?? '',
       qty: json['qty']?.toString() ?? '',
       price: (json['price'] as num?)?.toInt() ?? 0,
       checked: json['checked'] as bool? ?? false,
+      addedAt:
+          parsed ?? fallbackAddedAt ?? DateTime.fromMillisecondsSinceEpoch(0),
     );
   }
 
@@ -59,37 +71,42 @@ class CartItem {
           name == other.name &&
           qty == other.qty &&
           price == other.price &&
-          checked == other.checked;
+          checked == other.checked &&
+          addedAt == other.addedAt;
 
   @override
-  int get hashCode => Object.hash(id, name, qty, price, checked);
+  int get hashCode => Object.hash(id, name, qty, price, checked, addedAt);
 }
 
-/// Model grup belanja keranjang per resep / custom item sesuai PRD §9
+/// Model grup belanja keranjang per resep / custom item sesuai PRD §9 & §15.8
 class CartGroup {
   final String id;
   final String? recipeId; // null = custom group "Belanjaan Kamu Nich"
   final String name;
   final List<CartItem> items;
+  final DateTime addedAt;
 
-  const CartGroup({
+  CartGroup({
     required this.id,
     this.recipeId,
     required this.name,
     required this.items,
-  });
+    DateTime? addedAt,
+  }) : addedAt = addedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
 
   CartGroup copyWith({
     String? id,
     String? recipeId,
     String? name,
     List<CartItem>? items,
+    DateTime? addedAt,
   }) {
     return CartGroup(
       id: id ?? this.id,
       recipeId: recipeId ?? this.recipeId,
       name: name ?? this.name,
       items: items ?? this.items,
+      addedAt: addedAt ?? this.addedAt,
     );
   }
 
@@ -98,20 +115,37 @@ class CartGroup {
       'id': id,
       'recipeId': recipeId,
       'name': name,
+      'addedAt': addedAt.toIso8601String(),
       'items': items.map((i) => i.toJson()).toList(),
     };
   }
 
-  factory CartGroup.fromJson(Map<String, dynamic> json) {
+  factory CartGroup.fromJson(
+    Map<String, dynamic> json, [
+    DateTime? fallbackAddedAt,
+  ]) {
+    final addedAtStr = json['addedAt'] as String?;
+    final groupAddedAt =
+        (addedAtStr != null ? DateTime.tryParse(addedAtStr) : null) ??
+        fallbackAddedAt ??
+        DateTime.fromMillisecondsSinceEpoch(0);
+
+    final rawItems = json['items'] as List<dynamic>?;
+    final items = rawItems != null
+        ? rawItems.asMap().entries.map((entry) {
+            final idx = entry.key;
+            final itemMap = entry.value as Map<String, dynamic>;
+            final itemFallback = groupAddedAt.add(Duration(seconds: idx));
+            return CartItem.fromJson(itemMap, itemFallback);
+          }).toList()
+        : const <CartItem>[];
+
     return CartGroup(
       id: json['id'] as String? ?? '',
       recipeId: json['recipeId'] as String?,
       name: json['name'] as String? ?? '',
-      items:
-          (json['items'] as List<dynamic>?)
-              ?.map((i) => CartItem.fromJson(i as Map<String, dynamic>))
-              .toList() ??
-          const [],
+      addedAt: groupAddedAt,
+      items: items,
     );
   }
 
@@ -122,8 +156,9 @@ class CartGroup {
           runtimeType == other.runtimeType &&
           id == other.id &&
           recipeId == other.recipeId &&
-          name == other.name;
+          name == other.name &&
+          addedAt == other.addedAt;
 
   @override
-  int get hashCode => Object.hash(id, recipeId, name);
+  int get hashCode => Object.hash(id, recipeId, name, addedAt);
 }

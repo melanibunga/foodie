@@ -132,12 +132,14 @@ void main() {
         // Initial total: Rp 18.000
         expect(find.text('Rp 18.000'), findsOneWidget);
 
-        // Find the checkbox for "Beras" (third checkbox in Nasi Goreng Spesial, which is unchecked Rp 3.000)
-        final checkboxes = find.byType(AppCheckbox);
-        // Item 0: Telur (checked)
-        // Item 1: Bawang merah (checked)
-        // Item 2: Beras (unchecked)
-        await tester.tap(checkboxes.at(2));
+        // Find the checkbox for "Beras" (unchecked Rp 3.000 in Nasi Goreng Spesial)
+        final berasRow = find.ancestor(
+          of: find.text('Beras'),
+          matching: find.byType(Row),
+        );
+        await tester.tap(
+          find.descendant(of: berasRow, matching: find.byType(AppCheckbox)),
+        );
         await tester.pumpAndSettle();
 
         // Now "Beras" is checked, so total estimasi drops by 3.000 to Rp 15.000

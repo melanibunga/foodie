@@ -14,11 +14,11 @@ import '../core/theme/app_text.dart';
 import '../models/models.dart';
 import '../providers/recipes_provider.dart';
 import '../providers/ui_helper.dart';
+import '../widgets/expandable_card_list.dart';
 import '../widgets/page_with_header.dart';
 import '../widgets/ui/app_bottom_sheet.dart';
 import '../widgets/ui/app_button.dart';
 import '../widgets/ui/smart_image.dart';
-import '../widgets/ui/sticky_bottom_bar.dart';
 
 /// Halaman Create Recipe (/add) sesuai PRD §6.6, §7.3, §7.4, §7.5, §10 dan design/add.jpg:
 /// - AppHeader global di atas.
@@ -147,6 +147,8 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
   }
 
   void _openIngredientsSheet() {
+    FocusScope.of(context).unfocus();
+    _titleFocusNode.unfocus();
     final tempIngredients = List<Ingredient>.from(_ingredients);
 
     final nameController = TextEditingController();
@@ -206,6 +208,10 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                     ),
                     child: TextField(
                       controller: nameController,
+                      scrollPadding: const EdgeInsets.symmetric(
+                        vertical: 32.0,
+                        horizontal: 20.0,
+                      ),
                       style: AppText.body,
                       decoration: const InputDecoration(
                         hintText: 'Mis. Bawang merah',
@@ -236,6 +242,10 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                               ),
                               child: TextField(
                                 controller: qtyController,
+                                scrollPadding: const EdgeInsets.symmetric(
+                                  vertical: 32.0,
+                                  horizontal: 20.0,
+                                ),
                                 style: AppText.body,
                                 decoration: const InputDecoration(
                                   hintText: 'Mis. 4',
@@ -304,6 +314,10 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                       controller: priceController,
                       keyboardType: TextInputType.number,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      scrollPadding: const EdgeInsets.symmetric(
+                        vertical: 32.0,
+                        horizontal: 20.0,
+                      ),
                       style: AppText.body,
                       decoration: const InputDecoration(
                         hintText: '0',
@@ -421,6 +435,8 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                     size: AppButtonSize.lg,
                     fullWidth: true,
                     onPressed: () {
+                      FocusScope.of(context).unfocus();
+                      _titleFocusNode.unfocus();
                       setState(() {
                         _ingredients.clear();
                         _ingredients.addAll(tempIngredients);
@@ -429,6 +445,10 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                         }
                       });
                       Navigator.of(sheetContext).pop();
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        FocusScope.of(context).unfocus();
+                        _titleFocusNode.unfocus();
+                      });
                     },
                   ),
                   const SizedBox(height: 8.0),
@@ -442,6 +462,8 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
   }
 
   void _openCookingInstructionsSheet() {
+    FocusScope.of(context).unfocus();
+    _titleFocusNode.unfocus();
     final tempSteps = List<RecipeStep>.from(_steps);
 
     showAppBottomSheet(
@@ -614,6 +636,8 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                     size: AppButtonSize.lg,
                     fullWidth: true,
                     onPressed: () {
+                      FocusScope.of(context).unfocus();
+                      _titleFocusNode.unfocus();
                       setState(() {
                         _steps.clear();
                         _steps.addAll(tempSteps);
@@ -622,6 +646,10 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                         }
                       });
                       Navigator.of(sheetContext).pop();
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        FocusScope.of(context).unfocus();
+                        _titleFocusNode.unfocus();
+                      });
                     },
                   ),
                   const SizedBox(height: 8.0),
@@ -828,374 +856,599 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
     context.go('/my-recipes');
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final scrollBottomPadding =
-        StickyBottomBar.scrollPadding(context, barHeight: 55.0, extra: 24.0) +
-        MediaQuery.viewInsetsOf(context).bottom;
+  Widget _buildInlineIngredientsList() {
+    if (_ingredients.isEmpty) return const SizedBox.shrink();
 
-    return PageWithHeader(
-      resizeToAvoidBottomInset: false,
-      body: Stack(
-        children: [
-          // Konten Scrollable
-          Positioned.fill(
-            child: CustomScrollView(
-              slivers: [
-                // 1. Baris Judul: "<  Create Recipe"
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.only(
-                      left: 20.0,
-                      right: 24.0,
-                      top: 4.0,
-                      bottom: 16.0,
-                    ),
-                    child: Row(
-                      children: [
-                        Semantics(
-                          label: 'Kembali',
-                          button: true,
-                          child: GestureDetector(
-                            onTap: () {
-                              if (context.canPop()) {
-                                context.pop();
-                              } else {
-                                context.go('/home');
-                              }
-                            },
-                            child: Container(
-                              width: 36.0,
-                              height: 36.0,
-                              alignment: Alignment.centerLeft,
-                              child: const Icon(
-                                LucideIcons.chevronLeft,
-                                size: 24.0,
-                                color: AppColors.olive,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 4.0),
-                        const Text(
-                          'Create Recipe',
-                          style: TextStyle(
-                            fontFamily: 'Poppins',
-                            fontSize: 20.0,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.olive,
-                          ),
-                        ),
-                      ],
+    return ExpandableCardList(
+      title: 'Ingredients (${_ingredients.length})',
+      itemCount: _ingredients.length,
+      itemBuilder: (context, index) {
+        final ing = _ingredients[index];
+        final isLast = index == _ingredients.length - 1;
+
+        return Padding(
+          padding: EdgeInsets.only(bottom: isLast ? 0.0 : 8.0),
+          child: Row(
+            children: [
+              // Nama bahan
+              Expanded(
+                child: Text(
+                  ing.name,
+                  style: const TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 13.0,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.olive,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8.0),
+              // Takaran/satuan rata kanan
+              Text(
+                '${ing.qty} ${ing.unit ?? ''}'.trim(),
+                style: const TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 13.0,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.sage,
+                ),
+              ),
+              const SizedBox(width: 12.0),
+              // Tombol hapus (trash maroon, aria/Semantics)
+              Semantics(
+                label: 'Hapus ${ing.name}',
+                button: true,
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _ingredients.removeAt(index);
+                      if (_ingredients.isEmpty) {
+                        _ingredientsError = 'Tambahkan minimal 1 bahan resep';
+                      }
+                    });
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(4.0),
+                    alignment: Alignment.center,
+                    child: const Icon(
+                      LucideIcons.trash2,
+                      size: 16.0,
+                      color: AppColors.maroon,
                     ),
                   ),
                 ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
-                // 3. Form Input
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // "Recipe Title"
-                        const Text(
-                          'Recipe Title',
-                          style: TextStyle(
-                            fontFamily: 'Poppins',
-                            fontSize: 14.0,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.olive,
-                          ),
+  Widget _buildInlineStepsList() {
+    if (_steps.isEmpty) return const SizedBox.shrink();
+
+    return ExpandableCardList(
+      title: 'Cooking Instructions (${_steps.length})',
+      itemCount: _steps.length,
+      itemBuilder: (context, index) {
+        final step = _steps[index];
+        final isLast = index == _steps.length - 1;
+
+        return Padding(
+          padding: EdgeInsets.only(bottom: isLast ? 0.0 : 10.0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Lingkaran amber 28 bernomor (angka olive tua)
+              Container(
+                width: 28.0,
+                height: 28.0,
+                decoration: const BoxDecoration(
+                  color: AppColors.amber,
+                  shape: BoxShape.circle,
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  '${index + 1}',
+                  style: const TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 12.0,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.olive,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10.0),
+
+              // Judul langkah (14/600 olive) + deskripsi 1 baris (11 sage, ellipsis; durasi bila ada)
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      step.title.isNotEmpty
+                          ? step.title
+                          : 'Langkah ${index + 1}',
+                      style: const TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 14.0,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.olive,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 1.0),
+                    Text(
+                      step.durationMin != null && step.durationMin! > 0
+                          ? '${step.description} • ⏱ ${step.durationMin} mnt'
+                          : step.description,
+                      style: const TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 11.0,
+                        fontWeight: FontWeight.w400,
+                        color: AppColors.sage,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8.0),
+
+              // Tombol hapus (trash maroon, Semantics)
+              Semantics(
+                label: 'Hapus langkah ${index + 1}',
+                button: true,
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _steps.removeAt(index);
+                      if (_steps.isEmpty) {
+                        _stepsError = 'Tambahkan minimal 1 langkah memasak';
+                      }
+                    });
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(4.0),
+                    alignment: Alignment.center,
+                    child: const Icon(
+                      LucideIcons.trash2,
+                      size: 16.0,
+                      color: AppColors.maroon,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PageWithHeader(
+      resizeToAvoidBottomInset: false,
+      body: CustomScrollView(
+        slivers: [
+          // 1. Baris Judul: "<  Create Recipe"
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.only(
+                left: 20.0,
+                right: 24.0,
+                top: 4.0,
+                bottom: 16.0,
+              ),
+              child: Row(
+                children: [
+                  Semantics(
+                    label: 'Kembali',
+                    button: true,
+                    child: GestureDetector(
+                      onTap: () {
+                        if (context.canPop()) {
+                          context.pop();
+                        } else {
+                          context.go('/home');
+                        }
+                      },
+                      child: Container(
+                        width: 36.0,
+                        height: 36.0,
+                        alignment: Alignment.centerLeft,
+                        child: const Icon(
+                          LucideIcons.chevronLeft,
+                          size: 24.0,
+                          color: AppColors.olive,
                         ),
-                        const SizedBox(height: 8.0),
-                        Container(
-                          height: 48.0,
-                          padding: const EdgeInsets.symmetric(horizontal: 14.0),
-                          decoration: BoxDecoration(
-                            color: AppColors.fieldGray, // #D6D6D6 persis desain
-                            borderRadius: BorderRadius.circular(10.0),
-                            boxShadow: AppShadows.card,
-                          ),
-                          alignment: Alignment.centerLeft,
-                          child: TextField(
-                            controller: _titleController,
-                            focusNode: _titleFocusNode,
-                            onTapOutside: (_) =>
-                                FocusManager.instance.primaryFocus?.unfocus(),
-                            style: const TextStyle(
-                              fontFamily: 'Poppins',
-                              fontSize: 14.0,
-                              color: AppColors.textBody,
-                            ),
-                            decoration: const InputDecoration(
-                              hintText: 'Type your recipe name here',
-                              hintStyle: TextStyle(
-                                fontFamily: 'Poppins',
-                                fontSize: 13.0,
-                                color: AppColors.sage,
-                              ),
-                              border: InputBorder.none,
-                              isDense: true,
-                              contentPadding: EdgeInsets.zero,
-                            ),
-                            onChanged: (_) {
-                              if (_titleError != null) {
-                                setState(() => _titleError = null);
-                              }
-                            },
-                          ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4.0),
+                  const Text(
+                    'Create Recipe',
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 20.0,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.olive,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // 2. Form Input
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // "Recipe Title"
+                  const Text(
+                    'Recipe Title',
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 14.0,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.olive,
+                    ),
+                  ),
+                  const SizedBox(height: 8.0),
+                  Container(
+                    height: 48.0,
+                    padding: const EdgeInsets.symmetric(horizontal: 14.0),
+                    decoration: BoxDecoration(
+                      color: AppColors.fieldGray, // #D6D6D6 persis desain
+                      borderRadius: BorderRadius.circular(10.0),
+                      boxShadow: AppShadows.card,
+                    ),
+                    alignment: Alignment.centerLeft,
+                    child: TextField(
+                      controller: _titleController,
+                      focusNode: _titleFocusNode,
+                      onTapOutside: (_) =>
+                          FocusManager.instance.primaryFocus?.unfocus(),
+                      style: const TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 14.0,
+                        color: AppColors.textBody,
+                      ),
+                      decoration: const InputDecoration(
+                        hintText: 'Type your recipe name here',
+                        hintStyle: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 13.0,
+                          color: AppColors.sage,
                         ),
-                        if (_titleError != null) ...[
-                          const SizedBox(height: 4.0),
-                          Text(
-                            _titleError!,
-                            style: const TextStyle(
-                              fontFamily: 'Poppins',
-                              fontSize: 11.0,
-                              color: AppColors.maroon,
-                            ),
-                          ),
-                        ],
+                        border: InputBorder.none,
+                        isDense: true,
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                      onChanged: (_) {
+                        if (_titleError != null) {
+                          setState(() => _titleError = null);
+                        }
+                      },
+                    ),
+                  ),
+                  if (_titleError != null) ...[
+                    const SizedBox(height: 4.0),
+                    Text(
+                      _titleError!,
+                      style: const TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 11.0,
+                        color: AppColors.maroon,
+                      ),
+                    ),
+                  ],
 
-                        const SizedBox(height: 18.0),
+                  const SizedBox(height: 18.0),
 
-                        // Dua Kolom: "Add Cover Image" (kiri) & "Ingredients" (kanan)
-                        Row(
+                  // Dua Kolom: "Add Cover Image" (kiri) & "Ingredients" (kanan)
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Kolom Kiri: Add Cover Image
+                      Expanded(
+                        child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Kolom Kiri: Add Cover Image
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Add Cover Image',
-                                    style: TextStyle(
-                                      fontFamily: 'Poppins',
-                                      fontSize: 14.0,
-                                      fontWeight: FontWeight.w700,
-                                      color: AppColors.olive,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8.0),
-                                  GestureDetector(
-                                    onTap: _pickCoverImage,
-                                    child: Container(
-                                      height: 104.0,
-                                      decoration: BoxDecoration(
-                                        color: AppColors.fieldGray,
-                                        borderRadius: BorderRadius.circular(
-                                          10.0,
-                                        ),
-                                        boxShadow: AppShadows.card,
-                                      ),
-                                      clipBehavior: Clip.antiAlias,
-                                      alignment: Alignment.center,
-                                      child: _coverImageUri != null
-                                          ? Stack(
-                                              fit: StackFit.expand,
-                                              children: [
-                                                SmartImage(
-                                                  src: _coverImageUri,
-                                                  fit: BoxFit.cover,
-                                                ),
-                                                Positioned(
-                                                  right: 6.0,
-                                                  bottom: 6.0,
-                                                  child: Container(
-                                                    padding:
-                                                        const EdgeInsets.all(
-                                                          4.0,
-                                                        ),
-                                                    decoration:
-                                                        const BoxDecoration(
-                                                          color:
-                                                              AppColors.olive,
-                                                          shape:
-                                                              BoxShape.circle,
-                                                        ),
-                                                    child: const Icon(
-                                                      LucideIcons.edit2,
-                                                      size: 12.0,
-                                                      color: AppColors.white,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            )
-                                          : const Column(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.center,
-                                              children: [
-                                                Icon(
-                                                  LucideIcons.camera,
-                                                  size: 26.0,
-                                                  color: AppColors.sage,
-                                                ),
-                                                SizedBox(height: 6.0),
-                                                Text(
-                                                  'Add Cover Image',
-                                                  style: TextStyle(
-                                                    fontFamily: 'Poppins',
-                                                    fontSize: 11.0,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: AppColors.olive,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                    ),
-                                  ),
-                                ],
+                            const Text(
+                              'Add Cover Image',
+                              style: TextStyle(
+                                fontFamily: 'Poppins',
+                                fontSize: 14.0,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.olive,
                               ),
                             ),
-
-                            const SizedBox(width: 14.0),
-
-                            // Kolom Kanan: Ingredients
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Ingredients',
-                                    style: TextStyle(
-                                      fontFamily: 'Poppins',
-                                      fontSize: 14.0,
-                                      fontWeight: FontWeight.w700,
-                                      color: AppColors.olive,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8.0),
-                                  GestureDetector(
-                                    onTap: _openIngredientsSheet,
-                                    child: Container(
-                                      height: 104.0,
-                                      decoration: BoxDecoration(
-                                        color: AppColors.fieldGray,
-                                        borderRadius: BorderRadius.circular(
-                                          10.0,
-                                        ),
-                                        boxShadow: AppShadows.card,
-                                      ),
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8.0,
-                                      ),
-                                      alignment: Alignment.center,
-                                      child: _ingredients.isNotEmpty
-                                          ? Column(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.center,
-                                              children: [
-                                                Container(
-                                                  width: 32.0,
-                                                  height: 32.0,
-                                                  decoration:
-                                                      const BoxDecoration(
-                                                        color: AppColors.olive,
-                                                        shape: BoxShape.circle,
-                                                      ),
-                                                  alignment: Alignment.center,
-                                                  child: const Icon(
-                                                    LucideIcons.check,
-                                                    size: 18.0,
-                                                    color: AppColors.white,
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 6.0),
-                                                Text(
-                                                  '${_ingredients.length} ingredients',
-                                                  style: const TextStyle(
-                                                    fontFamily: 'Poppins',
-                                                    fontSize: 12.0,
-                                                    fontWeight: FontWeight.w700,
-                                                    color: AppColors.olive,
-                                                  ),
-                                                ),
-                                              ],
-                                            )
-                                          : const Column(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.center,
-                                              children: [
-                                                CircleAvatar(
-                                                  radius: 14.0,
-                                                  backgroundColor:
-                                                      AppColors.sage,
-                                                  child: Icon(
-                                                    LucideIcons.plus,
-                                                    size: 16.0,
-                                                    color: AppColors.white,
-                                                  ),
-                                                ),
-                                                SizedBox(height: 6.0),
-                                                Text(
-                                                  'Add ingredients to recipe',
-                                                  textAlign: TextAlign.center,
-                                                  style: TextStyle(
-                                                    fontFamily: 'Poppins',
-                                                    fontSize: 11.0,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: AppColors.olive,
-                                                  ),
-                                                ),
-                                              ],
+                            const SizedBox(height: 8.0),
+                            GestureDetector(
+                              onTap: _pickCoverImage,
+                              child: Container(
+                                height: 104.0,
+                                decoration: BoxDecoration(
+                                  color: AppColors.fieldGray,
+                                  borderRadius: BorderRadius.circular(10.0),
+                                  boxShadow: AppShadows.card,
+                                ),
+                                clipBehavior: Clip.antiAlias,
+                                alignment: Alignment.center,
+                                child: _coverImageUri != null
+                                    ? Stack(
+                                        fit: StackFit.expand,
+                                        children: [
+                                          SmartImage(
+                                            src: _coverImageUri,
+                                            fit: BoxFit.cover,
+                                          ),
+                                          Positioned(
+                                            right: 6.0,
+                                            bottom: 6.0,
+                                            child: Container(
+                                              padding: const EdgeInsets.all(
+                                                4.0,
+                                              ),
+                                              decoration: const BoxDecoration(
+                                                color: AppColors.olive,
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: const Icon(
+                                                LucideIcons.edit2,
+                                                size: 12.0,
+                                                color: AppColors.white,
+                                              ),
                                             ),
-                                    ),
-                                  ),
-                                  if (_ingredientsError != null) ...[
-                                    const SizedBox(height: 4.0),
-                                    Text(
-                                      _ingredientsError!,
-                                      style: const TextStyle(
-                                        fontFamily: 'Poppins',
-                                        fontSize: 11.0,
-                                        color: AppColors.maroon,
+                                          ),
+                                        ],
+                                      )
+                                    : const Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            LucideIcons.camera,
+                                            size: 26.0,
+                                            color: AppColors.sage,
+                                          ),
+                                          SizedBox(height: 6.0),
+                                          Text(
+                                            'Add Cover Image',
+                                            style: TextStyle(
+                                              fontFamily: 'Poppins',
+                                              fontSize: 11.0,
+                                              fontWeight: FontWeight.w600,
+                                              color: AppColors.olive,
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                    ),
-                                  ],
-                                ],
                               ),
                             ),
                           ],
                         ),
+                      ),
 
-                        const SizedBox(height: 18.0),
+                      const SizedBox(width: 14.0),
 
-                        // "Serving Size"
-                        const Text(
-                          'Serving Size',
-                          style: TextStyle(
-                            fontFamily: 'Poppins',
-                            fontSize: 14.0,
-                            fontWeight: FontWeight.w700,
+                      // Kolom Kanan: Ingredients
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Ingredients',
+                              style: TextStyle(
+                                fontFamily: 'Poppins',
+                                fontSize: 14.0,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.olive,
+                              ),
+                            ),
+                            const SizedBox(height: 8.0),
+                            GestureDetector(
+                              onTap: _openIngredientsSheet,
+                              child: Container(
+                                height: 104.0,
+                                decoration: BoxDecoration(
+                                  color: AppColors.fieldGray,
+                                  borderRadius: BorderRadius.circular(10.0),
+                                  boxShadow: AppShadows.card,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8.0,
+                                ),
+                                alignment: Alignment.center,
+                                child: _ingredients.isNotEmpty
+                                    ? Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Container(
+                                            width: 32.0,
+                                            height: 32.0,
+                                            decoration: const BoxDecoration(
+                                              color: AppColors.olive,
+                                              shape: BoxShape.circle,
+                                            ),
+                                            alignment: Alignment.center,
+                                            child: const Icon(
+                                              LucideIcons.check,
+                                              size: 18.0,
+                                              color: AppColors.white,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 6.0),
+                                          Text(
+                                            '${_ingredients.length} ingredients',
+                                            style: const TextStyle(
+                                              fontFamily: 'Poppins',
+                                              fontSize: 12.0,
+                                              fontWeight: FontWeight.w700,
+                                              color: AppColors.olive,
+                                            ),
+                                          ),
+                                        ],
+                                      )
+                                    : const Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          CircleAvatar(
+                                            radius: 14.0,
+                                            backgroundColor: AppColors.sage,
+                                            child: Icon(
+                                              LucideIcons.plus,
+                                              size: 16.0,
+                                              color: AppColors.white,
+                                            ),
+                                          ),
+                                          SizedBox(height: 6.0),
+                                          Text(
+                                            'Add ingredients to recipe',
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              fontFamily: 'Poppins',
+                                              fontSize: 11.0,
+                                              fontWeight: FontWeight.w600,
+                                              color: AppColors.olive,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                              ),
+                            ),
+                            if (_ingredientsError != null) ...[
+                              const SizedBox(height: 4.0),
+                              Text(
+                                _ingredientsError!,
+                                style: const TextStyle(
+                                  fontFamily: 'Poppins',
+                                  fontSize: 11.0,
+                                  color: AppColors.maroon,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  // Daftar bahan yang sudah ditambahkan (Fase B5 §14.8)
+                  if (_ingredients.isNotEmpty) ...[
+                    const SizedBox(height: 14.0),
+                    _buildInlineIngredientsList(),
+                  ],
+
+                  const SizedBox(height: 18.0),
+
+                  // "Serving Size"
+                  const Text(
+                    'Serving Size',
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 14.0,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.olive,
+                    ),
+                  ),
+                  const SizedBox(height: 8.0),
+                  GestureDetector(
+                    onTap: _openServingSizePicker,
+                    child: Container(
+                      height: 44.0,
+                      padding: const EdgeInsets.symmetric(horizontal: 14.0),
+                      decoration: BoxDecoration(
+                        color: AppColors.fieldGray,
+                        borderRadius: BorderRadius.circular(10.0),
+                        boxShadow: AppShadows.card,
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            LucideIcons.users,
+                            size: 18.0,
                             color: AppColors.olive,
                           ),
-                        ),
-                        const SizedBox(height: 8.0),
-                        GestureDetector(
-                          onTap: _openServingSizePicker,
-                          child: Container(
-                            height: 44.0,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14.0,
+                          const SizedBox(width: 8.0),
+                          Text(
+                            '$_servingSize Porsi',
+                            style: const TextStyle(
+                              fontFamily: 'Poppins',
+                              fontSize: 13.0,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.olive,
                             ),
-                            decoration: BoxDecoration(
-                              color: AppColors.fieldGray,
-                              borderRadius: BorderRadius.circular(10.0),
-                              boxShadow: AppShadows.card,
-                            ),
-                            child: Row(
+                          ),
+                          const Spacer(),
+                          const Icon(
+                            LucideIcons.chevronDown,
+                            size: 16.0,
+                            color: AppColors.olive,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 18.0),
+
+                  // "Cooking Instructions"
+                  const Text(
+                    'Cooking Instructions',
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 14.0,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.olive,
+                    ),
+                  ),
+                  const SizedBox(height: 8.0),
+                  GestureDetector(
+                    onTap: _openCookingInstructionsSheet,
+                    child: Container(
+                      height: 72.0,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14.0,
+                        vertical: 12.0,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.fieldGray,
+                        borderRadius: BorderRadius.circular(10.0),
+                        boxShadow: AppShadows.card,
+                      ),
+                      alignment: Alignment.centerLeft,
+                      child: _steps.isNotEmpty
+                          ? Row(
                               children: [
-                                const Icon(
-                                  LucideIcons.users,
-                                  size: 18.0,
-                                  color: AppColors.olive,
+                                Container(
+                                  width: 28.0,
+                                  height: 28.0,
+                                  decoration: const BoxDecoration(
+                                    color: AppColors.olive,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: const Icon(
+                                    LucideIcons.check,
+                                    size: 16.0,
+                                    color: AppColors.white,
+                                  ),
                                 ),
-                                const SizedBox(width: 8.0),
+                                const SizedBox(width: 10.0),
                                 Text(
-                                  '$_servingSize Porsi',
+                                  '${_steps.length} steps configured',
                                   style: const TextStyle(
                                     fontFamily: 'Poppins',
                                     fontSize: 13.0,
@@ -1205,137 +1458,77 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                                 ),
                                 const Spacer(),
                                 const Icon(
-                                  LucideIcons.chevronDown,
+                                  LucideIcons.edit2,
                                   size: 16.0,
                                   color: AppColors.olive,
                                 ),
                               ],
+                            )
+                          : const Text(
+                              'Add one or multiple steps',
+                              style: TextStyle(
+                                fontFamily: 'Poppins',
+                                fontSize: 13.0,
+                                color: AppColors.sage,
+                              ),
                             ),
-                          ),
-                        ),
-
-                        const SizedBox(height: 18.0),
-
-                        // "Cooking Instructions"
-                        const Text(
-                          'Cooking Instructions',
-                          style: TextStyle(
-                            fontFamily: 'Poppins',
-                            fontSize: 14.0,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.olive,
-                          ),
-                        ),
-                        const SizedBox(height: 8.0),
-                        GestureDetector(
-                          onTap: _openCookingInstructionsSheet,
-                          child: Container(
-                            height: 72.0,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14.0,
-                              vertical: 12.0,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.fieldGray,
-                              borderRadius: BorderRadius.circular(10.0),
-                              boxShadow: AppShadows.card,
-                            ),
-                            alignment: Alignment.centerLeft,
-                            child: _steps.isNotEmpty
-                                ? Row(
-                                    children: [
-                                      Container(
-                                        width: 28.0,
-                                        height: 28.0,
-                                        decoration: const BoxDecoration(
-                                          color: AppColors.olive,
-                                          shape: BoxShape.circle,
-                                        ),
-                                        alignment: Alignment.center,
-                                        child: const Icon(
-                                          LucideIcons.check,
-                                          size: 16.0,
-                                          color: AppColors.white,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 10.0),
-                                      Text(
-                                        '${_steps.length} steps configured',
-                                        style: const TextStyle(
-                                          fontFamily: 'Poppins',
-                                          fontSize: 13.0,
-                                          fontWeight: FontWeight.w600,
-                                          color: AppColors.olive,
-                                        ),
-                                      ),
-                                      const Spacer(),
-                                      const Icon(
-                                        LucideIcons.edit2,
-                                        size: 16.0,
-                                        color: AppColors.olive,
-                                      ),
-                                    ],
-                                  )
-                                : const Text(
-                                    'Add one or multiple steps',
-                                    style: TextStyle(
-                                      fontFamily: 'Poppins',
-                                      fontSize: 13.0,
-                                      color: AppColors.sage,
-                                    ),
-                                  ),
-                          ),
-                        ),
-                        if (_stepsError != null) ...[
-                          const SizedBox(height: 4.0),
-                          Text(
-                            _stepsError!,
-                            style: const TextStyle(
-                              fontFamily: 'Poppins',
-                              fontSize: 11.0,
-                              color: AppColors.maroon,
-                            ),
-                          ),
-                        ],
-
-                        const SizedBox(height: 36.0),
-                      ],
                     ),
                   ),
-                ),
+                  if (_stepsError != null) ...[
+                    const SizedBox(height: 4.0),
+                    Text(
+                      _stepsError!,
+                      style: const TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 11.0,
+                        color: AppColors.maroon,
+                      ),
+                    ),
+                  ],
 
-                // Padding Bawah agar tidak tertutup tombol DONE (+ keyboard)
-                SliverToBoxAdapter(
-                  child: SizedBox(height: scrollBottomPadding),
-                ),
-              ],
+                  // List langkah yang sudah ditambahkan (PRD §15.5)
+                  _buildInlineStepsList(),
+
+                  const SizedBox(height: 24.0),
+                ],
+              ),
             ),
           ),
 
-          // Tombol Olive Pill "DONE" Sticky di Bawah Layar
-          StickyBottomBar(
-            child: SizedBox(
-              width: 362.0,
-              height: 55.0,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.olive,
-                  foregroundColor: AppColors.white,
-                  elevation: 6.0,
-                  shadowColor: AppColors.olive.withValues(alpha: 0.35),
-                  shape: const RoundedRectangleBorder(
-                    borderRadius: AppRadius.pill,
-                  ),
-                ),
-                onPressed: _handleSubmit,
-                child: const Text(
-                  'DONE',
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 16.0,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1.0,
-                    color: AppColors.white,
+          // Tombol DONE di ujung form dengan padding bawah ±120 agar tidak tertutup nav (PRD §15.5)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.only(
+                left: 24.0,
+                right: 24.0,
+                top: 8.0,
+                bottom: 120.0,
+              ),
+              child: Center(
+                child: SizedBox(
+                  width: 362.0,
+                  height: 55.0,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.olive,
+                      foregroundColor: AppColors.white,
+                      elevation: 4.0,
+                      shadowColor: AppColors.olive.withValues(alpha: 0.35),
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: AppRadius.pill,
+                      ),
+                    ),
+                    onPressed: _handleSubmit,
+                    child: const Text(
+                      'DONE',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 16.0,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.0,
+                        color: AppColors.white,
+                      ),
+                    ),
                   ),
                 ),
               ),

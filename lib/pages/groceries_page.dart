@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -16,15 +17,19 @@ import '../widgets/ui/app_checkbox.dart';
 import '../widgets/ui/empty_state.dart';
 import '../widgets/ui/sticky_bottom_bar.dart';
 
-/// Halaman My Groceries (/groceries) sesuai PRD §6.11, §7.6 dan design/Daftar Belanja.jpg:
+/// Halaman My Groceries (/groceries) sesuai PRD §6.11, §15.7, §15.8 dan design/Daftar Belanja.jpg:
 /// - Tanpa header global dan tanpa bottom nav.
 /// - Top bar: tombol panah kiri + "My Groceries" (24/700 olive).
 /// - Add bar: ikon cart chipGray, placeholder "+ Tambah bahan belanja…", input angka "Rp", tombol plus olive 36x36.
 ///   Item baru masuk grup "Belanjaan Kamu Nich" (item custom).
+/// - K1 Urutan: grup resep diurutkan descending (terbaru di atas). Item di custom group juga terbaru di atas.
+/// - K2 Kartu pin: grup custom ("Belanjaan Kamu Nich") SELALU di paling atas, selalu tampil walau kosong.
+///   Background amberSoft, border 1px amber @ 40%, ikon pin kecil di samping judul.
+///   Teks olive, takaran olive @ 75%, checkbox olive. Tanpa tombol "Hapus menu" dan tanpa subtotal.
+///   Hapus item per bahan lewat swipe ke kiri (Dismissible endToStart latar maroon + trash putih) + Semantics "Hapus".
 /// - Grup kartu per menu: header nama menu (15/700) + "Hapus menu" (maroon 11/600),
 ///   baris item (checkbox kotak 22, nama 14/600 + takaran 11 sage, harga 13/600).
-///   Item dicentang: nama dicoret & warna sage, checkbox olive.
-///   Footer kanan-bawah: "Subtotal Rp X" (10 sage), tidak tampil pada grup custom.
+///   Footer kanan-bawah: "Subtotal Rp X" (10 sage).
 /// - Catatan kecil: "Harga estimasi, ketuk item untuk mengubah" (tap harga untuk edit inline).
 /// - Panel ringkasan sticky bawah (putih, radius atas 24, padding 24):
 ///   "Total estimasi (belum dibeli)" (11 sage) + total besar (24/700 olive) + tombol "Kosongkan semua" (164x44).
@@ -121,13 +126,15 @@ class _GroceriesPageState extends ConsumerState<GroceriesPage> {
 
   @override
   Widget build(BuildContext context) {
-    final cartGroups = ref.watch(cartProvider);
+    final displayGroups = ref.watch(displayCartGroupsProvider);
     final totalUnchecked = ref.watch(cartTotalUncheckedProvider);
+    final totalItemsCount = ref.watch(cartCountProvider);
 
     final topInset = AppShell.topChrome(context);
     final bottomInset = bottomGap(context);
+    final hasItems = totalItemsCount > 0;
     final scrollBottomPadding =
-        (cartGroups.isNotEmpty ? (bottomInset + 88.0 + 24.0) : 40.0) +
+        (hasItems ? (bottomInset + 88.0 + 24.0) : 40.0) +
         MediaQuery.viewInsetsOf(context).bottom;
 
     return Scaffold(
@@ -333,31 +340,32 @@ class _GroceriesPageState extends ConsumerState<GroceriesPage> {
 
                 const SliverToBoxAdapter(child: SizedBox(height: 20.0)),
 
-                // 3. Daftar Grup Kartu Per Menu
-                if (cartGroups.isEmpty)
+                // 3. Daftar Grup Kartu
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate((context, index) {
+                      final group = displayGroups[index];
+                      return _buildGroupCard(context, group);
+                    }, childCount: displayGroups.length),
+                  ),
+                ),
+
+                // EmptyState ditampilkan jika seluruh item keranjang kosong
+                if (displayGroups.every((g) => g.items.isEmpty))
                   const SliverToBoxAdapter(
                     child: Padding(
-                      padding: EdgeInsets.only(top: 40.0),
+                      padding: EdgeInsets.only(top: 24.0),
                       child: EmptyState(
                         icon: LucideIcons.shoppingBag,
                         title: 'Keranjang Belanja Kosong',
                         subtitle: 'Bahan dari resep yang kamu tambahkan akan muncul di sini.',
                       ),
                     ),
-                  )
-                else
-                  SliverPadding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                    sliver: SliverList(
-                      delegate: SliverChildBuilderDelegate((context, index) {
-                        final group = cartGroups[index];
-                        return _buildGroupCard(context, group);
-                      }, childCount: cartGroups.length),
-                    ),
                   ),
 
                 // 4. Catatan Kecil: "Harga estimasi, ketuk item untuk mengubah"
-                if (cartGroups.isNotEmpty)
+                if (hasItems)
                   const SliverToBoxAdapter(
                     child: Padding(
                       padding: EdgeInsets.symmetric(
@@ -387,7 +395,7 @@ class _GroceriesPageState extends ConsumerState<GroceriesPage> {
           ),
 
           // 6. Panel Ringkasan Sticky Bawah (Putih, radius atas 24, padding 24)
-          if (cartGroups.isNotEmpty)
+          if (hasItems)
             Positioned(
               left: 0,
               right: 0,
@@ -480,23 +488,27 @@ class _GroceriesPageState extends ConsumerState<GroceriesPage> {
     final subtotal = ref.watch(cartSubtotalProvider(group.id));
     final isCustomGroup = group.recipeId == null;
 
+    final cardBg = isCustomGroup ? AppColors.amberSoft : AppColors.white;
+    final cardBorder = isCustomGroup
+        ? Border.all(color: AppColors.amber.withValues(alpha: 0.4), width: 1.0)
+        : Border.all(color: AppColors.border);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16.0),
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: cardBg,
         borderRadius: BorderRadius.circular(16.0),
-        border: Border.all(color: AppColors.border),
+        border: cardBorder,
         boxShadow: AppShadows.card,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header: Nama menu (15/700 olive) + "Hapus menu" (maroon 11/600)
+          // Header: Nama menu (15/700 olive) + ikon pin jika custom / "Hapus menu" (maroon 11/600) jika resep
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Expanded(
+              Flexible(
                 child: Text(
                   group.name,
                   style: const TextStyle(
@@ -507,29 +519,51 @@ class _GroceriesPageState extends ConsumerState<GroceriesPage> {
                   ),
                 ),
               ),
-              GestureDetector(
-                onTap: () => _handleRemoveGroup(group),
-                child: const Text(
-                  'Hapus menu',
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 11.0,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.maroon,
+              if (isCustomGroup) ...[
+                const SizedBox(width: 6.0),
+                const Icon(LucideIcons.pin, size: 14.0, color: AppColors.olive),
+              ],
+              if (!isCustomGroup) ...[
+                const Spacer(),
+                GestureDetector(
+                  onTap: () => _handleRemoveGroup(group),
+                  child: const Text(
+                    'Hapus menu',
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 11.0,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.maroon,
+                    ),
                   ),
                 ),
-              ),
+              ],
             ],
           ),
 
           const SizedBox(height: 12.0),
+
+          // Teks hint jika grup custom masih kosong
+          if (isCustomGroup && group.items.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              child: Text(
+                'Belum ada bahan. Tambahkan lewat kolom di atas.',
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 12.0,
+                  fontWeight: FontWeight.w400,
+                  color: AppColors.olive.withValues(alpha: 0.75),
+                ),
+              ),
+            ),
 
           // Daftar baris item
           ...group.items.asMap().entries.map((entry) {
             final item = entry.value;
             final isEditing = _editingItemId == item.id;
 
-            return Padding(
+            final Widget itemRow = Padding(
               padding: const EdgeInsets.symmetric(vertical: 6.0),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
@@ -563,9 +597,13 @@ class _GroceriesPageState extends ConsumerState<GroceriesPage> {
                               fontFamily: 'Poppins',
                               fontSize: 14.0,
                               fontWeight: FontWeight.w600,
-                              color: item.checked
-                                  ? AppColors.sage
-                                  : AppColors.textBody,
+                              color: isCustomGroup
+                                  ? (item.checked
+                                        ? AppColors.olive.withValues(alpha: 0.6)
+                                        : AppColors.olive)
+                                  : (item.checked
+                                        ? AppColors.sage
+                                        : AppColors.textBody),
                               decoration: item.checked
                                   ? TextDecoration.lineThrough
                                   : TextDecoration.none,
@@ -573,11 +611,13 @@ class _GroceriesPageState extends ConsumerState<GroceriesPage> {
                           ),
                           Text(
                             item.qty,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontFamily: 'Poppins',
                               fontSize: 11.0,
                               fontWeight: FontWeight.w400,
-                              color: AppColors.sage,
+                              color: isCustomGroup
+                                  ? AppColors.olive.withValues(alpha: 0.75)
+                                  : AppColors.sage,
                             ),
                           ),
                         ],
@@ -591,7 +631,9 @@ class _GroceriesPageState extends ConsumerState<GroceriesPage> {
                       height: 32.0,
                       padding: const EdgeInsets.symmetric(horizontal: 6.0),
                       decoration: BoxDecoration(
-                        color: AppColors.summaryBg,
+                        color: isCustomGroup
+                            ? AppColors.white
+                            : AppColors.summaryBg,
                         borderRadius: BorderRadius.circular(8.0),
                         border: Border.all(color: AppColors.olive),
                       ),
@@ -656,9 +698,13 @@ class _GroceriesPageState extends ConsumerState<GroceriesPage> {
                           fontFamily: 'Poppins',
                           fontSize: 13.0,
                           fontWeight: FontWeight.w600,
-                          color: item.checked
-                              ? AppColors.sage
-                              : AppColors.textBody,
+                          color: isCustomGroup
+                              ? (item.checked
+                                    ? AppColors.olive.withValues(alpha: 0.6)
+                                    : AppColors.olive)
+                              : (item.checked
+                                    ? AppColors.sage
+                                    : AppColors.textBody),
                         ),
                       ),
                     ),
@@ -666,6 +712,60 @@ class _GroceriesPageState extends ConsumerState<GroceriesPage> {
                 ],
               ),
             );
+
+            // Item di grup custom dapat di-swipe ke kiri untuk dihapus (Dismissible endToStart)
+            if (isCustomGroup) {
+              return Semantics(
+                customSemanticsActions: {
+                  const CustomSemanticsAction(label: 'Hapus'): () {
+                    ref
+                        .read(cartProvider.notifier)
+                        .removeItem(group.id, item.id);
+                    showAppToast(context, 'Bahan dihapus');
+                  },
+                },
+                child: Dismissible(
+                  key: ValueKey('dismiss-${item.id}'),
+                  direction: DismissDirection.endToStart,
+                  dismissThresholds: const {DismissDirection.endToStart: 0.4},
+                  background: Container(
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.only(right: 16.0),
+                    decoration: BoxDecoration(
+                      color: AppColors.maroon,
+                      borderRadius: BorderRadius.circular(12.0),
+                    ),
+                    child: const Icon(
+                      LucideIcons.trash2,
+                      color: AppColors.white,
+                      size: 20.0,
+                    ),
+                  ),
+                  secondaryBackground: Container(
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.only(right: 16.0),
+                    decoration: BoxDecoration(
+                      color: AppColors.maroon,
+                      borderRadius: BorderRadius.circular(12.0),
+                    ),
+                    child: const Icon(
+                      LucideIcons.trash2,
+                      color: AppColors.white,
+                      size: 20.0,
+                    ),
+                  ),
+                  onDismissed: (direction) {
+                    ref
+                        .read(cartProvider.notifier)
+                        .removeItem(group.id, item.id);
+                    showAppToast(context, 'Bahan dihapus');
+                  },
+                  child: itemRow,
+                ),
+              );
+            }
+
+            return itemRow;
           }),
 
           // Footer: "Subtotal Rp X" (10 sage) — HANYA jika bukan grup custom

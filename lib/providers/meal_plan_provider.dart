@@ -7,7 +7,13 @@ import '../data/seed_data.dart';
 import '../models/models.dart';
 import 'storage_provider.dart';
 
-/// State Notifier untuk Meal Plan mingguan sesuai PRD §9
+/// Status hasil penambahan menu ke Meal Plan sesuai PRD §14.7, §15.6, §15.8
+enum MealPlanAddResult { added, exists, pastDate }
+
+/// Injeksi waktu "sekarang" untuk kemudahan pengujian Meal Plan & tanggal lampau (PRD §15.6)
+final clockProvider = Provider<DateTime>((ref) => DateTime.now());
+
+/// State Notifier untuk Meal Plan mingguan sesuai PRD §9, §14.7, §15.6
 class MealPlanNotifier extends Notifier<List<MealPlanEntry>> {
   static const String prefKey = 'foodie:meal_plan';
 
@@ -44,8 +50,48 @@ class MealPlanNotifier extends Notifier<List<MealPlanEntry>> {
     } catch (_) {}
   }
 
+  /// Cek apakah resep sudah ada pada tanggal tertentu (format YYYY-MM-DD)
+  bool has(String date, String recipeId) {
+    return state.any((e) => e.date == date && e.recipeId == recipeId);
+  }
+
+  /// Cek apakah resep sudah terjadwal untuk hari ini atau hari mendatang (tanggal >= hari ini)
+  bool isPlanned(String recipeId) {
+    final now = ref.read(clockProvider);
+    final todayKey = WeekUtils.formatDateKey(
+      DateTime(now.year, now.month, now.day),
+    );
+    return state.any(
+      (e) => e.recipeId == recipeId && e.date.compareTo(todayKey) >= 0,
+    );
+  }
+
+  /// Daftar semua tanggal YYYY-MM-DD di mana resep dijadwalkan
+  List<String> datesFor(String recipeId) {
+    return state
+        .where((e) => e.recipeId == recipeId)
+        .map((e) => e.date)
+        .toList();
+  }
+
   /// Tambah resep ke tanggal tertentu (format YYYY-MM-DD)
-  Future<void> add(String date, String recipeId) async {
+  /// Mengembalikan MealPlanAddResult (added / exists / pastDate).
+  /// - Bila tanggal < hari ini: menolak dengan status pastDate (PRD §15.6)
+  /// - Bila exists (resep sama pada tanggal sama), tidak menambah apa pun.
+  Future<MealPlanAddResult> add(String date, String recipeId) async {
+    final now = ref.read(clockProvider);
+    final todayKey = WeekUtils.formatDateKey(
+      DateTime(now.year, now.month, now.day),
+    );
+
+    if (date.compareTo(todayKey) < 0) {
+      return MealPlanAddResult.pastDate;
+    }
+
+    if (has(date, recipeId)) {
+      return MealPlanAddResult.exists;
+    }
+
     final newEntry = MealPlanEntry(
       id: 'mp-${DateTime.now().millisecondsSinceEpoch}',
       date: date,
@@ -53,6 +99,7 @@ class MealPlanNotifier extends Notifier<List<MealPlanEntry>> {
     );
     state = [...state, newEntry];
     await _saveToStorage();
+    return MealPlanAddResult.added;
   }
 
   /// Hapus satu entri meal plan berdasarkan id entri
@@ -92,4 +139,16 @@ final mealPlanByDateProvider = Provider.family<List<MealPlanEntry>, String>((
 ) {
   final entries = ref.watch(mealPlanProvider);
   return entries.where((e) => e.date == dateKey).toList();
+});
+
+/// Provider pengecekan apakah resep sudah terjadwal di hari ini atau mendatang
+final isRecipePlannedProvider = Provider.family<bool, String>((ref, recipeId) {
+  final entries = ref.watch(mealPlanProvider);
+  final now = ref.watch(clockProvider);
+  final todayKey = WeekUtils.formatDateKey(
+    DateTime(now.year, now.month, now.day),
+  );
+  return entries.any(
+    (e) => e.recipeId == recipeId && e.date.compareTo(todayKey) >= 0,
+  );
 });

@@ -9,6 +9,7 @@ import 'package:foodie/providers/auth_provider.dart';
 import 'package:foodie/providers/storage_provider.dart';
 import 'package:foodie/widgets/app_header.dart';
 import 'package:foodie/widgets/illustrated_map.dart';
+import 'package:foodie/widgets/real_map_view.dart';
 import 'package:foodie/widgets/ui/empty_state.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -58,8 +59,13 @@ void main() {
         expect(find.text('Buka sekarang'), findsOneWidget);
         expect(find.text('Harga hemat'), findsOneWidget);
 
-        // IllustratedMap
-        expect(find.byType(IllustratedMap), findsOneWidget);
+        // Map: RealMapView (PRD §14.12) / IllustratedMap
+        expect(
+          find.byWidgetPredicate(
+            (w) => w is RealMapView || w is IllustratedMap,
+          ),
+          findsOneWidget,
+        );
         expect(find.text('Radius 1 km'), findsOneWidget);
         expect(find.text('Pusatkan'), findsOneWidget);
 

@@ -1,68 +1,13 @@
 import '../core/utils/week_utils.dart';
 import '../models/models.dart';
 
-/// Seed keranjang belanja awal sesuai demo PRD §9 & §6.11
+/// Seed keranjang belanja awal sesuai demo PRD §9, §6.11, §15.7
 final List<CartGroup> seedCartGroups = [
-  const CartGroup(
-    id: 'cart-group-ngs',
-    recipeId: 'nasi-goreng-spesial',
-    name: 'Nasi Goreng Spesial',
-    items: [
-      CartItem(
-        id: 'ci-ngs-1',
-        name: 'Telur',
-        qty: '2 btr',
-        price: 4000,
-        checked: true,
-      ),
-      CartItem(
-        id: 'ci-ngs-2',
-        name: 'Bawang merah',
-        qty: '4 siung',
-        price: 2000,
-        checked: true,
-      ),
-      CartItem(
-        id: 'ci-ngs-3',
-        name: 'Beras',
-        qty: '250 g',
-        price: 3000,
-        checked: false,
-      ),
-    ],
-  ),
-  const CartGroup(
-    id: 'cart-group-sa',
-    recipeId: 'soto-ayam',
-    name: 'Soto Ayam',
-    items: [
-      CartItem(
-        id: 'ci-sa-1',
-        name: 'Ayam',
-        qty: '250 g',
-        price: 12000,
-        checked: true,
-      ),
-      CartItem(
-        id: 'ci-sa-2',
-        name: 'Bihun',
-        qty: '1 bungkus',
-        price: 5000,
-        checked: false,
-      ),
-      CartItem(
-        id: 'ci-sa-3',
-        name: 'Daun bawang',
-        qty: '1 ikat',
-        price: 3000,
-        checked: false,
-      ),
-    ],
-  ),
-  const CartGroup(
+  CartGroup(
     id: 'cart-group-custom',
     recipeId: null, // "Belanjaan Kamu Nich"
     name: 'Belanjaan Kamu Nich',
+    addedAt: DateTime(2026, 1, 1, 8, 0),
     items: [
       CartItem(
         id: 'ci-custom-1',
@@ -70,6 +15,71 @@ final List<CartGroup> seedCartGroups = [
         qty: '1 bungkus',
         price: 7000,
         checked: false,
+        addedAt: DateTime(2026, 1, 1, 8, 0),
+      ),
+    ],
+  ),
+  CartGroup(
+    id: 'cart-group-ngs',
+    recipeId: 'nasi-goreng-spesial',
+    name: 'Nasi Goreng Spesial',
+    addedAt: DateTime(2026, 1, 1, 10, 0),
+    items: [
+      CartItem(
+        id: 'ci-ngs-1',
+        name: 'Telur',
+        qty: '2 btr',
+        price: 4000,
+        checked: true,
+        addedAt: DateTime(2026, 1, 1, 10, 0),
+      ),
+      CartItem(
+        id: 'ci-ngs-2',
+        name: 'Bawang merah',
+        qty: '4 siung',
+        price: 2000,
+        checked: true,
+        addedAt: DateTime(2026, 1, 1, 10, 1),
+      ),
+      CartItem(
+        id: 'ci-ngs-3',
+        name: 'Beras',
+        qty: '250 g',
+        price: 3000,
+        checked: false,
+        addedAt: DateTime(2026, 1, 1, 10, 2),
+      ),
+    ],
+  ),
+  CartGroup(
+    id: 'cart-group-sa',
+    recipeId: 'soto-ayam',
+    name: 'Soto Ayam',
+    addedAt: DateTime(2026, 1, 1, 9, 0),
+    items: [
+      CartItem(
+        id: 'ci-sa-1',
+        name: 'Ayam',
+        qty: '250 g',
+        price: 12000,
+        checked: true,
+        addedAt: DateTime(2026, 1, 1, 9, 0),
+      ),
+      CartItem(
+        id: 'ci-sa-2',
+        name: 'Bihun',
+        qty: '1 bungkus',
+        price: 5000,
+        checked: false,
+        addedAt: DateTime(2026, 1, 1, 9, 1),
+      ),
+      CartItem(
+        id: 'ci-sa-3',
+        name: 'Daun bawang',
+        qty: '1 ikat',
+        price: 3000,
+        checked: false,
+        addedAt: DateTime(2026, 1, 1, 9, 2),
       ),
     ],
   ),

@@ -234,7 +234,7 @@ void main() {
 
         // Completion screen shown
         expect(find.text('Selamat, masakanmu siap! 🎉'), findsOneWidget);
-        expect(find.textContaining('Ayam Kecap Bawang'), findsOneWidget);
+        expect(find.textContaining('Ayam Kecap Bawang'), findsWidgets);
         expect(find.text('Kembali ke Beranda'), findsOneWidget);
 
         // User cooked count incremented by 1

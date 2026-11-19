@@ -61,11 +61,23 @@ flutter test
 - **Palet Dark Olive-Charcoal:** Menggunakan warna dasar `appBgDark` (`#121611`), `surfaceDark` (`#1B2218`), dan aksen adaptif `oliveDark` (`#5E7A46`), `amber` (`#F59E0B`), dan `maroonDark` (`#A33B39`).
 - **Aktivasi:** Pengguna dapat mengaktifkan toggle **Mode gelap** di halaman **Profil Saya** (`/profile`). State tersimpan persisten di `SharedPreferences` dan diobservasi langsung oleh `FoodieApp` (`ThemeMode.dark`).
 
-### 2. Peta Nyata (OpenStreetMap / CartoDB) + Geolocator & Graceful Fallback:
-- **Peta Nyata Interaktif:** Dibangun menggunakan `flutter_map` (OpenStreetMap tiles untuk mode terang dan CartoDB Voyager tiles untuk mode gelap).
-- **Penanganan Lokasi Pengguna:** Menggunakan paket `geolocator` untuk memeriksa ketersediaan GPS dan meminta izin runtime (`ACCESS_FINE_LOCATION` di Android dan `NSLocationWhenInUseUsageDescription` di iOS).
-- **Graceful Fallback:** Apabila izin lokasi ditolak oleh pengguna, GPS dinonaktifkan, atau berjalan di perangkat tanpa sensor lokasi, sistem secara otomatis beralih ke `IllustratedMap` (CustomPaint) tanpa error/crash serta menampilkan toast informasi ramah pengguna.
-- **Peralihan Manual:** Pengguna dapat berpindah kapan saja antara mode **Peta Nyata** dan **Peta Ilustrasi** melalui tombol toggle di sudut kanan atas kartu peta halaman `/nearby`.
+### 2. Peta Nyata (OpenStreetMap / CartoDB) + Geolocator + Rute OSRM (PRD §14.12):
+- **Peta Nyata Interaktif:** Dibangun menggunakan `flutter_map` dan `latlong2` dengan layer polyline rute jalan kaki nyata via service OSRM (`router.project-osrm.org`). Atribusi wajib `"© OpenStreetMap contributors"` selalu ditampilkan.
+- **Catatan Dev / Demo Tile & Routing:** Server publik tile OpenStreetMap (`tile.openstreetmap.org`) dan server publik OSRM digunakan murni untuk keperluan pengujian dan demo v1. Untuk deployment produksi bervolume tinggi, disarankan menggunakan dedicated map provider / routing API (seperti Mapbox, Google Maps Platform, Stadia Maps, atau self-hosted OSRM/Valhalla instance) sesuai kebijakan OSM Tile Usage Policy.
+- **Izin Lokasi Perangkat:**
+  - **Android:** Memerlukan permission `ACCESS_FINE_LOCATION` dan `ACCESS_COARSE_LOCATION` di `android/app/src/main/AndroidManifest.xml`, serta `INTERNET` pada build rilis.
+  - **iOS:** Memerlukan deskripsi izin `NSLocationWhenInUseUsageDescription` di `ios/Runner/Info.plist`.
+- **Graceful Fallback & Offline Resilience:** Apabila izin lokasi ditolak, GPS mati, rute OSRM timeout/gagal, atau koneksi internet offline:
+  - Lokasi default secara anggun menggunakan pusat desain (Jl. Kaliurang, Yogyakarta `-7.7653, 110.3789`).
+  - Rute jalan kaki secara otomatis fallback menggambar garis lurus putus-putus (`PolylineLayer`) dengan jarak Haversine dan toast informatif tanpa pernah membuat aplikasi crash.
+- **Mock Tempat Relatif:** `PlaceService` & `LocalPlaceService` menempatkan titik makan mock relatif terhadap koordinat pengguna (offset jarak & bearing geografis), memastikan rute jalan kaki selalu dapat dihitung di manapun pengguna berada.
+
+---
+
+## 📋 Status Keterlacakan Bug Frontend (Putaran 1 & Putaran 2)
+
+- **Putaran 1 (Fase B0–B8):** Seluruh 22 butir perbaikan UX dan bug layout pasca-desain (G1–G6, P1–P4, S1, A1–A4, M1–M2, N1–N2, D1–D3) telah diselesaikan 100%. Rincian lengkap tersedia pada dokumen [BUG_FRONTEND.md](file:///d:/MOBILE/foodie_recipe/BUG_FRONTEND.md).
+- **Putaran 2 (Fase C0–C6):** Seluruh 13 butir perbaikan pasca-desain putaran 2 (G1–G2, P1–P2, A1–A3, M1, D1–D3, K1–K2) telah diselesaikan 100%, mencakup toast maroon, greeting header, header fixed per halaman, keyboard insets View, Add di ShellRoute + list langkah, bar fixed sage Detail Menu + bahan bullet tanpa checkbox, tanggal lampau meal plan non-aktif, serta urutan descending & kartu pin belanjaan custom dengan swipe hapus. Rincian lengkap tersedia pada dokumen [GENERAL_BUG.md](file:///d:/MOBILE/foodie_recipe/GENERAL_BUG.md).
 
 ---
 

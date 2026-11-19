@@ -10,12 +10,14 @@ import '../app_header.dart';
 /// - Posisi & ukuran header tetap identik dengan desain (PRD §5.1, §12 butir 14).
 class PageWithHeader extends StatelessWidget {
   final Widget body;
+  final Widget? subHeader;
   final bool resizeToAvoidBottomInset;
   final Color? backgroundColor;
 
   const PageWithHeader({
     super.key,
     required this.body,
+    this.subHeader,
     this.resizeToAvoidBottomInset = false,
     this.backgroundColor,
   });
@@ -32,6 +34,7 @@ class PageWithHeader extends StatelessWidget {
       body: Column(
         children: [
           AppHeader(includeTopPadding: true, backgroundColor: bg),
+          ?subHeader,
           Expanded(child: body),
         ],
       ),

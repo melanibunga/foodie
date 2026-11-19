@@ -102,6 +102,10 @@ class _AppInputState extends State<AppInput> {
             obscureText: _obscureText,
             keyboardType: widget.keyboardType,
             maxLines: widget.maxLines,
+            scrollPadding: const EdgeInsets.symmetric(
+              vertical: 32.0,
+              horizontal: 20.0,
+            ),
             onChanged: widget.onChanged,
             onSubmitted: widget.onSubmitted,
             onTapOutside: (_) => FocusManager.instance.primaryFocus?.unfocus(),

@@ -13,12 +13,14 @@ class LocationState {
   final UserCoordinates coordinates;
   final LocationStatus status;
   final bool isRealMap;
+  final bool isOfflineFallback;
   final String? message;
 
   const LocationState({
     this.coordinates = UserCoordinates.defaultKaliurang,
     this.status = LocationStatus.initial,
-    this.isRealMap = false,
+    this.isRealMap = true,
+    this.isOfflineFallback = false,
     this.message,
   });
 
@@ -26,12 +28,14 @@ class LocationState {
     UserCoordinates? coordinates,
     LocationStatus? status,
     bool? isRealMap,
+    bool? isOfflineFallback,
     String? message,
   }) {
     return LocationState(
       coordinates: coordinates ?? this.coordinates,
       status: status ?? this.status,
       isRealMap: isRealMap ?? this.isRealMap,
+      isOfflineFallback: isOfflineFallback ?? this.isOfflineFallback,
       message: message ?? this.message,
     );
   }
@@ -46,24 +50,19 @@ class LocationNotifier extends Notifier<LocationState> {
     return const LocationState();
   }
 
-  /// Beralih ke peta nyata atau peta ilustrasi
-  Future<void> toggleMapMode() async {
-    if (state.isRealMap) {
-      // Kembali ke peta ilustrasi
-      state = state.copyWith(isRealMap: false);
-      return;
-    }
-
-    // Coba aktifkan peta nyata dengan meminta izin lokasi
+  /// Meminta dan memuat lokasi pengguna secara otomatis
+  /// Bila izin ditolak atau GPS mati: fallback ke lokasi default (Jl. Kaliurang) + pesan
+  Future<void> initLocation() async {
     state = state.copyWith(status: LocationStatus.loading);
 
     final serviceEnabled = await _service.isServiceEnabled();
     if (!serviceEnabled) {
       state = state.copyWith(
         status: LocationStatus.serviceDisabled,
-        isRealMap: false,
+        coordinates: UserCoordinates.defaultKaliurang,
+        isRealMap: true,
         message:
-            'Layanan lokasi (GPS) tidak aktif. Menampilkan peta ilustrasi.',
+            'Layanan lokasi (GPS) tidak aktif, menggunakan lokasi default.',
       );
       return;
     }
@@ -79,8 +78,9 @@ class LocationNotifier extends Notifier<LocationState> {
         status: permission == LocationPermission.deniedForever
             ? LocationStatus.deniedForever
             : LocationStatus.denied,
-        isRealMap: false,
-        message: 'Izin lokasi ditolak. Menampilkan peta ilustrasi.',
+        coordinates: UserCoordinates.defaultKaliurang,
+        isRealMap: true,
+        message: 'Izin lokasi tidak diberikan, menggunakan lokasi default.',
       );
       return;
     }
@@ -95,9 +95,29 @@ class LocationNotifier extends Notifier<LocationState> {
     );
   }
 
-  /// Memaksa kembali ke peta ilustrasi
+  /// Beralih ke peta nyata atau peta ilustrasi
+  Future<void> toggleMapMode() async {
+    if (state.isRealMap) {
+      state = state.copyWith(isRealMap: false);
+      return;
+    }
+
+    await initLocation();
+  }
+
+  /// Menggunakan peta ilustrasi (mis. saat offline atau fallback tile)
   void useIllustratedMap() {
-    state = state.copyWith(isRealMap: false);
+    state = state.copyWith(isRealMap: false, isOfflineFallback: true);
+  }
+
+  /// Menggunakan peta nyata
+  void useRealMap() {
+    state = state.copyWith(isRealMap: true, isOfflineFallback: false);
+  }
+
+  /// Menandai offline fallback
+  void setOfflineFallback(bool offline) {
+    state = state.copyWith(isOfflineFallback: offline, isRealMap: !offline);
   }
 }
 

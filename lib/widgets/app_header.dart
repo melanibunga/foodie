@@ -12,19 +12,40 @@ import '../providers/cart_provider.dart';
 import '../providers/favorites_provider.dart';
 import 'ui/smart_image.dart';
 
-/// Header global Foodie.id (Home, Search, Add, Meal Plan, Nearby) sesuai PRD §5.1, §14.3, §14.4.
+/// Menghitung sapaan berdasarkan jam sesuai PRD §15.2:
+/// - 04.00–10.59: "Selamat pagi"
+/// - 11.00–14.59: "Selamat siang"
+/// - 15.00–17.59: "Selamat sore"
+/// - 18.00–03.59: "Selamat malam"
+String greetingFor(DateTime time) {
+  final hour = time.hour;
+  if (hour >= 4 && hour < 11) {
+    return 'Selamat pagi';
+  } else if (hour >= 11 && hour < 15) {
+    return 'Selamat siang';
+  } else if (hour >= 15 && hour < 18) {
+    return 'Selamat sore';
+  } else {
+    return 'Selamat malam';
+  }
+}
+
+/// Header global Foodie.id (Home, Search, Add, Meal Plan, Nearby) sesuai PRD §5.1, §14.3, §14.4, §15.2.
 /// - Kiri: Foto profil bulat ≈ 48 (inisial olive di atas photoGray). Tap -> /profile
+/// - Tengah (kanan avatar): Greeting 2 baris (sapaan waktu 11/400 sage + nama depan 15/700 olive)
 /// - Kanan:
 ///   - Pill Favorit: bg olive, ikon heart terisi putih + angka putih, 59 × 38. Tap -> /favorites
 ///   - Keranjang: ikon cart olive + angka olive (tanpa bg). Tap -> /groceries
 class AppHeader extends ConsumerWidget {
   final bool includeTopPadding;
   final Color? backgroundColor;
+  final DateTime? currentTime;
 
   const AppHeader({
     super.key,
     this.includeTopPadding = true,
     this.backgroundColor,
+    this.currentTime,
   });
 
   @override
@@ -46,7 +67,15 @@ class AppHeader extends ConsumerWidget {
               .join()
         : 'NC';
 
+    final firstName = user?.name.isNotEmpty == true
+        ? user!.name
+              .trim()
+              .split(' ')
+              .firstWhere((w) => w.isNotEmpty, orElse: () => 'Teman')
+        : 'Teman';
+
     final topPadding = includeTopPadding ? AppShell.topChrome(context) : 0.0;
+    final now = currentTime ?? DateTime.now();
 
     return Container(
       color: bg,
@@ -57,7 +86,6 @@ class AppHeader extends ConsumerWidget {
         bottom: 12.0,
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           // Foto Profil / Avatar Kiri
@@ -75,6 +103,43 @@ class AppHeader extends ConsumerWidget {
               ),
             ),
           ),
+
+          const SizedBox(width: 12.0),
+
+          // Greeting 2 Baris (PRD §15.2)
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  greetingFor(now),
+                  style: const TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 11.0,
+                    fontWeight: FontWeight.w400,
+                    color: AppColors.sage,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 1.0),
+                Text(
+                  firstName,
+                  style: const TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 15.0,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.olive,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(width: 8.0),
 
           // Sisi Kanan: Pill Favorit + Ikon Keranjang
           Row(

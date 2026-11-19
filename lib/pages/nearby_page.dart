@@ -1,5 +1,9 @@
+import 'dart:math' as math;
+
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../app/app_shell.dart';
@@ -10,6 +14,7 @@ import '../models/models.dart';
 import '../providers/location_provider.dart';
 import '../providers/places_provider.dart';
 import '../providers/ui_helper.dart';
+import '../services/route_service.dart';
 import '../widgets/illustrated_map.dart';
 import '../widgets/page_with_header.dart';
 import '../widgets/real_map_view.dart';
@@ -42,6 +47,12 @@ class _NearbyPageState extends ConsumerState<NearbyPage> {
   NearbyQuickFilter _quickFilter = NearbyQuickFilter.terdekat;
   String? _selectedPlaceId;
 
+  // Route State
+  RouteResult? _routeResult;
+  bool _isLoadingRoute = false;
+  CancelToken? _cancelToken;
+  String? _lastRoutedPlaceId;
+
   // Filter Sheet State
   String _selectedRadius = '1 km';
   String _selectedPriceRange = 'Semua';
@@ -55,10 +66,86 @@ class _NearbyPageState extends ConsumerState<NearbyPage> {
         _searchQuery = _searchController.text.trim().toLowerCase();
       });
     });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await ref.read(locationProvider.notifier).initLocation();
+      final loc = ref.read(locationProvider);
+      if (loc.message != null && mounted) {
+        showAppToast(context, loc.message!);
+      }
+      _triggerInitialRoute();
+    });
+  }
+
+  void _triggerInitialRoute() {
+    final places = _filterAndSortPlaces(ref.read(placesProvider));
+    if (places.isNotEmpty) {
+      final place = places.firstWhere(
+        (p) => p.id == _selectedPlaceId,
+        orElse: () => places.first,
+      );
+      _fetchRouteForPlace(place);
+    }
+  }
+
+  void _fetchRouteForPlace(Place place) async {
+    if (_lastRoutedPlaceId == place.id && _routeResult != null) return;
+    _lastRoutedPlaceId = place.id;
+
+    _cancelToken?.cancel('Place changed');
+    final cancelToken = CancelToken();
+    _cancelToken = cancelToken;
+
+    setState(() {
+      _isLoadingRoute = true;
+    });
+
+    final loc = ref.read(locationProvider).coordinates;
+    final start = LatLng(loc.latitude, loc.longitude);
+    final destination = LatLng(place.latitude, place.longitude);
+
+    final routeService = ref.read(routeServiceProvider);
+    final result = await routeService.getFootRoute(
+      start: start,
+      destination: destination,
+      cancelToken: cancelToken,
+    );
+
+    if (mounted && !cancelToken.isCancelled) {
+      setState(() {
+        _routeResult = result;
+        _isLoadingRoute = false;
+      });
+
+      if (result.isStraightLineFallback) {
+        showAppToast(
+          context,
+          'Rute jalan tidak tersedia, menampilkan garis lurus',
+        );
+      }
+    }
+  }
+
+  void _onSelectPlace(String id) {
+    setState(() {
+      _selectedPlaceId = id;
+    });
+    final allPlaces = ref.read(placesProvider);
+    final place = allPlaces.firstWhere(
+      (p) => p.id == id,
+      orElse: () => allPlaces.first,
+    );
+    _fetchRouteForPlace(place);
+  }
+
+  void _onTapRoute(Place place) {
+    _onSelectPlace(place.id);
+    showAppToast(context, 'Membuka rute ke ${place.name}');
   }
 
   @override
   void dispose() {
+    _cancelToken?.cancel('Disposed');
     _searchController.dispose();
     super.dispose();
   }
@@ -128,12 +215,16 @@ class _NearbyPageState extends ConsumerState<NearbyPage> {
       builder: (sheetContext) {
         return StatefulBuilder(
           builder: (context, setSheetState) {
+            final bottomPadding = math.max(
+              16.0,
+              MediaQuery.of(sheetContext).viewPadding.bottom + 16.0,
+            );
             return Padding(
-              padding: const EdgeInsets.only(
+              padding: EdgeInsets.only(
                 left: 24.0,
                 right: 24.0,
                 top: 8.0,
-                bottom: 8.0,
+                bottom: bottomPadding,
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -528,18 +619,21 @@ class _NearbyPageState extends ConsumerState<NearbyPage> {
                       selectedPlaceId: _selectedPlaceId,
                       userCoordinates: locationState.coordinates,
                       radiusLabel: 'Radius $_selectedRadius',
-                      onSelectPlace: (id) {
-                        setState(() {
-                          _selectedPlaceId = id;
-                        });
-                      },
+                      routeResult: _routeResult,
+                      isLoadingRoute: _isLoadingRoute,
+                      onSelectPlace: _onSelectPlace,
                       onCenterTap: () {
                         if (filteredPlaces.isNotEmpty) {
-                          setState(() {
-                            _selectedPlaceId = filteredPlaces.first.id;
-                          });
+                          _onSelectPlace(filteredPlaces.first.id);
                         }
                         showAppToast(context, 'Peta dipusatkan ke lokasi kamu');
+                      },
+                      onTileError: () {
+                        ref.read(locationProvider.notifier).useIllustratedMap();
+                        showAppToast(
+                          context,
+                          'Koneksi peta bermasalah, beralih ke peta ilustrasi',
+                        );
                       },
                       onSwitchToIllustrated: () {
                         ref.read(locationProvider.notifier).useIllustratedMap();
@@ -549,29 +643,15 @@ class _NearbyPageState extends ConsumerState<NearbyPage> {
                       places: filteredPlaces,
                       selectedPlaceId: _selectedPlaceId,
                       radiusLabel: 'Radius $_selectedRadius',
-                      onSelectPlace: (id) {
-                        setState(() {
-                          _selectedPlaceId = id;
-                        });
-                      },
+                      onSelectPlace: _onSelectPlace,
                       onCenterTap: () {
                         if (filteredPlaces.isNotEmpty) {
-                          setState(() {
-                            _selectedPlaceId = filteredPlaces.first.id;
-                          });
+                          _onSelectPlace(filteredPlaces.first.id);
                         }
                         showAppToast(context, 'Peta dipusatkan ke lokasi kamu');
                       },
-                      onSwitchToRealMap: () async {
-                        await ref
-                            .read(locationProvider.notifier)
-                            .toggleMapMode();
-                        final loc = ref.read(locationProvider);
-                        if (!loc.isRealMap &&
-                            loc.message != null &&
-                            context.mounted) {
-                          showAppToast(context, loc.message!);
-                        }
+                      onSwitchToRealMap: () {
+                        ref.read(locationProvider.notifier).useRealMap();
                       },
                     ),
             ),
@@ -709,11 +789,7 @@ class _NearbyPageState extends ConsumerState<NearbyPage> {
     final priceMaxStr = (place.priceMax ~/ 1000).toString();
 
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedPlaceId = place.id;
-        });
-      },
+      onTap: () => _onSelectPlace(place.id),
       child: Container(
         decoration: const BoxDecoration(
           color: AppColors.white,
@@ -780,7 +856,11 @@ class _NearbyPageState extends ConsumerState<NearbyPage> {
 
                   // "Jarak · Menit" (11 sage)
                   Text(
-                    '${place.distanceM} m · ${place.walkMin} menit',
+                    isSelected &&
+                            _routeResult != null &&
+                            !_routeResult!.isStraightLineFallback
+                        ? _routeResult!.distanceAndDurationString
+                        : '${place.distanceM} m · ${place.walkMin} menit',
                     style: const TextStyle(
                       fontFamily: 'Poppins',
                       fontSize: 11.0,
@@ -815,12 +895,7 @@ class _NearbyPageState extends ConsumerState<NearbyPage> {
                   label: 'Rute ke ${place.name}',
                   button: true,
                   child: GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _selectedPlaceId = place.id;
-                      });
-                      showAppToast(context, 'Membuka rute ke ${place.name}');
-                    },
+                    onTap: () => _onTapRoute(place),
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16.0,

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/seed_data.dart';
 import '../models/models.dart';
+import 'meal_plan_provider.dart';
 import 'storage_provider.dart';
 
 enum AddRecipeStatus { added, exists }
@@ -25,9 +26,13 @@ class CartNotifier extends Notifier<List<CartGroup>> {
       final jsonStr = prefs.getString(prefKey);
       if (jsonStr != null && jsonStr.isNotEmpty) {
         final decoded = jsonDecode(jsonStr) as List<dynamic>;
-        state = decoded
-            .map((item) => CartGroup.fromJson(item as Map<String, dynamic>))
-            .toList();
+        final baseTime = DateTime(2026, 1, 1);
+        state = decoded.asMap().entries.map((entry) {
+          final idx = entry.key;
+          final map = entry.value as Map<String, dynamic>;
+          final fallbackTime = baseTime.add(Duration(minutes: idx));
+          return CartGroup.fromJson(map, fallbackTime);
+        }).toList();
       } else {
         state = seedCartGroups;
       }
@@ -54,6 +59,8 @@ class CartNotifier extends Notifier<List<CartGroup>> {
       return AddRecipeStatus.exists;
     }
 
+    final now = ref.read(clockProvider);
+
     final newItems = recipe.ingredients.map((ing) {
       final unitStr = ing.unit != null && ing.unit!.isNotEmpty
           ? ' ${ing.unit}'
@@ -64,6 +71,7 @@ class CartNotifier extends Notifier<List<CartGroup>> {
         qty: '${ing.qty}$unitStr',
         price: ing.price,
         checked: false,
+        addedAt: now,
       );
     }).toList();
 
@@ -71,6 +79,7 @@ class CartNotifier extends Notifier<List<CartGroup>> {
       id: 'cg-${recipe.id}',
       recipeId: recipe.id,
       name: recipe.title,
+      addedAt: now,
       items: newItems,
     );
 
@@ -85,29 +94,35 @@ class CartNotifier extends Notifier<List<CartGroup>> {
     required String qty,
     required int price,
   }) async {
+    final now = ref.read(clockProvider);
     final groups = List<CartGroup>.from(state);
     final customIndex = groups.indexWhere((g) => g.recipeId == null);
 
     final newItem = CartItem(
-      id: 'ci-custom-${DateTime.now().millisecondsSinceEpoch}',
+      id: 'ci-custom-${now.millisecondsSinceEpoch}',
       name: name,
       qty: qty,
       price: price,
       checked: false,
+      addedAt: now,
     );
 
     if (customIndex >= 0) {
       final existingGroup = groups[customIndex];
-      final updatedItems = [...existingGroup.items, newItem];
-      groups[customIndex] = existingGroup.copyWith(items: updatedItems);
+      final updatedItems = [newItem, ...existingGroup.items];
+      groups[customIndex] = existingGroup.copyWith(
+        addedAt: now,
+        items: updatedItems,
+      );
     } else {
       final newCustomGroup = CartGroup(
-        id: 'cg-custom-${DateTime.now().millisecondsSinceEpoch}',
+        id: 'cg-custom-${now.millisecondsSinceEpoch}',
         recipeId: null,
         name: customGroupName,
+        addedAt: now,
         items: [newItem],
       );
-      groups.add(newCustomGroup);
+      groups.insert(0, newCustomGroup);
     }
 
     state = groups;
@@ -152,9 +167,36 @@ class CartNotifier extends Notifier<List<CartGroup>> {
     await _saveToStorage();
   }
 
+  /// Hapus satu item dari suatu grup (dipakai saat swipe hapus bahan custom)
+  Future<void> removeItem(String groupId, String itemId) async {
+    final groups = state.map((group) {
+      if (group.id == groupId) {
+        final updatedItems = group.items
+            .where((item) => item.id != itemId)
+            .toList();
+        return group.copyWith(items: updatedItems);
+      }
+      return group;
+    }).toList();
+
+    state = groups;
+    await _saveToStorage();
+  }
+
   /// Hapus satu grup menu dari keranjang
   Future<void> removeGroup(String groupId) async {
     state = state.where((g) => g.id != groupId).toList();
+    await _saveToStorage();
+  }
+
+  /// Cek apakah resep dengan [recipeId] sudah ada di keranjang
+  bool hasRecipe(String recipeId) {
+    return state.any((g) => g.recipeId == recipeId);
+  }
+
+  /// Hapus grup resep berdasarkan [recipeId] dari keranjang
+  Future<void> removeByRecipe(String recipeId) async {
+    state = state.where((g) => g.recipeId != recipeId).toList();
     await _saveToStorage();
   }
 
@@ -174,6 +216,39 @@ class CartNotifier extends Notifier<List<CartGroup>> {
 
 final cartProvider = NotifierProvider<CartNotifier, List<CartGroup>>(() {
   return CartNotifier();
+});
+
+/// Provider untuk grup belanja yang siap ditampilkan di halaman My Groceries:
+/// 1. Grup custom ("Belanjaan Kamu Nich") SELALU di paling atas (index 0), selalu ada meski kosong.
+/// 2. Grup resep diurutkan DESCENDING menurut addedAt (terbaru di atas).
+/// 3. Item di grup custom diurutkan DESCENDING menurut addedAt (terbaru di atas).
+/// 4. Item di grup resep tetap dalam urutan resep aslinya.
+final displayCartGroupsProvider = Provider<List<CartGroup>>((ref) {
+  final groups = ref.watch(cartProvider);
+
+  // 1. Cari atau buat grup custom
+  final customIndex = groups.indexWhere((g) => g.recipeId == null);
+  final CartGroup customGroup;
+  if (customIndex >= 0) {
+    final rawCustom = groups[customIndex];
+    final sortedItems = List<CartItem>.from(rawCustom.items)
+      ..sort((a, b) => b.addedAt.compareTo(a.addedAt));
+    customGroup = rawCustom.copyWith(items: sortedItems);
+  } else {
+    customGroup = CartGroup(
+      id: 'cart-group-custom',
+      recipeId: null,
+      name: CartNotifier.customGroupName,
+      items: const [],
+      addedAt: DateTime.fromMillisecondsSinceEpoch(0),
+    );
+  }
+
+  // 2. Grup resep diurutkan descending menurut addedAt
+  final recipeGroups = groups.where((g) => g.recipeId != null).toList()
+    ..sort((a, b) => b.addedAt.compareTo(a.addedAt));
+
+  return [customGroup, ...recipeGroups];
 });
 
 /// Jumlah semua CartItem di semua grup (untuk badge keranjang header)

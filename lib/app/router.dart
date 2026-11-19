@@ -7,6 +7,7 @@ import '../core/theme/app_colors.dart';
 import '../core/theme/app_text.dart';
 import '../pages/about_page.dart';
 import '../pages/cook_page.dart';
+import '../pages/cooked_page.dart';
 import '../pages/create_recipe_page.dart';
 import '../pages/dev_components_page.dart';
 import '../pages/dev_tokens_page.dart';
@@ -88,8 +89,8 @@ GoRouter createRouter({
       ),
       GoRoute(path: '/forgot', builder: (context, state) => const ForgotPage()),
 
-      // ShellRoute untuk tab utama dengan floating bottom nav (Home, Search, Meal Plan, Nearby)
-      // /add berada di luar shell (tanpa bottom nav) sesuai PRD §5.2
+      // ShellRoute untuk tab utama dengan floating bottom nav (Home, Search, Add, Meal Plan, Nearby)
+      // /add kembali ke dalam shell (dengan bottom nav aktif) sesuai PRD §15.5
       ShellRoute(
         builder: (context, state, child) {
           return Scaffold(
@@ -113,6 +114,10 @@ GoRouter createRouter({
             },
           ),
           GoRoute(
+            path: '/add',
+            builder: (context, state) => const CreateRecipePage(),
+          ),
+          GoRoute(
             path: '/meal-plan',
             builder: (context, state) => const MealPlanPage(),
           ),
@@ -121,12 +126,6 @@ GoRouter createRouter({
             builder: (context, state) => const NearbyPage(),
           ),
         ],
-      ),
-
-      // Create Recipe (Add) — di luar shell
-      GoRoute(
-        path: '/add',
-        builder: (context, state) => const CreateRecipePage(),
       ),
 
       // My Recipes
@@ -140,6 +139,12 @@ GoRouter createRouter({
         path: '/favorites',
         builder: (context, state) => const FavoritesPage(),
       ),
+
+      // Riwayat Dimasak (PRD §14.10)
+      GoRoute(path: '/cooked', builder: (context, state) => const CookedPage()),
+
+      // Riwayat Dimasak (PRD §14.10)
+      GoRoute(path: '/cooked', builder: (context, state) => const CookedPage()),
 
       // Groceries (Keranjang)
       GoRoute(

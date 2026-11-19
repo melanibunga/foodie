@@ -8,10 +8,14 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../core/theme/app_colors.dart';
+import '../core/theme/app_shadows.dart';
 import '../core/theme/app_text.dart';
 import '../models/models.dart';
 import '../providers/auth_provider.dart';
+import '../providers/cooked_provider.dart';
+import '../providers/ratings_provider.dart';
 import '../providers/recipes_provider.dart';
+import '../providers/ui_helper.dart';
 import '../widgets/ui/app_button.dart';
 
 /// Halaman Mode Memasak (Start Cooking) sesuai PRD §7.1:
@@ -40,6 +44,8 @@ class _CookPageState extends ConsumerState<CookPage> {
   int _currentIndex = 0;
   bool _isCompleted = false;
   bool _cookedIncremented = false;
+  int _selectedRating = 0;
+  bool _ratingSubmitted = false;
 
   // State timer per step
   Timer? _timer;
@@ -149,6 +155,7 @@ class _CookPageState extends ConsumerState<CookPage> {
     if (!_cookedIncremented) {
       _cookedIncremented = true;
       ref.read(authProvider.notifier).incrementCooked();
+      ref.read(cookedProvider.notifier).add(widget.recipeId);
     }
     setState(() {
       _isCompleted = true;
@@ -572,73 +579,212 @@ class _CookPageState extends ConsumerState<CookPage> {
     final bottomPadding = math.max(MediaQuery.paddingOf(context).bottom, 24.0);
 
     return SafeArea(
-      child: Padding(
-        padding: EdgeInsets.only(
-          left: 25.0,
-          right: 25.0,
-          bottom: bottomPadding,
-          top: 24.0,
-        ),
-        child: Column(
-          children: [
-            const Spacer(),
-
-            // Ikon centang amber
-            Container(
-              width: 88.0,
-              height: 88.0,
-              decoration: const BoxDecoration(
-                color: AppColors.amber,
-                shape: BoxShape.circle,
+      child: Center(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.only(
+            left: 25.0,
+            right: 25.0,
+            bottom: bottomPadding,
+            top: 24.0,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Ikon centang amber
+              Container(
+                width: 80.0,
+                height: 80.0,
+                decoration: const BoxDecoration(
+                  color: AppColors.amber,
+                  shape: BoxShape.circle,
+                ),
+                alignment: Alignment.center,
+                child: const Icon(
+                  LucideIcons.check,
+                  size: 42.0,
+                  color: AppColors.olive,
+                ),
               ),
-              alignment: Alignment.center,
-              child: const Icon(
-                LucideIcons.check,
-                size: 48.0,
-                color: AppColors.olive,
+
+              const SizedBox(height: 20.0),
+
+              // Judul selesai
+              const Text(
+                'Selamat, masakanmu siap! 🎉',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 22.0,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.olive,
+                ),
               ),
-            ),
 
-            const SizedBox(height: 28.0),
+              const SizedBox(height: 8.0),
 
-            // Judul selesai
-            const Text(
-              'Selamat, masakanmu siap! 🎉',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 24.0,
-                fontWeight: FontWeight.w700,
-                color: AppColors.olive,
+              // Sub judul
+              Text(
+                'Kamu baru saja menyelesaikan resep ${recipe.title}. Selamat menikmati hasil masakanmu!',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 13.0,
+                  fontWeight: FontWeight.w400,
+                  color: AppColors.sage,
+                  height: 1.4,
+                ),
               ),
-            ),
 
-            const SizedBox(height: 12.0),
+              const SizedBox(height: 20.0),
 
-            // Sub judul
-            Text(
-              'Kamu baru saja menyelesaikan resep ${recipe.title}. Selamat menikmati hasil masakanmu!',
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 14.0,
-                fontWeight: FontWeight.w400,
-                color: AppColors.sage,
-                height: 1.5,
+              // Kartu Rating (PRD §14.9)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16.0,
+                  vertical: 16.0,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.white,
+                  borderRadius: BorderRadius.circular(16.0),
+                  boxShadow: AppShadows.card,
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Beri rating untuk ${recipe.title}',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 13.0,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.olive,
+                      ),
+                    ),
+                    const SizedBox(height: 10.0),
+
+                    // 5 Bintang amber (tap target >= 40)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(5, (index) {
+                        final starNumber = index + 1;
+                        final isFilled = starNumber <= _selectedRating;
+
+                        return Semantics(
+                          label: 'Rating $starNumber bintang',
+                          button: true,
+                          child: GestureDetector(
+                            onTap: _ratingSubmitted
+                                ? null
+                                : () {
+                                    setState(() {
+                                      _selectedRating = starNumber;
+                                    });
+                                  },
+                            child: Container(
+                              width: 44.0,
+                              height: 44.0,
+                              alignment: Alignment.center,
+                              child: Icon(
+                                isFilled ? Icons.star : Icons.star_border,
+                                color: isFilled
+                                    ? AppColors.amber
+                                    : AppColors.sage,
+                                size: 32.0,
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
+                    ),
+
+                    const SizedBox(height: 14.0),
+
+                    // Tombol Kirim rating / Rating terkirim
+                    SizedBox(
+                      width: double.infinity,
+                      height: 44.0,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _ratingSubmitted
+                              ? AppColors.chipGray
+                              : (_selectedRating > 0
+                                    ? AppColors.olive
+                                    : AppColors.chipGray),
+                          foregroundColor: _ratingSubmitted
+                              ? AppColors.sage
+                              : (_selectedRating > 0
+                                    ? AppColors.white
+                                    : AppColors.sage),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10.0),
+                          ),
+                        ),
+                        onPressed: (_selectedRating > 0 && !_ratingSubmitted)
+                            ? () async {
+                                await ref
+                                    .read(ratingsProvider.notifier)
+                                    .rate(recipe.id, _selectedRating);
+                                setState(() {
+                                  _ratingSubmitted = true;
+                                });
+                                if (context.mounted) {
+                                  showAppToast(
+                                    context,
+                                    'Terima kasih atas ratingmu',
+                                  );
+                                }
+                              }
+                            : null,
+                        child: Text(
+                          _ratingSubmitted ? 'Rating terkirim' : 'Kirim rating',
+                          style: const TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 13.0,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    if (!_ratingSubmitted) ...[
+                      const SizedBox(height: 6.0),
+                      // Tombol ghost "Lewati"
+                      GestureDetector(
+                        onTap: () => context.go('/home'),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 8.0),
+                          child: const Text(
+                            'Lewati',
+                            style: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontSize: 13.0,
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.sage,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ),
-            ),
 
-            const Spacer(),
+              const SizedBox(height: 20.0),
 
-            // Tombol "Kembali ke Beranda"
-            AppButton(
-              label: 'Kembali ke Beranda',
-              variant: AppButtonVariant.primary,
-              size: AppButtonSize.lg,
-              fullWidth: true,
-              onPressed: () => context.go('/home'),
-            ),
-          ],
+              // Tombol "Kembali ke Beranda"
+              AppButton(
+                label: 'Kembali ke Beranda',
+                variant: AppButtonVariant.primary,
+                size: AppButtonSize.lg,
+                fullWidth: true,
+                onPressed: () => context.go('/home'),
+              ),
+            ],
+          ),
         ),
       ),
     );

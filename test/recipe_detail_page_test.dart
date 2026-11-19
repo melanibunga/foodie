@@ -9,7 +9,6 @@ import 'package:foodie/pages/recipe_detail_page.dart';
 import 'package:foodie/providers/auth_provider.dart';
 import 'package:foodie/providers/favorites_provider.dart';
 import 'package:foodie/providers/meal_plan_provider.dart';
-import 'package:foodie/providers/recipes_provider.dart';
 import 'package:foodie/providers/storage_provider.dart';
 import 'package:foodie/widgets/ui/app_checkbox.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -138,12 +137,19 @@ void main() {
         await tester.pump(const Duration(milliseconds: 2500));
         await tester.pumpAndSettle();
 
-        // Tap again -> toast: "Sudah ada di keranjang"
-        await tester.tap(cartBtn);
+        // Button changes to "Sudah di keranjang" (Fase B4 §14.6)
+        final inCartBtn = find.text('Sudah di keranjang');
+        expect(inCartBtn, findsOneWidget);
+
+        // Tap again -> removes from cart & toast: "Dikeluarkan dari keranjang"
+        await tester.tap(inCartBtn);
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 200));
 
-        expect(find.text('Sudah ada di keranjang'), findsOneWidget);
+        expect(find.text('Dikeluarkan dari keranjang'), findsOneWidget);
+
+        // Button returns to "Tambah ke keranjang"
+        expect(find.text('Tambah ke keranjang'), findsOneWidget);
 
         await tester.pump(const Duration(milliseconds: 2500));
         await tester.pumpAndSettle();
@@ -260,14 +266,13 @@ void main() {
     );
 
     testWidgets(
-      'Tapping ingredient checkbox toggles line-through and persists locally',
+      'Ingredients do not have checkbox (PRD §15.6) and render bullet points with name and qty',
       (tester) async {
         tester.view.physicalSize = const Size(440, 956);
         tester.view.devicePixelRatio = 1.0;
         addTearDown(() => tester.view.resetPhysicalSize());
 
         final prefs = await SharedPreferences.getInstance();
-        late WidgetRef refHolder;
 
         final router = createRouter(
           initialLocation: '/recipe/ayam-kecap-bawang',
@@ -277,14 +282,9 @@ void main() {
         await tester.pumpWidget(
           ProviderScope(
             overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
-            child: Consumer(
-              builder: (context, ref, child) {
-                refHolder = ref;
-                return MaterialApp.router(
-                  theme: AppTheme.lightTheme,
-                  routerConfig: router,
-                );
-              },
+            child: MaterialApp.router(
+              theme: AppTheme.lightTheme,
+              routerConfig: router,
             ),
           ),
         );
@@ -293,18 +293,9 @@ void main() {
         await tester.pump(const Duration(milliseconds: 250));
         await tester.pumpAndSettle();
 
-        // Find first circle checkbox in ingredients
-        final checkboxFinder = find.byType(AppCheckbox).first;
-        expect(checkboxFinder, findsOneWidget);
-
-        await tester.tap(checkboxFinder);
-        await tester.pumpAndSettle();
-
-        // Verify checked set has updated
-        final checkedSet = refHolder.read(
-          recipeCheckedIngredientsProvider('ayam-kecap-bawang'),
-        );
-        expect(checkedSet.isNotEmpty, true);
+        // Tidak ada checkbox pada bahan-bahan (PRD §15.6)
+        expect(find.byType(AppCheckbox), findsNothing);
+        expect(find.text('Nasi putih dingin'), findsOneWidget);
       },
     );
 

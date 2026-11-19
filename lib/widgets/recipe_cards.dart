@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../core/theme/app_colors.dart';
@@ -6,6 +7,7 @@ import '../core/theme/app_radius.dart';
 import '../core/theme/app_shadows.dart';
 import '../core/theme/app_text.dart';
 import '../models/models.dart';
+import '../providers/ratings_provider.dart';
 import 'ui/photo_overlay.dart';
 import 'ui/smart_image.dart';
 
@@ -108,33 +110,40 @@ class FeaturedRecipeCard extends StatelessWidget {
                       children: [
                         // Rating & Ulasan
                         Expanded(
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.star,
-                                color: AppColors.amber,
-                                size: 15,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                recipe.rating.toStringAsFixed(1),
-                                style: AppText.caption.copyWith(
-                                  color: AppColors.textBody,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              Flexible(
-                                child: Text(
-                                  '(${recipe.reviews} ulasan)',
-                                  style: AppText.captionSmall.copyWith(
-                                    color: AppColors.sage,
+                          child: Consumer(
+                            builder: (context, ref, _) {
+                              final effective = ref.watch(
+                                effectiveRatingProvider(recipe),
+                              );
+                              return Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.star,
+                                    color: AppColors.amber,
+                                    size: 15,
                                   ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    effective.rating.toStringAsFixed(1),
+                                    style: AppText.caption.copyWith(
+                                      color: AppColors.textBody,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Flexible(
+                                    child: Text(
+                                      '(${effective.reviews} ulasan)',
+                                      style: AppText.captionSmall.copyWith(
+                                        color: AppColors.sage,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
                           ),
                         ),
 
@@ -262,7 +271,14 @@ class GridRecipeCard extends StatelessWidget {
                     Positioned(
                       left: 8.0,
                       bottom: 8.0,
-                      child: RatingChip(rating: recipe.rating),
+                      child: Consumer(
+                        builder: (context, ref, _) {
+                          final effective = ref.watch(
+                            effectiveRatingProvider(recipe),
+                          );
+                          return RatingChip(rating: effective.rating);
+                        },
+                      ),
                     ),
                   ],
                 ),
@@ -385,7 +401,14 @@ class FavoriteRecipeCard extends StatelessWidget {
                     Positioned(
                       left: 8.0,
                       bottom: 8.0,
-                      child: RatingChip(rating: recipe.rating),
+                      child: Consumer(
+                        builder: (context, ref, _) {
+                          final effective = ref.watch(
+                            effectiveRatingProvider(recipe),
+                          );
+                          return RatingChip(rating: effective.rating);
+                        },
+                      ),
                     ),
                   ],
                 ),

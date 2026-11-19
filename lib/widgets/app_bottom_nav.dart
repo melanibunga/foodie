@@ -36,6 +36,7 @@ class AppBottomNav extends StatelessWidget {
   NavTab? get _activeTab {
     if (currentRoute.startsWith('/home')) return NavTab.home;
     if (currentRoute.startsWith('/search')) return NavTab.search;
+    if (currentRoute.startsWith('/add')) return NavTab.add;
     if (currentRoute.startsWith('/meal-plan')) return NavTab.plan;
     if (currentRoute.startsWith('/nearby')) return NavTab.nearby;
     return null;

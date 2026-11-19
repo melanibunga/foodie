@@ -8,7 +8,7 @@ const List<Recipe> seedRecipes = [
   Recipe(
     id: 'ayam-kecap-bawang',
     title: 'Ayam Kecap Bawang',
-    description: 'Ayam empuk berbalut saus kecap manis gurih dengan aroma tumisan bawang bombai dan bawang putih yang harum menggoda.',
+    description: 'Ayam empuk berbalut saus kecap manis gurih dengan aroma tumisan bawang bombai dan bawang putih yang harum menggoda. Sangat cocok dinikmati selagi hangat bersama keluarga tercinta dengan sepiring nasi putih pulen hangat yang menggugah selera.',
     image: null,
     category: 'Chicken',
     cuisine: 'Indonesian',
@@ -258,7 +258,7 @@ const List<Recipe> seedRecipes = [
   Recipe(
     id: 'rendang-sapi-minang',
     title: 'Rendang Sapi Minang',
-    description: 'Daging sapi empuk bumbu rempah kelapa sangrai autentik khas Minang yang dimasak perlahan.',
+    description: 'Daging sapi empuk bumbu rempah kelapa sangrai autentik khas Minang yang dimasak perlahan hingga bumbu meresap sempurna. Cita rasa gurih pedas dan aroma harum rempah nusantara menjadikan hidangan ini istimewa untuk setiap perayaan.',
     image: null,
     category: 'Beef',
     cuisine: 'Indonesian',

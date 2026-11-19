@@ -66,6 +66,21 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkPastPickDate();
+    });
+  }
+
+  void _checkPastPickDate() {
+    if (!mounted || widget.pickDate == null) return;
+    final now = ref.read(clockProvider);
+    final todayKey = WeekUtils.formatDateKey(
+      DateTime(now.year, now.month, now.day),
+    );
+    if (widget.pickDate!.compareTo(todayKey) < 0) {
+      showAppToast(context, 'Tidak dapat memilih tanggal yang sudah lewat');
+      context.go('/meal-plan');
+    }
   }
 
   @override
@@ -772,20 +787,49 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                     final recipe = _searchResults![index];
                     final isFav = favorites.contains(recipe.id);
                     final isPickMode = widget.pickDate != null;
+                    final isAlreadyPlanned =
+                        isPickMode &&
+                        ref
+                            .watch(mealPlanProvider)
+                            .any(
+                              (e) =>
+                                  e.date == widget.pickDate! &&
+                                  e.recipeId == recipe.id,
+                            );
 
                     Widget? customAction;
                     if (isPickMode) {
                       customAction = GestureDetector(
                         onTap: () async {
-                          await ref
+                          if (isAlreadyPlanned) {
+                            showAppToast(
+                              context,
+                              'Menu sudah ada di meal plan',
+                            );
+                            return;
+                          }
+                          final status = await ref
                               .read(mealPlanProvider.notifier)
                               .add(widget.pickDate!, recipe.id);
                           if (!context.mounted) return;
-                          showAppToast(
-                            context,
-                            'Menu berhasil ditambahkan ke Meal Plan',
-                          );
-                          context.go('/meal-plan');
+                          if (status == MealPlanAddResult.added) {
+                            showAppToast(
+                              context,
+                              'Menu berhasil ditambahkan ke Meal Plan',
+                            );
+                            context.go('/meal-plan');
+                          } else if (status == MealPlanAddResult.pastDate) {
+                            showAppToast(
+                              context,
+                              'Tidak dapat memilih tanggal yang sudah lewat',
+                            );
+                            context.go('/meal-plan');
+                          } else {
+                            showAppToast(
+                              context,
+                              'Menu sudah ada di meal plan',
+                            );
+                          }
                         },
                         child: Container(
                           padding: const EdgeInsets.symmetric(
@@ -793,16 +837,20 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                             vertical: 4.0,
                           ),
                           decoration: BoxDecoration(
-                            color: AppColors.olive,
+                            color: isAlreadyPlanned
+                                ? AppColors.chipGray
+                                : AppColors.olive,
                             borderRadius: BorderRadius.circular(8.0),
                           ),
-                          child: const Text(
-                            'Tambahkan',
+                          child: Text(
+                            isAlreadyPlanned ? 'Sudah ada' : 'Tambahkan',
                             style: TextStyle(
                               fontFamily: 'Poppins',
                               fontSize: 10.0,
                               fontWeight: FontWeight.w600,
-                              color: AppColors.white,
+                              color: isAlreadyPlanned
+                                  ? AppColors.sage
+                                  : AppColors.white,
                             ),
                           ),
                         ),
@@ -815,15 +863,35 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                       customAction: customAction,
                       onOpen: () async {
                         if (isPickMode) {
-                          await ref
+                          if (isAlreadyPlanned) {
+                            showAppToast(
+                              context,
+                              'Menu sudah ada di meal plan',
+                            );
+                            return;
+                          }
+                          final status = await ref
                               .read(mealPlanProvider.notifier)
                               .add(widget.pickDate!, recipe.id);
                           if (!context.mounted) return;
-                          showAppToast(
-                            context,
-                            'Menu berhasil ditambahkan ke Meal Plan',
-                          );
-                          context.go('/meal-plan');
+                          if (status == MealPlanAddResult.added) {
+                            showAppToast(
+                              context,
+                              'Menu berhasil ditambahkan ke Meal Plan',
+                            );
+                            context.go('/meal-plan');
+                          } else if (status == MealPlanAddResult.pastDate) {
+                            showAppToast(
+                              context,
+                              'Tidak dapat memilih tanggal yang sudah lewat',
+                            );
+                            context.go('/meal-plan');
+                          } else {
+                            showAppToast(
+                              context,
+                              'Menu sudah ada di meal plan',
+                            );
+                          }
                         } else {
                           context.push('/recipe/${recipe.id}');
                         }

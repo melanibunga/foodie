@@ -49,7 +49,7 @@ class _MealPlanPageState extends ConsumerState<MealPlanPage> {
   @override
   void initState() {
     super.initState();
-    _currentWeekStart = WeekUtils.getWeekStart(DateTime.now());
+    _currentWeekStart = WeekUtils.getWeekStart(ref.read(clockProvider));
   }
 
   void _previousWeek() {
@@ -98,83 +98,77 @@ class _MealPlanPageState extends ConsumerState<MealPlanPage> {
 
     return PageWithHeader(
       resizeToAvoidBottomInset: false,
+      subHeader: Container(
+        color: AppColors.bg,
+        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 10.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Tombol Chevron Kiri (Bulat olive 35px)
+            Semantics(
+              label: 'Minggu sebelumnya',
+              button: true,
+              child: GestureDetector(
+                onTap: _previousWeek,
+                child: Container(
+                  width: 35.0,
+                  height: 35.0,
+                  decoration: const BoxDecoration(
+                    color: AppColors.olive,
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: const Icon(
+                    LucideIcons.chevronLeft,
+                    size: 18.0,
+                    color: AppColors.white,
+                  ),
+                ),
+              ),
+            ),
+
+            // Judul Minggu (22/700 olive)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              child: Text(
+                weekLabel,
+                style: const TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 22.0,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.olive,
+                ),
+              ),
+            ),
+
+            // Tombol Chevron Kanan (Bulat olive 35px)
+            Semantics(
+              label: 'Minggu berikutnya',
+              button: true,
+              child: GestureDetector(
+                onTap: _nextWeek,
+                child: Container(
+                  width: 35.0,
+                  height: 35.0,
+                  decoration: const BoxDecoration(
+                    color: AppColors.olive,
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: const Icon(
+                    LucideIcons.chevronRight,
+                    size: 18.0,
+                    color: AppColors.white,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
       body: CustomScrollView(
         key: const PageStorageKey<String>('meal_plan_scroll_view'),
         slivers: [
-          // 1. Pemilih Minggu (Tombol bulat olive 35px + Judul 22/700)
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 24.0,
-                vertical: 12.0,
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Tombol Chevron Kiri (Bulat olive 35px)
-                  Semantics(
-                    label: 'Minggu sebelumnya',
-                    button: true,
-                    child: GestureDetector(
-                      onTap: _previousWeek,
-                      child: Container(
-                        width: 35.0,
-                        height: 35.0,
-                        decoration: const BoxDecoration(
-                          color: AppColors.olive,
-                          shape: BoxShape.circle,
-                        ),
-                        alignment: Alignment.center,
-                        child: const Icon(
-                          LucideIcons.chevronLeft,
-                          size: 18.0,
-                          color: AppColors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  // Judul Minggu (22/700 olive)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                    child: Text(
-                      weekLabel,
-                      style: const TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: 22.0,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.olive,
-                      ),
-                    ),
-                  ),
-
-                  // Tombol Chevron Kanan (Bulat olive 35px)
-                  Semantics(
-                    label: 'Minggu berikutnya',
-                    button: true,
-                    child: GestureDetector(
-                      onTap: _nextWeek,
-                      child: Container(
-                        width: 35.0,
-                        height: 35.0,
-                        decoration: const BoxDecoration(
-                          color: AppColors.olive,
-                          shape: BoxShape.circle,
-                        ),
-                        alignment: Alignment.center,
-                        child: const Icon(
-                          LucideIcons.chevronRight,
-                          size: 18.0,
-                          color: AppColors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
           const SliverToBoxAdapter(child: SizedBox(height: 8.0)),
 
           // 3. 7 Section Hari (Monday–Sunday)
@@ -213,6 +207,13 @@ class _MealPlanPageState extends ConsumerState<MealPlanPage> {
     required List<String> favorites,
   }) {
     final entries = ref.watch(mealPlanByDateProvider(dateKey));
+    final now = ref.watch(clockProvider);
+    final today = DateTime(now.year, now.month, now.day);
+    final isPast = DateTime(
+      dayDate.year,
+      dayDate.month,
+      dayDate.day,
+    ).isBefore(today);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 24.0),
@@ -236,24 +237,34 @@ class _MealPlanPageState extends ConsumerState<MealPlanPage> {
                   ),
                 ),
 
-                // Tombol Plus Bulat 28px (amberSoft, ikon plus olive)
+                // Tombol Plus Bulat 28px (amberSoft, ikon plus olive; non-aktif redup bila hari lampau)
                 Semantics(
-                  label: 'Tambah menu untuk $dayName',
-                  button: true,
+                  container: true,
+                  label: isPast
+                      ? 'Hari lampau ($dayName)'
+                      : 'Tambah menu untuk $dayName',
+                  button: !isPast,
                   child: GestureDetector(
-                    onTap: () => context.push('/search?pick=$dateKey'),
-                    child: Container(
-                      width: 28.0,
-                      height: 28.0,
-                      decoration: const BoxDecoration(
-                        color: AppColors.amberSoft,
-                        shape: BoxShape.circle,
-                      ),
-                      alignment: Alignment.center,
-                      child: const Icon(
-                        LucideIcons.plus,
-                        size: 16.0,
-                        color: AppColors.olive,
+                    onTap: isPast
+                        ? null
+                        : () => context.push('/search?pick=$dateKey'),
+                    child: Opacity(
+                      opacity: isPast ? 0.35 : 1.0,
+                      child: Container(
+                        width: 28.0,
+                        height: 28.0,
+                        decoration: BoxDecoration(
+                          color: isPast
+                              ? AppColors.chipGray
+                              : AppColors.amberSoft,
+                          shape: BoxShape.circle,
+                        ),
+                        alignment: Alignment.center,
+                        child: Icon(
+                          LucideIcons.plus,
+                          size: 16.0,
+                          color: isPast ? AppColors.sage : AppColors.olive,
+                        ),
                       ),
                     ),
                   ),
@@ -266,13 +277,24 @@ class _MealPlanPageState extends ConsumerState<MealPlanPage> {
 
           // Konten Menu Hari Ini
           if (entries.isEmpty)
-            // Hari Kosong -> Kartu Putus-Putus "Belum ada menu" + "+ Tambah menu"
+            // Hari Kosong -> Kartu Putus-Putus "Belum ada menu" + "+ Tambah menu" (lebar tetap 330 rata kiri)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: _buildEmptyDayCard(context, dateKey, dayName),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: SizedBox(
+                  width: 330.0,
+                  child: _buildEmptyDayCard(
+                    context,
+                    dateKey,
+                    dayName,
+                    isPast: isPast,
+                  ),
+                ),
+              ),
             )
           else
-            // Carousel Horizontal FeaturedRecipeCard
+            // Carousel Horizontal FeaturedRecipeCard (lebar kartu TETAP 330, rata kiri)
             SizedBox(
               height: 330.0,
               child: ListView.separated(
@@ -295,7 +317,7 @@ class _MealPlanPageState extends ConsumerState<MealPlanPage> {
 
                   return FeaturedRecipeCard(
                     recipe: recipe,
-                    width: entries.length == 1 ? 392.0 : 330.0,
+                    width: 330.0,
                     isFavorite: isFav,
                     onToggleFav: () =>
                         ref.read(favoritesProvider.notifier).toggle(recipe.id),
@@ -314,10 +336,11 @@ class _MealPlanPageState extends ConsumerState<MealPlanPage> {
   Widget _buildEmptyDayCard(
     BuildContext context,
     String dateKey,
-    String dayName,
-  ) {
+    String dayName, {
+    required bool isPast,
+  }) {
     return GestureDetector(
-      onTap: () => context.push('/search?pick=$dateKey'),
+      onTap: isPast ? null : () => context.push('/search?pick=$dateKey'),
       child: CustomPaint(
         painter: _DashedBorderPainter(
           color: AppColors.border,
@@ -330,7 +353,9 @@ class _MealPlanPageState extends ConsumerState<MealPlanPage> {
           width: double.infinity,
           height: 110.0,
           decoration: BoxDecoration(
-            color: AppColors.white.withValues(alpha: 0.6),
+            color: isPast
+                ? AppColors.chipGray.withValues(alpha: 0.3)
+                : AppColors.white.withValues(alpha: 0.6),
             borderRadius: BorderRadius.circular(16.0),
           ),
           alignment: Alignment.center,
@@ -346,23 +371,25 @@ class _MealPlanPageState extends ConsumerState<MealPlanPage> {
                   color: AppColors.sage,
                 ),
               ),
-              const SizedBox(height: 6.0),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: const [
-                  Icon(LucideIcons.plus, size: 14.0, color: AppColors.olive),
-                  SizedBox(width: 4.0),
-                  Text(
-                    'Tambah menu',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 12.0,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.olive,
+              if (!isPast) ...[
+                const SizedBox(height: 6.0),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Icon(LucideIcons.plus, size: 14.0, color: AppColors.olive),
+                    SizedBox(width: 4.0),
+                    Text(
+                      'Tambah menu',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 12.0,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.olive,
+                      ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),

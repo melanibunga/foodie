@@ -311,7 +311,7 @@ void main() {
     );
 
     testWidgets(
-      'G3: Toast bergaya bg amberSoft, teks olive 12/600, radius pill, bayangan kartu, dan posisi 16 px di atas bottom element',
+      'G3: Toast bergaya bg maroon, teks putih 12/600, radius pill, bayangan kartu, dan posisi 16 px di atas bottom element (PRD §15.1)',
       (tester) async {
         tester.view.physicalSize = const Size(440, 956);
         tester.view.devicePixelRatio = 1.0;
@@ -343,19 +343,19 @@ void main() {
         final toastTextFinder = find.text('Test Toast Nav');
         expect(toastTextFinder, findsOneWidget);
 
-        // Verify Toast styling
+        // Verify Toast styling per PRD §15.1 (bg maroon, teks putih)
         final toastContainerFinder = find
             .ancestor(of: toastTextFinder, matching: find.byType(Container))
             .first;
         final toastContainer = tester.widget<Container>(toastContainerFinder);
         final decoration = toastContainer.decoration as BoxDecoration;
 
-        expect(decoration.color, AppColors.amberSoft);
+        expect(decoration.color, AppColors.maroon);
         expect(decoration.borderRadius, AppRadius.pill);
         expect(decoration.boxShadow, AppShadows.card);
 
         final textWidget = tester.widget<Text>(toastTextFinder);
-        expect(textWidget.style?.color, AppColors.olive);
+        expect(textWidget.style?.color, AppColors.white);
         expect(textWidget.style?.fontSize, 12.0);
         expect(textWidget.style?.fontWeight, FontWeight.w600);
 

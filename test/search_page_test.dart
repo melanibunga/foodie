@@ -248,7 +248,10 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            clockProvider.overrideWithValue(DateTime(2026, 11, 18)),
+          ],
           child: Consumer(
             builder: (context, ref, child) {
               refHolder = ref;

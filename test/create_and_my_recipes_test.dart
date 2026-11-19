@@ -208,8 +208,16 @@ void main() {
 
         expect(find.text('1 steps configured'), findsOneWidget);
 
-        // 4. Tap DONE button
-        await tester.tap(find.text('DONE'));
+        // 4. Scroll to DONE button and tap (pastikan melewati floating BottomNav)
+        final doneFinder = find.text('DONE');
+        await tester.scrollUntilVisible(
+          doneFinder,
+          100,
+          scrollable: find.byType(Scrollable).first,
+        );
+        await tester.drag(find.byType(CustomScrollView), const Offset(0, -150));
+        await tester.pumpAndSettle();
+        await tester.tap(doneFinder);
         await tester.pumpAndSettle();
 
         // 5. Success Dialog should appear

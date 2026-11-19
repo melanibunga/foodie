@@ -6,3 +6,4 @@ export 'cart.dart';
 export 'meal_plan_entry.dart';
 export 'place.dart';
 export 'user.dart';
+export 'cooked_entry.dart';

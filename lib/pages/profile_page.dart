@@ -12,6 +12,7 @@ import '../core/theme/app_radius.dart';
 import '../core/theme/app_shadows.dart';
 import '../data/user.dart';
 import '../providers/auth_provider.dart';
+import '../providers/cooked_provider.dart';
 import '../providers/favorites_provider.dart';
 import '../providers/recipes_provider.dart';
 import '../providers/reset_data.dart';
@@ -273,10 +274,70 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     );
   }
 
+  Widget _buildStatColumn({
+    required IconData icon,
+    required Color iconColor,
+    required String count,
+    required String label,
+    required String route,
+    required BorderRadius borderRadius,
+  }) {
+    return Expanded(
+      child: Semantics(
+        label: 'Buka $label',
+        button: true,
+        excludeSemantics: true,
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: Material(
+            color: Colors.transparent,
+            borderRadius: borderRadius,
+            child: InkWell(
+              onTap: () => context.push(route),
+              borderRadius: borderRadius,
+              splashColor: AppColors.maroonSoft,
+              highlightColor: AppColors.maroonSoft.withValues(alpha: 0.5),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 18.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(icon, size: 20.0, color: iconColor),
+                    const SizedBox(height: 6.0),
+                    Text(
+                      count,
+                      style: const TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 24.0,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.olive,
+                      ),
+                    ),
+                    const SizedBox(height: 2.0),
+                    Text(
+                      label,
+                      style: const TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 12.0,
+                        fontWeight: FontWeight.w400,
+                        color: AppColors.sage,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(currentUserProvider) ?? seedUser;
     final favCount = ref.watch(favoriteCountProvider);
+    final cookedCount = ref.watch(cookedCountProvider);
     final myRecipes = ref.watch(myRecipesProvider);
     final myRecipesCount = myRecipes.length;
 
@@ -465,10 +526,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
 
                     const SizedBox(height: 16.0),
 
-                    // Kartu Statistik 3 Kolom
+                    // Kartu Statistik 3 Kolom (PRD §14.11)
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 18.0),
                       decoration: const BoxDecoration(
                         color: AppColors.white,
                         borderRadius: AppRadius.cardLarge,
@@ -476,40 +536,15 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                       ),
                       child: Row(
                         children: [
-                          // Kolom Favorit
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () => context.push('/favorites'),
-                              behavior: HitTestBehavior.opaque,
-                              child: Column(
-                                children: [
-                                  const Icon(
-                                    LucideIcons.heart,
-                                    size: 20.0,
-                                    color: AppColors.maroon,
-                                  ),
-                                  const SizedBox(height: 6.0),
-                                  Text(
-                                    '$favCount',
-                                    style: const TextStyle(
-                                      fontFamily: 'Poppins',
-                                      fontSize: 22.0,
-                                      fontWeight: FontWeight.w700,
-                                      color: AppColors.olive,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2.0),
-                                  const Text(
-                                    'Favorit',
-                                    style: TextStyle(
-                                      fontFamily: 'Poppins',
-                                      fontSize: 12.0,
-                                      fontWeight: FontWeight.w400,
-                                      color: AppColors.sage,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                          // Kolom Favorit -> /favorites
+                          _buildStatColumn(
+                            icon: LucideIcons.heart,
+                            iconColor: AppColors.maroon,
+                            count: '$favCount',
+                            label: 'Favorit',
+                            route: '/favorites',
+                            borderRadius: const BorderRadius.horizontal(
+                              left: Radius.circular(20.0),
                             ),
                           ),
 
@@ -520,37 +555,14 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                             color: AppColors.border,
                           ),
 
-                          // Kolom Dimasak
-                          Expanded(
-                            child: Column(
-                              children: [
-                                const Icon(
-                                  LucideIcons.chefHat,
-                                  size: 20.0,
-                                  color: AppColors.amber,
-                                ),
-                                const SizedBox(height: 6.0),
-                                Text(
-                                  '${user.cooked}',
-                                  style: const TextStyle(
-                                    fontFamily: 'Poppins',
-                                    fontSize: 22.0,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.olive,
-                                  ),
-                                ),
-                                const SizedBox(height: 2.0),
-                                const Text(
-                                  'Dimasak',
-                                  style: TextStyle(
-                                    fontFamily: 'Poppins',
-                                    fontSize: 12.0,
-                                    fontWeight: FontWeight.w400,
-                                    color: AppColors.sage,
-                                  ),
-                                ),
-                              ],
-                            ),
+                          // Kolom Dimasak -> /cooked
+                          _buildStatColumn(
+                            icon: LucideIcons.chefHat,
+                            iconColor: AppColors.amber,
+                            count: '$cookedCount',
+                            label: 'Dimasak',
+                            route: '/cooked',
+                            borderRadius: BorderRadius.zero,
                           ),
 
                           // Pemisah Vertikal 2
@@ -560,40 +572,15 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                             color: AppColors.border,
                           ),
 
-                          // Kolom Resep Saya (Tap -> /my-recipes)
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () => context.push('/my-recipes'),
-                              behavior: HitTestBehavior.opaque,
-                              child: Column(
-                                children: [
-                                  const Icon(
-                                    LucideIcons.bookOpen,
-                                    size: 20.0,
-                                    color: AppColors.maroon,
-                                  ),
-                                  const SizedBox(height: 6.0),
-                                  Text(
-                                    '$myRecipesCount',
-                                    style: const TextStyle(
-                                      fontFamily: 'Poppins',
-                                      fontSize: 22.0,
-                                      fontWeight: FontWeight.w700,
-                                      color: AppColors.olive,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2.0),
-                                  const Text(
-                                    'Resep Saya',
-                                    style: TextStyle(
-                                      fontFamily: 'Poppins',
-                                      fontSize: 12.0,
-                                      fontWeight: FontWeight.w400,
-                                      color: AppColors.sage,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                          // Kolom Resep Saya -> /my-recipes
+                          _buildStatColumn(
+                            icon: LucideIcons.bookOpen,
+                            iconColor: AppColors.maroon,
+                            count: '$myRecipesCount',
+                            label: 'Resep Saya',
+                            route: '/my-recipes',
+                            borderRadius: const BorderRadius.horizontal(
+                              right: Radius.circular(20.0),
                             ),
                           ),
                         ],

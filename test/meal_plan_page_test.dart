@@ -9,6 +9,7 @@ import 'package:foodie/pages/recipe_detail_page.dart';
 import 'package:foodie/pages/search_page.dart';
 import 'package:foodie/providers/auth_provider.dart';
 import 'package:foodie/providers/favorites_provider.dart';
+import 'package:foodie/providers/meal_plan_provider.dart';
 import 'package:foodie/providers/storage_provider.dart';
 import 'package:foodie/widgets/app_header.dart';
 import 'package:foodie/widgets/recipe_cards.dart';
@@ -88,7 +89,10 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            clockProvider.overrideWithValue(DateTime(2026, 11, 16)),
+          ],
           child: MaterialApp.router(
             theme: AppTheme.lightTheme,
             routerConfig: router,
@@ -168,7 +172,10 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            clockProvider.overrideWithValue(DateTime(2026, 11, 16)),
+          ],
           child: MaterialApp.router(
             theme: AppTheme.lightTheme,
             routerConfig: router,
@@ -262,7 +269,10 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            clockProvider.overrideWithValue(DateTime(2026, 11, 16)),
+          ],
           child: MaterialApp.router(
             theme: AppTheme.lightTheme,
             routerConfig: router,

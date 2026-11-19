@@ -3,16 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
-import '../app/app_shell.dart';
 import '../core/theme/app_colors.dart';
-import '../core/theme/app_radius.dart';
-import '../core/theme/app_text.dart';
 import '../models/models.dart';
 import '../providers/favorites_provider.dart';
 import '../providers/recipes_provider.dart';
 import '../providers/ui_helper.dart';
+import '../widgets/fixed_header_scaffold.dart';
 import '../widgets/recipe_cards.dart';
-import '../widgets/ui/app_badge.dart';
 import '../widgets/ui/app_chip.dart';
 import '../widgets/ui/empty_state.dart';
 import '../widgets/ui/sticky_bottom_bar.dart';
@@ -96,286 +93,149 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage> {
       return true;
     }).toList();
 
-    final topInset = AppShell.topChrome(context);
     final scrollBottomPadding =
         StickyBottomBar.scrollPadding(context, barHeight: 48.0, extra: 24.0) +
         MediaQuery.viewInsetsOf(context).bottom;
 
-    return Scaffold(
-      resizeToAvoidBottomInset: false,
-      backgroundColor: AppColors.bg,
-      body: Stack(
-        children: [
-          // Konten Scrollable
-          Positioned.fill(
-            child: CustomScrollView(
-              key: const PageStorageKey<String>('favorites_scroll_view'),
-              slivers: [
-                // 1. Header Baris Judul & Badge
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: EdgeInsets.only(
-                      left: 24.0,
-                      right: 24.0,
-                      top: topInset + 16.0,
-                      bottom: 16.0,
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Menu Favoritmu', style: AppText.pageTitle),
-                              const SizedBox(height: 2.0),
-                              const Text(
-                                'Simpan idenya, masak kapan saja.',
-                                style: TextStyle(
-                                  fontFamily: 'Poppins',
-                                  fontSize: 13.0,
-                                  fontWeight: FontWeight.w400,
-                                  color: AppColors.sage,
-                                  height: 18.0 / 13.0,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 12.0),
-                        AppBadge.square(count: favoriteCount),
-                      ],
-                    ),
-                  ),
-                ),
+    return FixedHeaderScaffold(
+      title: 'Menu Favoritmu',
+      subtitle: 'Simpan idenya, masak kapan saja.',
+      badgeCount: favoriteCount,
+      searchController: _searchController,
+      searchHint: 'Cari nama menu favorit...',
+      onSearchChanged: (val) {
+        setState(() {
+          _searchQuery = val;
+        });
+      },
+      body: CustomScrollView(
+        key: const PageStorageKey<String>('favorites_scroll_view'),
+        slivers: [
+          const SliverToBoxAdapter(child: SizedBox(height: 8.0)),
 
-                // 2. Search Bar Putih Radius ≈ 14
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                    child: Container(
-                      height: 44.0,
-                      decoration: BoxDecoration(
-                        color: AppColors.white,
-                        borderRadius: BorderRadius.circular(14.0),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 14.0),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            LucideIcons.search,
-                            size: 18.0,
-                            color: AppColors.sage,
-                          ),
-                          const SizedBox(width: 10.0),
-                          Expanded(
-                            child: TextField(
-                              controller: _searchController,
-                              onChanged: (val) {
-                                setState(() {
-                                  _searchQuery = val;
-                                });
-                              },
-                              style: const TextStyle(
-                                fontFamily: 'Poppins',
-                                fontSize: 13.0,
-                                color: AppColors.textBody,
-                              ),
-                              decoration: const InputDecoration(
-                                hintText: 'Cari nama menu favorit...',
-                                hintStyle: TextStyle(
-                                  fontFamily: 'Poppins',
-                                  fontSize: 13.0,
-                                  color: AppColors.sage,
-                                ),
-                                border: InputBorder.none,
-                                isDense: true,
-                                contentPadding: EdgeInsets.zero,
-                              ),
-                            ),
-                          ),
-                          if (_searchQuery.isNotEmpty)
-                            GestureDetector(
-                              onTap: () {
-                                _searchController.clear();
-                                setState(() {
-                                  _searchQuery = '';
-                                });
-                              },
-                              child: const Icon(
-                                LucideIcons.x,
-                                size: 16.0,
-                                color: AppColors.sage,
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-
-                const SliverToBoxAdapter(child: SizedBox(height: 16.0)),
-
-                // 3. Label "Filter bahan utama" & Chip Filter Horizontal
-                if (favoriteRecipes.isNotEmpty) ...[
-                  const SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 24.0),
-                      child: Text(
-                        'Filter bahan utama',
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 13.0,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.olive,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SliverToBoxAdapter(child: SizedBox(height: 10.0)),
-                  SliverToBoxAdapter(
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                      child: Row(
-                        children: [
-                          // Chip Semua
-                          AppChip(
-                            label: 'Semua',
-                            selected: _selectedIngredient == null,
-                            onTap: () {
-                              setState(() {
-                                _selectedIngredient = null;
-                              });
-                            },
-                          ),
-                          const SizedBox(width: 8.0),
-
-                          // Chip dinamis dari bahan utama resep favorit
-                          ...availableIngredients.map((ingredient) {
-                            final isSelected =
-                                _selectedIngredient == ingredient;
-                            return Padding(
-                              padding: const EdgeInsets.only(right: 8.0),
-                              child: AppChip(
-                                label: ingredient,
-                                selected: isSelected,
-                                onTap: () {
-                                  setState(() {
-                                    _selectedIngredient = isSelected
-                                        ? null
-                                        : ingredient;
-                                  });
-                                },
-                              ),
-                            );
-                          }),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SliverToBoxAdapter(child: SizedBox(height: 16.0)),
-                ],
-
-                // 4. Grid Resep Favorit 2 Kolom atau Empty State
-                if (favoriteRecipes.isEmpty)
-                  const SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.only(top: 40.0),
-                      child: EmptyState(
-                        icon: LucideIcons.heart,
-                        title: 'Belum Ada Menu Favorit',
-                        subtitle: 'Simpan idenya, masak kapan saja dengan menekan ikon hati pada resep.',
-                      ),
-                    ),
-                  )
-                else if (filteredRecipes.isEmpty)
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 40.0),
-                      child: EmptyState(
-                        icon: LucideIcons.searchX,
-                        title: 'Resep Tidak Ditemukan',
-                        subtitle: 'Tidak ada resep favorit yang cocok dengan kata kunci atau filter.',
-                        action: TextButton(
-                          onPressed: () {
-                            _searchController.clear();
-                            setState(() {
-                              _searchQuery = '';
-                              _selectedIngredient = null;
-                            });
-                          },
-                          child: const Text(
-                            'Reset Filter',
-                            style: TextStyle(
-                              fontFamily: 'Poppins',
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.maroon,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  )
-                else
-                  SliverPadding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                    sliver: SliverGrid(
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 12.0,
-                            mainAxisSpacing: 12.0,
-                            childAspectRatio: 0.68,
-                          ),
-                      delegate: SliverChildBuilderDelegate((context, index) {
-                        final recipe = filteredRecipes[index];
-                        return FavoriteRecipeCard(
-                          recipe: recipe,
-                          onOpen: () => context.push('/recipe/${recipe.id}'),
-                          onRemove: () => _handleRemoveFavorite(recipe),
-                        );
-                      }, childCount: filteredRecipes.length),
-                    ),
-                  ),
-
-                // 5. Padding Bawah agar konten terakhir tidak tertutup tombol sticky (+ keyboard)
-                SliverToBoxAdapter(
-                  child: SizedBox(height: scrollBottomPadding),
-                ),
-              ],
-            ),
-          ),
-
-          // Tombol Sticky "Kembali Ke Beranda" di Bawah Layar
-          StickyBottomBar(
-            child: SizedBox(
-              width: 355.0,
-              height: 48.0,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.olive,
-                  foregroundColor: AppColors.white,
-                  elevation: 6.0,
-                  shadowColor: AppColors.olive.withValues(alpha: 0.35),
-                  shape: const RoundedRectangleBorder(
-                    borderRadius: AppRadius.pill,
-                  ),
-                ),
-                onPressed: () => context.go('/home'),
-                child: const Text(
-                  'Kembali Ke Beranda',
+          // 1. Label "Filter bahan utama" & Chip Filter Horizontal
+          if (favoriteRecipes.isNotEmpty) ...[
+            const SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 24.0),
+                child: Text(
+                  'Filter bahan utama',
                   style: TextStyle(
                     fontFamily: 'Poppins',
-                    fontSize: 14.0,
+                    fontSize: 13.0,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.white,
+                    color: AppColors.olive,
                   ),
                 ),
               ),
             ),
-          ),
+            const SliverToBoxAdapter(child: SizedBox(height: 10.0)),
+            SliverToBoxAdapter(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                child: Row(
+                  children: [
+                    // Chip Semua
+                    AppChip(
+                      label: 'Semua',
+                      selected: _selectedIngredient == null,
+                      onTap: () {
+                        setState(() {
+                          _selectedIngredient = null;
+                        });
+                      },
+                    ),
+                    const SizedBox(width: 8.0),
+
+                    // Chip dinamis dari bahan utama resep favorit
+                    ...availableIngredients.map((ingredient) {
+                      final isSelected = _selectedIngredient == ingredient;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8.0),
+                        child: AppChip(
+                          label: ingredient,
+                          selected: isSelected,
+                          onTap: () {
+                            setState(() {
+                              _selectedIngredient = isSelected
+                                  ? null
+                                  : ingredient;
+                            });
+                          },
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+              ),
+            ),
+            const SliverToBoxAdapter(child: SizedBox(height: 16.0)),
+          ],
+
+          // 4. Grid Resep Favorit 2 Kolom atau Empty State
+          if (favoriteRecipes.isEmpty)
+            const SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.only(top: 40.0),
+                child: EmptyState(
+                  icon: LucideIcons.heart,
+                  title: 'Belum Ada Menu Favorit',
+                  subtitle: 'Simpan idenya, masak kapan saja dengan menekan ikon hati pada resep.',
+                ),
+              ),
+            )
+          else if (filteredRecipes.isEmpty)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.only(top: 40.0),
+                child: EmptyState(
+                  icon: LucideIcons.searchX,
+                  title: 'Resep Tidak Ditemukan',
+                  subtitle: 'Tidak ada resep favorit yang cocok dengan kata kunci atau filter.',
+                  action: TextButton(
+                    onPressed: () {
+                      _searchController.clear();
+                      setState(() {
+                        _searchQuery = '';
+                        _selectedIngredient = null;
+                      });
+                    },
+                    child: const Text(
+                      'Reset Filter',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.maroon,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+              sliver: SliverGrid(
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 12.0,
+                  mainAxisSpacing: 12.0,
+                  childAspectRatio: 0.68,
+                ),
+                delegate: SliverChildBuilderDelegate((context, index) {
+                  final recipe = filteredRecipes[index];
+                  return FavoriteRecipeCard(
+                    recipe: recipe,
+                    onOpen: () => context.push('/recipe/${recipe.id}'),
+                    onRemove: () => _handleRemoveFavorite(recipe),
+                  );
+                }, childCount: filteredRecipes.length),
+              ),
+            ),
+
+          // 3. Padding Bawah agar konten terakhir tidak tertutup tombol sticky (+ keyboard)
+          SliverToBoxAdapter(child: SizedBox(height: scrollBottomPadding)),
         ],
       ),
     );

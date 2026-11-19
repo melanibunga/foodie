@@ -175,7 +175,7 @@ Warna turunan (ambil dengan color picker dari JPG kalau perlu presisi):
 - 5 item, jarak rata: **Home · Search · Add · Plan · Loc**. Ikon di atas, label di bawah (putih, 600, ≈ 10–11 px).
 - **Item aktif** = lingkaran **amber 59 × 57** berisi ikon + label (warna olive tua), berada di dalam bar (bukan menonjol keluar).
 - Ikon (lucide): `home`, `search`, `plus`, `calendarDays`, dan untuk "Loc" ikon bentuk kulkas/pantry (`refrigerator`) — **sesuai gambar desain**.
-- Halaman yang **menyembunyikan** nav: Splash, Login, Register, Add (diganti tombol DONE), Detail Menu, Start Cooking, Favorites, Groceries, Profile. Implementasi: nav hanya ada di `ShellRoute` untuk `/home`, `/search`, `/meal-plan`, `/nearby`; route lain di luar shell.
+- Halaman yang **menyembunyikan** nav: Splash, Login, Register, Detail Menu, Start Cooking, Favorites, Groceries, Profile (diubah §15.5: Add tidak lagi masuk daftar, kembali memakai BottomNav). Implementasi: nav hanya ada di `ShellRoute` untuk `/home`, `/search`, `/add` (diubah §15.5), `/meal-plan`, `/nearby`; route lain di luar shell.
 - Halaman dengan nav butuh `padding bawah` ≈ 120 agar konten tidak tertutup.
 
 ### 5.3 Widget UI dasar
@@ -256,7 +256,7 @@ Urutan dari atas:
 5. Bottom nav (aktif: Search).
 - Interaksi: mengetik (debounce 250 ms) atau tap tile → ganti area tile menjadi hasil (`GridRecipeCard`, 2 kolom) dengan judul "Hasil pencarian" + tombol "Bersihkan"; kosong → empty state. Tombol filter → Filter Sheet (§7.2). Tap kartu → `/recipe/:id`. Kalau halaman dibuka dalam **mode pilih resep dari Meal Plan** (`/search?pick=YYYY-MM-DD`), kartu diberi aksi "Tambahkan ke {Hari}" dan setelah memilih kembali ke `/meal-plan`.
 
-### 6.6 Create Recipe — `add.jpg` — `/add`
+### 6.6 Create Recipe — `add.jpg` — `/add` (diubah §15.5)
 1. `AppHeader` global.
 2. Baris judul: panah kiri `<` + **"Create Recipe"** (20/700 olive). Back → `/home`.
 3. **"Recipe Title"** (label 14/700) + input `fieldGray` (radius ≈ 10, bayangan halus) placeholder "Type your recipe name here".
@@ -264,8 +264,8 @@ Urutan dari atas:
    - Kiri **"Add Cover Image"** + kotak `fieldGray` ≈ 138 × 100, teks tengah "Add Cover Image"; tap → `image_picker` (galeri); setelah dipilih tampilkan preview gambar (cover).
    - Kanan **"Ingredients"** + kotak `fieldGray` berisi lingkaran sage + `+` dan teks "Add ingredients to recipe"; tap → Sheet bahan (§7.3). Setelah ada bahan tampilkan "N ingredients".
 5. **"Serving Size"** + chip dropdown `fieldGray` (ikon `users` + angka "3" + chevron). Tap → popover 1–12.
-6. **"Cooking Instructions"** + kotak `fieldGray` placeholder "Add one or multiple steps"; tap → Sheet langkah (§7.4). Setelah ada langkah tampilkan "N steps".
-7. Tombol olive pill **"DONE"** (uppercase, 700, lebar penuh ≈ 362 × 55) menempel di bawah (bottom ≈ 24). **Bottom nav disembunyikan** di halaman ini.
+6. **"Cooking Instructions"** + kotak `fieldGray` placeholder "Add one or multiple steps"; tap → Sheet langkah (§7.4). Setelah ada langkah tampilkan "N steps". (diubah §15.5: langkah yang sudah ditambah tampil sebagai list di bawah kotaknya).
+7. Tombol olive pill **"DONE"** (uppercase, 700, lebar penuh ≈ 362 × 55) (diubah §15.5: kembali memakai BottomNav fixed, tombol DONE tidak sticky tetapi di ujung form dengan padding bawah ±120).
 - DONE → validasi (judul, ≥ 1 bahan, ≥ 1 langkah) → simpan ke store `myRecipes` → Dialog sukses "Resep berhasil disimpan" (§7.5) → Oke → `/my-recipes`.
 
 ### 6.7 Meal Plan — `meal plan.jpg` — `/meal-plan`
@@ -296,22 +296,23 @@ Urutan dari atas:
 - Tombol olive pill **"Kembali Ke Beranda"** (lebar ≈ 355, tinggi 48, tebal 700) **sticky di bawah** layar (bottom ≈ 24), konten diberi padding bawah agar tidak tertutup. → `/home`.
 - Tap kartu → detail. Trash → Dialog konfirmasi → hapus dari favorit.
 
-### 6.10 Detail Menu — `detail_menu.jpg` — `/recipe/:id`
+### 6.10 Detail Menu — `detail_menu.jpg` — `/recipe/:id` (diubah §15.6)
 Urutan dari atas (semua padding horizontal 25):
-1. **Foto hero** (lebar 390, tinggi ≈ 270, radius ≈ 28). Overlay: tombol back lingkaran **olive 44** (panah putih) kiri atas; kanan atas dua lingkaran putih semi-transparan ≈ 40: **share** dan **heart** (toggle favorit).
+1. **Foto hero** (lebar 390, tinggi ≈ 270, radius ≈ 28). Overlay: tombol back lingkaran **olive 44** (panah putih) kiri atas (diubah §15.6: bar atas FIXED sage dengan tombol back lingkaran olive 44); kanan atas dua lingkaran putih semi-transparan ≈ 40: **share** dan **heart** (toggle favorit).
 2. Baris judul: **"Ayam Kecap Bawang"** (22/700 olive) + tombol ikon `calendar-plus` di kanan (**Add to meal plan** → sheet pilih hari/tanggal).
 3. Rating: bintang amber + "4.9" (600) + "(184 ulasan)" (sage).
 4. Dua tombol sejajar: **"Tambah ke keranjang"** (amber, ≈ 213 × 44, teks olive tua 12/600) dan **"Tambah ke favorit"** (olive, ≈ 163 × 44, teks putih). Tombol favorit berubah jadi "Tersimpan di favorit" saat aktif.
 5. **Kartu ringkasan** (bg `#F4F1EA` → token `summaryBg`, bayangan halus, radius ≈ 14) 3 kolom: ikon garpu-sendok maroon **Porsi / 2 Orang**; ikon api maroon **Kalori / 450 kkal**; ikon gauge maroon **Tingkat / Mudah**. Label 10 sage, nilai 12/600.
-6. Judul **"Bahan-Bahan"** (18/700 olive) lalu **kartu putih besar** (radius 32, lebar hampir penuh) berisi daftar: checkbox bulat 28 + nama (15/400) + takaran rata kanan (13/700). Item tercentang: lingkaran olive + centang putih, nama **coret + maroon**. (Centang = "sudah punya", disimpan lokal per resep.)
+6. Judul **"Bahan-Bahan"** (18/700 olive) lalu **kartu putih besar** (radius 32, lebar hampir penuh) berisi daftar (diubah §15.6: tanpa checkbox/coret/persist; tiap baris bullet lingkaran olive terisi ±10 + nama 15/400 + takaran rata kanan 13/700).
 7. Baris judul **"Langkah Memasak"** (18/700) + kanan "25 menit" (sage 12). Kartu putih (radius 32): daftar langkah — lingkaran amber 28 berisi nomor (olive tua), judul langkah (16/700), deskripsi (12, sage).
 8. Tombol olive pill **"Start Cooking >"** (lebar 390, tinggi 52, 700) → `/recipe/:id/cook`.
 9. Catatan kecil tengah: "Kalori merupakan estimasi per porsi, tanpa nasi." (11 sage).
 - "Tambah ke keranjang" → **semua bahan otomatis masuk** ke keranjang sebagai satu grup bernama resep itu, toast "Bahan ditambahkan ke keranjang". Jika grup sudah ada → toast "Sudah ada di keranjang" (tidak duplikat).
 
-### 6.11 My Groceries (Keranjang) — `Daftar Belanja.jpg` — `/groceries`
+### 6.11 My Groceries (Keranjang) — `Daftar Belanja.jpg` — `/groceries` (diubah §15.7)
 - Top bar: panah kiri + **"My Groceries"** (24/700 olive).
 - **Add bar** (kartu putih, radius 14, tinggi ≈ 52): lingkaran chipGray berisi ikon cart; teks placeholder **"+ Tambah bahan belanja…"**; pill harga chipGray "Rp" (input angka, `FilteringTextInputFormatter.digitsOnly`); tombol persegi olive 36 × 36 radius 10 berisi `+`. Menambah → masuk ke grup **"Belanjaan Kamu Nich"** (item custom).
+- **Urutan grup & item (diubah §15.7):** urutan descending (grup menu dari paling baru ditambahkan; item custom terbaru di atas). "Belanjaan Kamu Nich" selalu dipin di paling atas dengan latar amberSoft, border amber @ 40%, tanpa tombol hapus menu, dan hapus bahan lewat swipe Dismissible latar maroon.
 - **Grup per menu** (kartu putih, radius 16, padding ≈ 16): header = nama menu (15/700 olive) kiri + **"Hapus menu"** (maroon 11/600) kanan; baris item: checkbox kotak 22 · nama (14/600) + takaran (11 sage) di bawahnya · harga rata kanan (13/600 "Rp 4.000"). Item tercentang = nama **coret** + sage + checkbox olive. Footer kanan bawah kartu: **"Subtotal Rp 9.000"** (10 sage). Grup custom tidak menampilkan subtotal.
 - Catatan kecil: "Harga estimasi, ketuk item untuk mengubah" → tap harga/baris membuka edit harga inline.
 - **Panel ringkasan sticky bawah** (putih, radius atas ≈ 24, padding 24): "Total estimasi (belum dibeli)" (11 sage), **"Rp 18.000"** (24/700 olive) kiri; tombol olive **"Kosongkan semua"** (≈ 164 × 44) kanan → Dialog konfirmasi.
@@ -566,6 +567,8 @@ Semua foto sementara **abu-abu**. Sumber foto asli (API resep) menyusul di luar 
 
 ## 14. Perubahan Pasca-Desain (Bug Fix Round 1)
 
+§15 (Putaran 2) MENANG atas §14 bila bentrok.
+
 14.0 Prioritas: §14 menang atas desain JPG dan bagian lain PRD.
 
 14.1 Istilah: "kasus keyboard" (sheet/form ikut terdorong naik sampai hanya layer putih), "kasus button naik" (tombol/nav fixed ikut naik di atas keyboard), "kasus no space" (tombol/alert/sheet mepet atau tertutup navigasi HP).
@@ -581,11 +584,11 @@ Semua foto sementara **abu-abu**. Sumber foto asli (API resep) menyusul di luar 
 
 14.4 Tab ke-5 berlabel "Nearby" (bukan "Loc") dengan ikon map-pin; route tetap /nearby. Pill di header memakai ikon heart (terisi putih) menggantikan bookmark, label semantik "Favorit", agar konsisten dengan hati di kartu dan judul "Menu Favoritmu".
 
-14.5 Toast: muncul 16 px DI ATAS elemen fixed paling bawah pada halaman itu (BottomNav = tinggi 75 + jaraknya; atau tombol sticky). Warna: background amberSoft, teks olive 12/600, radius pill, bayangan kartu; TIDAK sama dengan warna bottom nav. Hilang 2.2 s.
+14.5 Toast (diubah §15.1 untuk warna): muncul 16 px DI ATAS elemen fixed paling bawah pada halaman itu (BottomNav = tinggi 75 + jaraknya; atau tombol sticky). Warna: background amberSoft, teks olive 12/600, radius pill, bayangan kartu; TIDAK sama dengan warna bottom nav. Hilang 2.2 s. (Catatan: digantikan oleh §15.1 untuk warna maroon).
 
 14.6 Detail Menu:
 - Deskripsi singkat resep tampil tepat di bawah judul (13/400 sage, tinggi baris 20), maksimal 3 baris; bila lebih panjang tampil tautan "Lihat semua" (maroon 12/600) yang membuka teks penuh, lalu menjadi "Tutup". Bila deskripsi kosong (resep buatan user), bagian disembunyikan.
-- Tombol back FIXED di kiri atas (tidak ikut scroll), lingkaran 44, background sage, panah putih. Share & heart tetap di hero.
+- Tombol back FIXED di kiri atas (tidak ikut scroll), lingkaran 44, background sage, panah putih (diubah §15.6: bar atas FIXED lebar penuh background sage dengan tombol back lingkaran olive 44 di kiri). Share & heart tetap di hero.
 - "Tambah ke keranjang": bila resep sudah ada di keranjang, tombol tampil gaya non-aktif (bg amberSoft, teks olive, ikon centang, label "Sudah di keranjang") TAPI tetap bisa di-tap: tap = keluarkan grup resep dari keranjang + toast "Dikeluarkan dari keranjang" dan tombol kembali ke gaya semula.
 - Ikon calendar-plus: bila resep sudah terjadwal (ada entri meal plan dengan tanggal >= hari ini), ikon berubah menjadi calendar-check dengan latar amberSoft.
 
@@ -608,3 +611,46 @@ Semua foto sementara **abu-abu**. Sumber foto asli (API resep) menyusul di luar 
 14.12 Nearby peta nyata: peta OpenStreetMap (flutter_map + latlong2), lokasi pengguna (geolocator; izin lokasi; bila ditolak → pusat default area desain + toast), rute jalan kaki ke tempat terpilih digambar mengikuti jalan sungguhan (OSRM, profil foot, geometri geojson), bukan garis lurus. Tampilan overlay (pill "Radius 1 km", pin bernomor amber/olive, titik pengguna berhalo, tombol "Pusatkan") dipertahankan seperti desain. Atribusi "© OpenStreetMap contributors" wajib tampil. Bila tile/rute gagal: fallback ke IllustratedMap / garis putus-putus lurus + toast. Model Place ditambah lat & lng; data tempat v1 masih mock (diletakkan relatif terhadap lokasi pengguna) di balik interface PlaceService supaya nanti diganti sumber nyata. Menggantikan §12 butir 6.
 
 14.13 Rating & data dari API: lihat 14.9 (v1 dummy + lokal).
+
+14.14 Status Penyelesaian Bug Fix Round 1 (Fase B0–B8):
+- Seluruh 22 butir bug (G1–G6, P1–P4, S1, A1–A4, M1–M2, N1–N2, D1–D3) telah diperbaiki dan diverifikasi melalui unit test, widget test, matriks layout lintas resolusi (360x640 hingga 440x956 dp, inset 0-48 dp, keyboard terbuka/tertutup), dan tes ujung-ke-ujung (E2E flow) di `test/phase_b8_regression_qa_test.dart`.
+- Daftar pelacakan lengkap dicatat pada `BUG_FRONTEND.md`.
+
+---
+
+## 15. Perubahan Pasca-Desain (Putaran 2)
+
+15.0 Prioritas: §15 menang atas §14, bagian lain PRD, dan desain JPG.
+
+15.1 Toast: background maroon (#800020), teks putih 12/600, radius pill, bayangan kartu. Posisi tidak berubah (16 px di atas elemen fixed paling bawah). Menggantikan §14.5 untuk warna.
+
+15.2 AppHeader greeting: di kanan avatar (kiri pill favorit) tampil greeting dua baris: baris 1 sapaan menurut jam ("Selamat pagi" 04.00–10.59, "Selamat siang" 11.00–14.59, "Selamat sore" 15.00–17.59, "Selamat malam" 18.00–03.59) gaya 11/400 sage; baris 2 nama depan user gaya 15/700 olive ("Najmah"). Jarak 12 dari avatar, memakai Expanded + ellipsis sehingga tidak pernah overflow di lebar 360 dp; tidak mengubah ukuran/posisi avatar, pill, dan keranjang. Nama depan = kata pertama user.name.
+
+15.3 Header fixed per halaman (area fixed = di luar scroll, background bg):
+- Home, Search, Add, Nearby: AppHeader.
+- Meal Plan: AppHeader + pemilih minggu "< This Week >".
+- Favorites, Cooked (Riwayat Masak), My Recipes: judul + badge + sub-judul + search bar (sampai search bar). Chip filter dan seterusnya ikut scroll.
+
+15.4 Editor input (Edit Profil, Tambah Bahan, Langkah Memasak) harus aman dari keyboard di perangkat nyata: field yang fokus selalu terlihat penuh, tidak ada layer putih, tidak tertutup navigasi sistem. Inset keyboard dibaca dari View (bukan dari MediaQuery yang bisa sudah dikonsumsi ancestor). Bila sheet tidak bisa dibuat andal, editor boleh diubah menjadi halaman layar penuh (Scaffold dengan resizeToAvoidBottomInset: true).
+
+15.5 Add: kembali memakai BottomNav (fixed, tab "Add" aktif), route /add berada di dalam ShellRoute; aturan nav sama dengan halaman lain (tidak bergerak karena keyboard). Tombol DONE tidak sticky: berada di ujung form (lebar penuh ±362x55) dengan padding bawah ±120 agar tidak tertutup nav. "Cooking Instructions": setelah ditambah, langkah tampil sebagai list di bawah kotaknya (nomor lingkaran amber 28 + judul 14/600 + deskripsi 1 baris sage 11 dengan ellipsis + tombol hapus trash maroon), tampil 3 langkah pertama + "Lihat semua (N)" / "Sembunyikan", sama pola dengan daftar Ingredients (§14.8).
+
+15.6 Detail Menu:
+- Bar atas FIXED seperti header halaman dashboard: lebar penuh, background sage (#717665), tinggi = inset atas perangkat + 60, berisi tombol back lingkaran OLIVE 44 dengan panah putih di kiri (x=25). Konten dan hero ter-scroll di bawah bar (tidak tembus). Ikon status bar terang di halaman ini. Share & heart tetap di hero (ikut scroll). Menggantikan gaya back di §14.6.
+- Bahan-bahan: tanpa checkbox/coret/persist. Tiap baris: bullet lingkaran olive terisi (±10) + nama (15/400) + takaran rata kanan (13/700). Hapus penyimpanan "centang bahan per resep".
+- Pemilih tanggal meal plan: tanggal sebelum hari ini (hari aktual = hari ini masih boleh) tampil non-aktif (redup, tidak bisa di-tap). Aturan sama berlaku untuk tombol plus per hari di halaman Meal Plan (hari lampau & minggu-minggu lalu: plus non-aktif). mealPlanProvider.add menolak tanggal < hari ini (status pastDate); sediakan injeksi "sekarang" (clock) agar bisa diuji.
+
+15.7 Groceries:
+- Urutan DESCENDING: grup menu diurutkan dari yang paling baru ditambahkan ke yang lama (CartGroup.addedAt). Item di grup "Belanjaan Kamu Nich" juga terbaru di atas (CartItem.addedAt). Item dalam grup resep tetap urutan resep.
+- "Belanjaan Kamu Nich" selalu dipin di paling atas (di atas semua grup menu), selalu tampil walau kosong (hint "Belum ada bahan. Tambahkan lewat kolom di atas."). Warna kartu beda: background amberSoft, border 1px amber @ 40%, ikon pin kecil di judul; teks wajib terbaca (nama & harga olive, takaran olive @ 75%, kontras >= 4.5:1), checkbox olive.
+- Tidak ada "Hapus menu" untuk kartu ini. Hapus per bahan dengan swipe ke kiri (Dismissible endToStart: latar maroon + ikon trash putih, radius mengikuti kartu), toast "Bahan dihapus", plus aksi semantik "Hapus" untuk aksesibilitas. Kartu grup menu tetap memakai "Hapus menu".
+- Perhitungan total/subtotal tidak berubah.
+
+15.8 Data: CartGroup.addedAt, CartItem.addedAt (migrasi data lama: isi dari urutan yang ada); MealPlan add status: added / exists / pastDate.
+
+15.9 Status Penyelesaian Bug Fix Round 2 (Fase C0–C6):
+- Seluruh 13 butir perbaikan dan penyempurnaan (G1–G2, P1–P2, A1–A3, M1, D1–D3, K1–K2) telah selesai diimplementasikan dan diverifikasi secara menyeluruh.
+- Telah teruji melalui pengujian unit, widget, regresi visual, matriks layout responsif (360x640 hingga 440x956 dp, inset 0–48 dp, keyboard terbuka/tertutup), serta alur ujung-ke-ujung (E2E) pada `test/phase_c6_regression_qa_test.dart`.
+- Daftar pelacakan terperinci dicatat pada `GENERAL_BUG.md`.
+
+

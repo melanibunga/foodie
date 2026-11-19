@@ -39,16 +39,13 @@ double calculateToastBottomOffset(
   // ToastAnchor.auto: deteksi otomatis berdasarkan route
   try {
     final route = GoRouterState.of(context).matchedLocation;
-    // Halaman dengan BottomNav: /home, /search, /meal-plan, /nearby
+    // Halaman dengan BottomNav: /home, /search, /add, /meal-plan, /nearby (PRD §15.5)
     if (route.startsWith('/home') ||
         route.startsWith('/search') ||
+        route.startsWith('/add') ||
         route.startsWith('/meal-plan') ||
         route.startsWith('/nearby')) {
       return gap + 75.0 + 16.0;
-    }
-    // Halaman Add (DONE: tinggi 55)
-    if (route.startsWith('/add')) {
-      return gap + 55.0 + 16.0;
     }
     // Halaman dengan tombol sticky "Kembali Ke Beranda" (Favorites, My Recipes, Cooked: tinggi 52)
     if (route.startsWith('/favorites') ||
@@ -69,8 +66,8 @@ double calculateToastBottomOffset(
   return gap;
 }
 
-/// Helper Toast pill amberSoft kustom sesuai PRD §7.9, §14.5:
-/// - Background amberSoft, teks olive 12/600, radius pill, bayangan kartu
+/// Helper Toast pill maroon kustom sesuai PRD §7.9, §14.5, §15.1:
+/// - Background maroon (#800020), teks putih 12/600, radius pill, bayangan kartu
 /// - Posisi 16 px di atas elemen fixed paling bawah halaman itu
 /// - Durasi 2.2 detik (2200 ms)
 void showAppToast(
@@ -105,7 +102,7 @@ void showAppToast(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               decoration: const BoxDecoration(
-                color: AppColors.amberSoft,
+                color: AppColors.maroon,
                 borderRadius: AppRadius.pill,
                 boxShadow: AppShadows.card,
               ),
@@ -115,7 +112,7 @@ void showAppToast(
                   fontFamily: 'Poppins',
                   fontSize: 12.0,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.olive,
+                  color: AppColors.white,
                   decoration: TextDecoration.none,
                 ),
                 textAlign: TextAlign.center,

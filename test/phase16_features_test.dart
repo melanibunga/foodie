@@ -114,14 +114,18 @@ void main() {
         addTearDown(container.dispose);
 
         final notifier = container.read(locationProvider.notifier);
-        expect(container.read(locationProvider).isRealMap, isFalse);
+        expect(container.read(locationProvider).isRealMap, isTrue);
 
-        await notifier.toggleMapMode();
+        await notifier.initLocation();
 
         final state = container.read(locationProvider);
-        expect(state.isRealMap, isFalse);
+        expect(state.isRealMap, isTrue);
         expect(state.status, LocationStatus.denied);
-        expect(state.message, contains('Izin lokasi ditolak'));
+        expect(state.message, contains('Izin lokasi'));
+        expect(
+          state.coordinates.latitude,
+          UserCoordinates.defaultKaliurang.latitude,
+        );
       },
     );
 
@@ -140,7 +144,7 @@ void main() {
         addTearDown(container.dispose);
 
         final notifier = container.read(locationProvider.notifier);
-        await notifier.toggleMapMode();
+        await notifier.initLocation();
 
         final state = container.read(locationProvider);
         expect(state.isRealMap, isTrue);
@@ -188,24 +192,28 @@ void main() {
 
         await tester.pumpAndSettle();
 
-        // Initially renders IllustratedMap
+        // Initially renders RealMapView (PRD §14.12)
         expect(find.byType(NearbyPage), findsOneWidget);
-        expect(find.byType(IllustratedMap), findsOneWidget);
-        expect(find.text('Peta Nyata'), findsOneWidget);
-
-        // Tap "Peta Nyata" button
-        await tester.tap(find.text('Peta Nyata'));
-        await tester.pumpAndSettle();
-
-        // Switches to RealMapView
         expect(find.byType(RealMapView), findsOneWidget);
         expect(find.text('Ilustrasi'), findsOneWidget);
 
-        // Tap "Ilustrasi" to switch back
+        // Tap "Ilustrasi" button
         await tester.tap(find.text('Ilustrasi'));
         await tester.pumpAndSettle();
 
+        // Switches to IllustratedMap
         expect(find.byType(IllustratedMap), findsOneWidget);
+        expect(find.text('Peta Nyata'), findsOneWidget);
+
+        // Tap "Peta Nyata" to switch back
+        await tester.tap(find.text('Peta Nyata'));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(RealMapView), findsOneWidget);
+
+        // Drain pending toast timer
+        await tester.pump(const Duration(milliseconds: 2300));
+        await tester.pumpAndSettle();
       },
     );
 
