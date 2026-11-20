@@ -27,7 +27,7 @@
 | UI | Widget Flutter + `ThemeData` kustom. Material 3 boleh jadi basis, tapi **semua** warna/teks/radius di-override lewat token (§4); jangan ada tampilan default Material yang beda dari desain |
 | Routing | `go_router` (ShellRoute untuk halaman ber-bottom-nav) |
 | State | `flutter_riverpod` (Notifier/AsyncNotifier) |
-| Persist | `shared_preferences` (key berprefix `foodie:`) |
+| Persist | Hive (`hive`, `hive_flutter`, `crypto`), multi-box per user (`users`, `session`, `favorites`, `cart`, `mealPlan`, `myRecipes`, `cooked`, `ratings`, `settings`, `meta`) tanpa TypeAdapter |
 | Ikon | `lucide_icons` (cocokkan bentuk dengan desain; kalau ada ikon yang beda, gambar sendiri dengan `CustomPainter`/`Icon` kustom) |
 | Font | Poppins (400, 500, 600, 700, 800), **di-bundle** di `assets/fonts/` dan didaftarkan di `pubspec.yaml` |
 | Animasi | Implicit animation bawaan (`AnimatedContainer`, `AnimatedOpacity`, dll). Tanpa package animasi |
@@ -113,7 +113,7 @@ Semua token didefinisikan **sekali** di `lib/core/theme/` dan dipakai lewat `App
 |---|---|---|
 | `olive` (primary) | `#263C32` | Judul, tombol utama, bottom nav, pill bookmark, checkbox terisi, tombol back |
 | `amber` (accent) | `#F59E0B` | CTA splash, tombol "Tambah ke keranjang", pill nav aktif, badge angka, nomor langkah, bintang rating, pin lokasi terpilih |
-| `maroon` | `#800020` | Tombol "Lihat Resep", link ("Daftar", "Masuk", "Lupa kata sandi?", "Hapus menu", "Pilihan Chef"), ikon trash, ikon trending, toggle aktif, tombol Logout |
+| `maroon` | `#800020` | Tombol "Lihat Resep", link ("Daftar", "Masuk", "Hapus menu", "Pilihan Chef"), ikon trash, ikon trending, toggle aktif, tombol Logout |
 | `sage` | `#717665` | Teks sekunder, ikon placeholder, ikon plus di Add |
 | `bg` | `#F5F5F0` | Background semua halaman (`scaffoldBackgroundColor`) |
 | `white` | `#FFFFFF` | Kartu, input, search bar |
@@ -224,7 +224,7 @@ Warna turunan (ambil dengan color picker dari JPG kalau perlu presisi):
 - Kartu putih (x=24, lebar 392, radius 20, padding 20):
   - Label "Email" + input (ikon amplop) placeholder "Masukkan email kamu".
   - Label "Kata sandi" + input (ikon gembok, ikon mata kanan) placeholder "Masukkan kata sandi".
-  - Baris: checkbox "Ingat saya" (kiri) · link maroon **"Lupa kata sandi?"** (kanan).
+  - Baris: checkbox "Ingat saya" (kiri).
   - Tombol olive **352 × 52** "Masuk".
 - Di bawah kartu (tengah): "Belum punya akun? **Daftar**" (Daftar maroon 700) → `/register`.
 - Footer tengah dekat dasar: "Ide masak sehari-hari, dalam satu tempat." (11, sage).
@@ -363,7 +363,6 @@ Meniru Favorites: judul **"Resep Saya"** + badge amber jumlah, search "Cari rese
 ### 7.9 Lain-lain
 - **Toast**: pill olive, teks putih 12/600, radius 999, muncul 24 px di atas bottom nav (atau di atas tombol sticky), hilang 2.2 s. Diimplementasikan dengan `OverlayEntry` (helper `showAppToast(context, msg)`), bukan `SnackBar` default.
 - **Empty state** (favorit, keranjang, hasil cari): ikon besar sage 48 + judul 16/700 + sub 12 sage, rata tengah.
-- **Lupa kata sandi** `/forgot`: top bar "Lupa kata sandi", 1 input email + tombol olive "Kirim tautan" → toast.
 - **Tentang aplikasi** `/about`: logo FOODIE.ID, versi, deskripsi singkat, tagline.
 - **Share** (detail): `share_plus` (`Share.share`); bila gagal/tidak didukung, fallback salin tautan ke `Clipboard` + toast.
 - **Mode gelap**: toggle di Profil menyimpan preferensi, tetapi tema gelap penuh ditunda ke fase opsional.
@@ -387,7 +386,7 @@ Meniru Favorites: judul **"Resep Saya"** + badge amber jumlah, search "Cari rese
 ```
 
 - Router: `go_router`. Perpindahan antar tab = `context.go(...)`; halaman turunan (detail, favorites, groceries, profile, cook, dll) = `context.push(...)` supaya tombol back sistem/gesture berperilaku wajar. `ShellRoute` memuat `/home`, `/search`, `/meal-plan`, `/nearby` + `AppBottomNav`.
-- Guard (`redirect` + `refreshListenable` dari auth store): tanpa session → redirect ke `/login` (kecuali `/`, `/login`, `/register`, `/forgot`). Sudah login & buka `/` → langsung `/home`.
+- Guard (`redirect` + `refreshListenable` dari auth store): tanpa session → redirect ke `/login` (kecuali `/`, `/login`, `/register`, `/dev/*`). Sudah login & buka `/` → langsung `/home`.
 - Posisi scroll dipulihkan saat kembali (`PageStorageKey` pada list/scroll view).
 - Transisi halaman: default platform atau fade 150 ms (opsional).
 - Orientasi dikunci portrait (`SystemChrome.setPreferredOrientations`).
@@ -456,14 +455,13 @@ class AppUser {
 
 Semua model: konstruktor `const`, field `final`, `copyWith`, `toJson()`, `fromJson()` (ditulis tangan).
 
-**Store (Riverpod, semua di-persist lewat `shared_preferences`, key `foodie:<nama>`):**
-- `authProvider` (session, user; opsi "Ingat saya")
-- `favoritesProvider` (daftar id)
-- `cartProvider` (groups) + provider turunan: `cartCountProvider`, `cartTotalUncheckedProvider`, `cartSubtotalProvider(groupId)` (family)
-- `mealPlanProvider` (entries) + helper `byWeek(startDate)`
-- `recipesProvider` (seed + myRecipes)
-- `uiProvider`/helper UI (toast & dialog)
-- `sharedPreferencesProvider` di-override di `main()` setelah `SharedPreferences.getInstance()` (supaya store bisa membaca sinkron saat start).
+**Store & Persistensi (Riverpod + Hive per user):**
+- Hive boxes: `users`, `session`, `favorites`, `cart`, `mealPlan`, `myRecipes`, `cooked`, `ratings`, `settings`, `meta`.
+- Semua data personal (favorit, keranjang, meal plan, resep buatan, riwayat cooked, rating, settings) diisolasi dengan `userId`.
+- `currentUserIdProvider` & `currentUserProvider`.
+- `authProvider` (login/register lokal, password hash SHA-256 + salt acak, session di `session`).
+- `favoritesProvider`, `cartProvider`, `mealPlanProvider`, `recipesProvider`, `cookedProvider`, `ratingsProvider`.
+- `foodieBoxesProvider` di-override di `main()` setelah `FoodieBoxes.open()`.
 
 Selector `cartCount` = jumlah semua `CartItem`; `favCount` = `favorites.length`.
 
@@ -472,13 +470,29 @@ Widget dan halaman **tidak boleh** membaca `data/recipes.dart` langsung. Semua l
 
 ```dart
 abstract class RecipeService {
-  Future<List<Recipe>> list({String? q, MealType? meal, String? mainIngredient, Difficulty? difficulty, int? maxTimeMin});
+  Future<List<Recipe>> list({
+    String? q,
+    MealType? meal,
+    String? mainIngredient,
+    Difficulty? difficulty,
+    int? maxTimeMin,
+    int? minTimeMin,
+  });
   Future<Recipe?> getById(String id);
   Future<List<Recipe>> popular({int limit = 10});
   Future<List<Recipe>> inspiration(String dateKey, {int limit = 6}); // acak, stabil per hari
 }
 ```
-v1 = `LocalRecipeService` (membaca seed + resep buatan user, delay buatan 150 ms agar loading state terbentuk), diekspos lewat `recipeServiceProvider`. Nanti API cukup mengganti implementasi dengan adapter yang memetakan respons API ke tipe `Recipe`. Halaman wajib punya **loading state** (`Skeleton`) dan **error state** ("Gagal memuat. Coba lagi" + tombol) — pakai `AsyncValue.when`.
+Implementasi:
+- **`ApiRecipeService`** (Fase B2, default): Mengintegrasikan API Resep Masakan Utama (API #1: `https://api-resep-masakan.vercel.app/api/v1`) dan API Masak Apa Hari Ini (API #2: `https://masak-apa.tomorisakura.vercel.app/api`).
+  - Cache & Offline: Detail resep tersimpan permanen di Hive box `recipes`; respons list di Hive box `recipeCache` (TTL 24 jam).
+  - Mekanisme Fallback Berantai: API #1 → API #2 → Hive Cache → `LocalRecipeService` (seed). Timeout 10 detik. Menampilkan notifikasi "Memakai data cadangan" sekali per sesi kegagalan.
+  - Data Turunan (Derived): Menggunakan hash deterministik konsisten dari ID resep untuk melengkapi `servings` (1–6), `kcal` (150–700), `difficulty` (Mudah/Sedang/Sulit), `rating` dasar (3.8–5.0), `reviews` dasar (10–210), `timeMin`, `mainIngredient`, dan kategori `meal`.
+  - Integrasi Groceries: Bahan dari resep API masuk keranjang dengan `price = 0`; pengguna dapat mengedit harga bahan secara inline per item dan tersimpan di Hive per akun pengguna.
+  - Konfigurasi: `--dart-define=RECIPE_SOURCE=api|local` (default `api`) dan `--dart-define=RECIPE_API_BASE=...`.
+- **`LocalRecipeService`**: Membaca seed lokal + resep buatan pengguna (`myRecipes`), dengan delay buatan 150 ms untuk pengujian state loading offline.
+- Halaman wajib memiliki **loading state** (`Skeleton`) dan **error state** ("Gagal memuat. Coba lagi" + tombol) menggunakan `AsyncValue.when`.
+- Halaman **Tentang Aplikasi (`/about`)** menampilkan atribusi sumber data resep dan API.
 
 ### Data seed (wajib sesuai desain)
 - **User**: Najmah Cleosaa Tokek · benjolmwahh@gmail.com · favorit 6 · dimasak 12 · resep saya 4.
@@ -512,7 +526,8 @@ Semua foto sementara **abu-abu**. Sumber foto asli (API resep) menyusul di luar 
 - **Aksesibilitas**: semua tombol ikon punya `Semantics`/`tooltip`; kontras teks ≥ 4.5:1 untuk teks badan (khususnya sage `#717665` di atas putih: pakai hanya untuk teks ≥ 11 px non-kritis); fokus terlihat (ring amber 2px untuk navigasi keyboard di web/desktop); target sentuh ≥ 40; teks mengikuti pengaturan ukuran font sistem tanpa membuat layout pecah (uji di 1.0× dan 1.3×).
 - **Performa**: gunakan `const` widget, `ListView.builder`/sliver untuk daftar, rasio gambar ditetapkan lewat `AspectRatio` agar tidak layout shift, tidak ada rebuild berlebihan (pakai `select` pada provider), `flutter analyze` bersih.
 - **Responsif**: lihat §3 aturan 1; uji di lebar 360, 390, 412, 440 dp, dan tablet/web (kolom 440 di tengah). Tidak ada `RenderFlex overflow` di semua ukuran tersebut.
-- **Persist**: data di `shared_preferences` dengan prefix `foodie:`; menu dev tersembunyi **"Reset data demo"** (tekan lama teks "Versi 1.0.0" di Profil), serta flag `--dart-define=RESET=true` untuk reset saat start.
+- **Persist**: data di Hive boxes (`users`, `session`, `favorites`, `cart`, `mealPlan`, `myRecipes`, `cooked`, `ratings`, `settings`, `meta`, `recipes`, `recipeCache`); menu dev tersembunyi **"Reset data demo"** (tekan lama teks "Versi 1.0.0" di Profil), serta flag `--dart-define=RESET=true` untuk reset saat start.
+- **Notifikasi Lokal (Fase B4)**: Menggunakan `flutter_local_notifications`, `timezone`, dan `flutter_timezone` untuk pengingat meal plan harian (jam tetap 07:00 waktu lokal perangkat) untuk 14 hari ke depan. Menghindari `SCHEDULE_EXACT_ALARM` dengan menggunakan mode inexact/allowWhileIdle. Penjadwalan ulang otomatis bereaksi terhadap perubahan meal plan, login/logout, dan switch user. Tombol uji coba notifikasi tersedia di menu developer tersembunyi.
 - **Platform**: Android (API 24+) dan iOS 13+; portrait saja; Chrome (web) hanya untuk preview/QA.
 
 ---
@@ -526,7 +541,7 @@ Semua foto sementara **abu-abu**. Sumber foto asli (API resep) menyusul di luar 
 5. **Search by Meal tanpa label** diikuti persis; tile tetap fungsional via `Semantics`.
 6. **Peta Nearby = ilustrasi statis (`CustomPaint`)** *(digantikan oleh §14.4 dan §14.12)* sesuai desain. Peta sungguhan (`flutter_map`/Google Maps) ditunda.
 7. **Meal Plan di desain hanya memperlihatkan Senin–Sabtu** karena gambar terpotong; implementasi tetap 7 hari.
-8. **Auth mock**: sandi apa pun ≥ 8 karakter lolos; user demo di §9. "Ingat saya" dicentang → session disimpan permanen; tidak dicentang → session hanya di memori (hilang saat app ditutup).
+8. **Auth akun lokal**: autentikasi lokal per user via Hive dengan hash SHA-256 + salt unik per user. Sandi tidak pernah disimpan polos. Akun demo di-seed sekali di box meta (benjolmwahh@gmail.com / demo12345 / Najmah Cleosaa Tokek). User baru mulai dengan data kosong. "Ingat saya" dicentang → session disimpan permanen di box session; tidak dicentang → session hanya di memori. Fitur "Lupa kata sandi" dihapus (Fase B1).
 9. **Pill bookmark/keranjang**: angka tampil walau 0 (sesuai desain).
 10. Halaman Start Cooking, My Recipe, sheet/dialog, toast, empty state, lupa sandi, tentang aplikasi **tidak ada di desain** → ikuti §7.
 11. **Foto = placeholder abu-abu** di v1 (termasuk hero splash dan avatar). Tile Search by Meal menampilkan label kategori sementara (§6.5).
@@ -689,14 +704,53 @@ Semua foto sementara **abu-abu**. Sumber foto asli (API resep) menyusul di luar 
   - `toggleOff` (#E0E0DA light / #3A4A42 dark), `photo` (#D9D9D4 light / #26362F dark), `photoIcon` (#BDBDB5 light / #3A4A42 dark).
 
 16.3 State & Persistensi Tema:
-- Dikelola oleh `themeModeProvider` (`lib/providers/theme_provider.dart`) yang mandiri dan terpisah dari siklus otentikasi user.
-- Preferensi disimpan secara persisten di `SharedPreferences` dengan key `"foodie:themeMode"` (default: `ThemeMode.light`).
+- Dikelola oleh `themeModeProvider` (`lib/providers/theme_provider.dart`) yang tersambung dengan user aktif.
+- Preferensi disimpan secara persisten di Hive box `settings` per user aktif (default: `ThemeMode.light`), sehingga tema mengikuti akun yang login.
 - Toggle "Mode gelap" di Halaman Profil (§6.12) tersambung langsung ke `themeModeProvider` dengan indikator status dinamis: "Tampilan gelap sedang digunakan" / "Tampilan terang sedang digunakan".
 
 16.4 Kontras Aksesibilitas WCAG 2.1:
 - Seluruh kombinasi warna lulus uji rasio kontras WCAG: teks normal >= 4.5:1, teks besar/komponen >= 3.0:1.
 - Teks bahaya/danger kecil pada mode gelap menggunakan `dangerText` (#E8667C) yang menghasilkan rasio kontras 5.3:1 terhadap `surface`, menggantikan `#D6455F` (3.9:1) khusus pada teks kecil demi memenuhi standar keterbacaan.
 - Kartu pin "Belanjaan Kamu Nich" pada dark mode menggunakan `accentSoftTextAlt` (#C8AB4A) yang memberikan rasio kontras 5.1:1 terhadap latar `accentSoft` (#3E3313).
+
+---
+
+## 17. Arsitektur Data, Backend API, Lokasi & Notifikasi (Fase B1–B6)
+
+17.1 Prioritas: §17 menang atas spesifikasi mock awal di §1, §2, §9, §11, dan §12.
+
+17.2 Penyimpanan Lokal Hive (Fase B1):
+- `shared_preferences` dihapus total dan digantikan oleh Hive NoSQL multi-box tanpa TypeAdapter/code generation (disimpan sebagai JSON Map).
+- Terdiri dari 13 box: `users`, `session`, `favorites`, `cart`, `mealPlan`, `myRecipes`, `cooked`, `ratings`, `settings`, `meta`, `recipes`, `recipeCache`, dan `placesCache`.
+- Kredensial akun: Sandi di-hash menggunakan SHA-256 + salt acak unik per pengguna (`passwordHash = SHA-256(salt + password)`). Sandi tidak pernah disimpan dalam format teks polos.
+- Isolasi multi-user: Seluruh state personal (favorit, keranjang belanjaan, jadwal meal plan, resep buatan sendiri, riwayat dimasak, rating, dan preferensi tema) tersimpan terpisah berdasarkan `userId` aktif. Logout membersihkan sesi aktif; berganti akun menampilkan data yang sepenuhnya bersih dan terisolasi.
+
+17.3 Integrasi API Resep Masakan Nusantara (Fase B2):
+- Endpoint utama: `https://api-resep-masakan.vercel.app/api/v1` via Dio client dengan timeout 15 detik.
+- Mengambil data nyata: nama menu, gambar foto asli, daftar bahan, dan langkah memasak.
+- Field yang dikelola sendiri (*derived deterministik* dari hash id): porsi (1–6), kalori (150–700 kcal), tingkat kesulitan (Mudah/Sedang/Sulit), rating dasar & jumlah ulasan dasar.
+- Harga bahan: Diatur Rp0 dari API dan diisi secara mandiri oleh user melalui edit harga inline di Groceries.
+- Caching offline: Resep tersimpan di Hive box `recipeCache` (TTL 24 jam). Resep yang pernah dibuka tetap dapat diakses saat offline; resep baru menampilkan pesan error informatif dengan tombol "Coba lagi".
+
+17.4 Rating & Riwayat Dimasak (Fase B3):
+- Rating rata-rata dihitung menggunakan formula berbobot ulasan: `avg = (base * dummyCount + sum) / (dummyCount + n)` dengan `reviews = dummyCount + n`.
+- Kartu resep dan halaman detail resep sinkron secara langsung dengan rating pengguna.
+- Alur selesai memasak (*Start Cooking*) secara otomatis mencatat riwayat ke box `cooked` dan rating ke box `ratings`.
+
+17.5 Notifikasi Lokal Pengingat Makan (Fase B4):
+- Menggunakan `flutter_local_notifications`, `timezone`, dan `flutter_timezone`.
+- Jadwal tetap jam 07:00 waktu perangkat lokal untuk setiap tanggal yang memiliki menu di meal plan (hari ini s/d 14 hari ke depan).
+- Judul: "Waktunya masak! 🍳", isi: "Hari ini: {Menu A}, {Menu B}".
+- Mode alarm hemat daya (`allowWhileIdle`, tanpa permission agresif `SCHEDULE_EXACT_ALARM`).
+- Penjadwalan ulang otomatis saat ada penambahan/penghapusan menu meal plan, saat login/logout, dan saat perangkat selesai boot ulang (`RECEIVE_BOOT_COMPLETED`).
+
+17.6 Lokasi Nyata, Overpass API & Rute OSRM (Fase B5):
+- Deteksi posisi pengguna menggunakan `geolocator`. Izin ditolak/GPS mati fallback aman ke koordinat Kaliurang (`UserCoordinates.defaultKaliurang`) dengan toast informatif.
+- Query tempat makan nyata sekitar menggunakan OpenStreetMap Overpass API (`https://overpass-api.de/api/interpreter`) untuk amenity `restaurant|cafe|fast_food` dalam radius 500m–5km.
+- Parser jam buka pintar `OpeningHoursParser`: memproses format OSM (`24/7`, rentang jam hari, buka lewat tengah malam); format tidak dikenal ditandai `isUnknownHours = true` dan dikecualikan dari filter "Buka sekarang".
+- Cache tempat makan di Hive box `placesCache` (TTL 1 jam) dengan fallback berantai: Overpass -> Cache Hive -> LocalPlaceService (dengan toast informatif "Memakai data contoh"). Debounce pergeseran posisi < 100 meter.
+- Rute jalan kaki nyata menggunakan Open Source Routing Machine (OSRM). Request lama otomatis dibatalkan via `CancelToken` saat memilih tujuan baru. Rute digambar solid di peta; bila OSRM gagal/offline langsung fallback ke garis putus-putus perkiraan dengan toast "Rute perkiraan". Atribusi lisensi `"© OpenStreetMap contributors"` selalu ditampilkan.
+
 
 
 

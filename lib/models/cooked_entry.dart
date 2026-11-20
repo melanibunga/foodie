@@ -3,23 +3,36 @@ class CookedEntry {
   final String id;
   final String recipeId;
   final String date; // Format: YYYY-MM-DD
+  final int? rating; // Rating bintang 1-5 (opsional)
 
   const CookedEntry({
     required this.id,
     required this.recipeId,
     required this.date,
+    this.rating,
   });
 
-  CookedEntry copyWith({String? id, String? recipeId, String? date}) {
+  CookedEntry copyWith({
+    String? id,
+    String? recipeId,
+    String? date,
+    int? rating,
+  }) {
     return CookedEntry(
       id: id ?? this.id,
       recipeId: recipeId ?? this.recipeId,
       date: date ?? this.date,
+      rating: rating ?? this.rating,
     );
   }
 
   Map<String, dynamic> toJson() {
-    return {'id': id, 'recipeId': recipeId, 'date': date};
+    return {
+      'id': id,
+      'recipeId': recipeId,
+      'date': date,
+      if (rating != null) 'rating': rating,
+    };
   }
 
   factory CookedEntry.fromJson(Map<String, dynamic> json) {
@@ -27,6 +40,7 @@ class CookedEntry {
       id: json['id'] as String,
       recipeId: json['recipeId'] as String,
       date: json['date'] as String,
+      rating: (json['rating'] as num?)?.toInt(),
     );
   }
 
@@ -36,9 +50,10 @@ class CookedEntry {
     return other is CookedEntry &&
         other.id == id &&
         other.recipeId == recipeId &&
-        other.date == date;
+        other.date == date &&
+        other.rating == rating;
   }
 
   @override
-  int get hashCode => Object.hash(id, recipeId, date);
+  int get hashCode => Object.hash(id, recipeId, date, rating);
 }

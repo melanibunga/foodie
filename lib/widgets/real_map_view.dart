@@ -178,7 +178,7 @@ class _RealMapViewState extends State<RealMapView> {
             children: [
               TileLayer(
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'id.foodie.app',
+                userAgentPackageName: 'id.foodie.foodie',
                 tileBuilder: (context, tileWidget, tile) {
                   if (palette.isDark) {
                     return ColorFiltered(

@@ -9,11 +9,12 @@ import 'package:foodie/pages/splash_page.dart';
 import 'package:foodie/providers/auth_provider.dart';
 import 'package:foodie/providers/storage_provider.dart';
 import 'package:foodie/widgets/ui/app_checkbox.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
+import 'test_helper.dart';
 
 void main() {
   setUp(() {
-    SharedPreferences.setMockInitialValues({});
+    // mock storage initialized
   });
 
   group('Fase 4 — Splash Page Tests', () {
@@ -24,11 +25,11 @@ void main() {
         tester.view.devicePixelRatio = 1.0;
         addTearDown(() => tester.view.resetPhysicalSize());
 
-        final prefs = await SharedPreferences.getInstance();
+        final boxes = await initTestBoxes();
 
         await tester.pumpWidget(
           ProviderScope(
-            overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+            overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
             child: MaterialApp(
               theme: AppTheme.lightTheme,
               home: const SplashPage(),
@@ -77,7 +78,7 @@ void main() {
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() => tester.view.resetPhysicalSize());
 
-      final prefs = await SharedPreferences.getInstance();
+      final boxes = await initTestBoxes();
       late WidgetRef refHolder;
 
       final router = createRouter(
@@ -87,7 +88,7 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+          overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
           child: Consumer(
             builder: (context, ref, child) {
               refHolder = ref;
@@ -105,7 +106,7 @@ void main() {
       expect(find.text('MASAK LEBIH MUDAH'), findsOneWidget);
       expect(find.text('Selamat\ndatang kembali.'), findsOneWidget);
       expect(find.text('Ingat saya'), findsOneWidget);
-      expect(find.text('Lupa kata sandi?'), findsOneWidget);
+      expect(find.text('Lupa kata sandi?'), findsNothing);
 
       // Submit with empty inputs -> shows validation errors
       await tester.tap(find.text('Masuk'));
@@ -141,7 +142,7 @@ void main() {
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() => tester.view.resetPhysicalSize());
 
-      final prefs = await SharedPreferences.getInstance();
+      final boxes = await initTestBoxes();
       late WidgetRef refHolder;
 
       final router = createRouter(
@@ -151,7 +152,7 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+          overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
           child: Consumer(
             builder: (context, ref, child) {
               refHolder = ref;
@@ -204,54 +205,7 @@ void main() {
     });
   });
 
-  group('Fase 4 — Forgot Page Tests', () {
-    testWidgets('ForgotPage validates email and triggers toast on submit', (
-      tester,
-    ) async {
-      tester.view.physicalSize = const Size(440, 956);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(() => tester.view.resetPhysicalSize());
-
-      final prefs = await SharedPreferences.getInstance();
-
-      final router = createRouter(initialLocation: '/forgot');
-
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
-          child: MaterialApp.router(
-            theme: AppTheme.lightTheme,
-            routerConfig: router,
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      expect(find.text('Lupa kata sandi'), findsOneWidget);
-      expect(find.text('Atur ulang\nkata sandi.'), findsOneWidget);
-
-      // Submit empty
-      await tester.tap(find.text('Kirim tautan'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Format email tidak valid'), findsOneWidget);
-
-      // Enter valid email
-      await tester.enterText(find.byType(TextField), 'user@foodie.id');
-      await tester.tap(find.text('Kirim tautan'));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 350));
-
-      expect(
-        find.text('Tautan reset telah dikirim ke email kamu'),
-        findsOneWidget,
-      );
-
-      // Advance through pending timers (toast 2.2s + delay 1.5s)
-      await tester.pump(const Duration(milliseconds: 3000));
-      await tester.pumpAndSettle();
-    });
-  });
+  // Forgot page tests removed in Phase B1
 
   group('Fase 4 — Route Guard Tests', () {
     testWidgets(
@@ -261,7 +215,7 @@ void main() {
         tester.view.devicePixelRatio = 1.0;
         addTearDown(() => tester.view.resetPhysicalSize());
 
-        final prefs = await SharedPreferences.getInstance();
+        final boxes = await initTestBoxes();
 
         final router = createRouter(
           initialLocation: '/home',
@@ -270,7 +224,7 @@ void main() {
 
         await tester.pumpWidget(
           ProviderScope(
-            overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+            overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
             child: MaterialApp.router(
               theme: AppTheme.lightTheme,
               routerConfig: router,
@@ -290,7 +244,7 @@ void main() {
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() => tester.view.resetPhysicalSize());
 
-      final prefs = await SharedPreferences.getInstance();
+      final boxes = await initTestBoxes();
 
       final router = createRouter(
         initialLocation: '/',
@@ -299,7 +253,7 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+          overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
           child: MaterialApp.router(
             theme: AppTheme.lightTheme,
             routerConfig: router,

@@ -7,20 +7,20 @@ import 'package:foodie/providers/cart_provider.dart';
 import 'package:foodie/providers/favorites_provider.dart';
 import 'package:foodie/providers/storage_provider.dart';
 import 'package:foodie/services/recipe_service.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
+import 'test_helper.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  late SharedPreferences prefs;
   late ProviderContainer container;
 
   setUp(() async {
-    SharedPreferences.setMockInitialValues({});
-    prefs = await SharedPreferences.getInstance();
+    // mock storage initialized
+    final boxes = await initTestBoxes();
 
     container = ProviderContainer(
-      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
     );
   });
 

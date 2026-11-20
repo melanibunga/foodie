@@ -12,11 +12,12 @@ import 'package:foodie/widgets/illustrated_map.dart';
 import 'package:foodie/widgets/real_map_view.dart';
 import 'package:foodie/widgets/ui/empty_state.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
+import 'test_helper.dart';
 
 void main() {
   setUp(() {
-    SharedPreferences.setMockInitialValues({});
+    // mock storage initialized
   });
 
   group('Fase 13 — Nearby Page (/nearby) Tests', () {
@@ -27,7 +28,7 @@ void main() {
         tester.view.devicePixelRatio = 1.0;
         addTearDown(() => tester.view.resetPhysicalSize());
 
-        final prefs = await SharedPreferences.getInstance();
+        final boxes = await initTestBoxes();
 
         final router = createRouter(
           initialLocation: '/nearby',
@@ -36,7 +37,7 @@ void main() {
 
         await tester.pumpWidget(
           ProviderScope(
-            overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+            overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
             child: MaterialApp.router(
               theme: AppTheme.lightTheme,
               routerConfig: router,
@@ -91,7 +92,7 @@ void main() {
         tester.view.devicePixelRatio = 1.0;
         addTearDown(() => tester.view.resetPhysicalSize());
 
-        final prefs = await SharedPreferences.getInstance();
+        final boxes = await initTestBoxes();
 
         final router = createRouter(
           initialLocation: '/nearby',
@@ -100,7 +101,7 @@ void main() {
 
         await tester.pumpWidget(
           ProviderScope(
-            overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+            overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
             child: MaterialApp.router(
               theme: AppTheme.lightTheme,
               routerConfig: router,
@@ -140,7 +141,7 @@ void main() {
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() => tester.view.resetPhysicalSize());
 
-      final prefs = await SharedPreferences.getInstance();
+      final boxes = await initTestBoxes();
 
       final router = createRouter(
         initialLocation: '/nearby',
@@ -149,7 +150,7 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+          overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
           child: MaterialApp.router(
             theme: AppTheme.lightTheme,
             routerConfig: router,
@@ -184,7 +185,7 @@ void main() {
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() => tester.view.resetPhysicalSize());
 
-      final prefs = await SharedPreferences.getInstance();
+      final boxes = await initTestBoxes();
 
       final router = createRouter(
         initialLocation: '/nearby',
@@ -193,7 +194,7 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+          overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
           child: MaterialApp.router(
             theme: AppTheme.lightTheme,
             routerConfig: router,
@@ -222,7 +223,7 @@ void main() {
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() => tester.view.resetPhysicalSize());
 
-      final prefs = await SharedPreferences.getInstance();
+      final boxes = await initTestBoxes();
 
       final router = createRouter(
         initialLocation: '/nearby',
@@ -231,7 +232,7 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+          overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
           child: MaterialApp.router(
             theme: AppTheme.lightTheme,
             routerConfig: router,
@@ -266,7 +267,7 @@ void main() {
         tester.view.devicePixelRatio = 1.0;
         addTearDown(() => tester.view.resetPhysicalSize());
 
-        final prefs = await SharedPreferences.getInstance();
+        final boxes = await initTestBoxes();
 
         final router = createRouter(
           initialLocation: '/nearby',
@@ -275,7 +276,7 @@ void main() {
 
         await tester.pumpWidget(
           ProviderScope(
-            overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+            overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
             child: MaterialApp.router(
               theme: AppTheme.lightTheme,
               routerConfig: router,
@@ -316,7 +317,7 @@ void main() {
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() => tester.view.resetPhysicalSize());
 
-      final prefs = await SharedPreferences.getInstance();
+      final boxes = await initTestBoxes();
 
       final router = createRouter(
         initialLocation: '/nearby',
@@ -325,7 +326,7 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+          overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
           child: MaterialApp.router(
             theme: AppTheme.lightTheme,
             routerConfig: router,

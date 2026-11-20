@@ -1,15 +1,13 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:foodie/app/app.dart';
 import 'package:foodie/core/theme/app_palette.dart';
-import 'package:foodie/models/models.dart';
 import 'package:foodie/providers/storage_provider.dart';
 import 'package:foodie/providers/theme_provider.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
+import 'test_helper.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -18,11 +16,12 @@ void main() {
     test(
       'themeModeProvider persists and loads theme mode from SharedPreferences',
       () async {
-        SharedPreferences.setMockInitialValues({'foodie:themeMode': 'dark'});
+        // mock storage initialized
+        final boxes = await initTestBoxes();
         final prefs = await SharedPreferences.getInstance();
 
         final container = ProviderContainer(
-          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+          overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
         );
         addTearDown(container.dispose);
 
@@ -50,12 +49,12 @@ void main() {
           tester.view.resetDevicePixelRatio();
         });
 
-        SharedPreferences.setMockInitialValues({'foodie:themeMode': 'dark'});
-        final prefs = await SharedPreferences.getInstance();
+        // mock storage initialized
+        final boxes = await initTestBoxes();
 
         await tester.pumpWidget(
           ProviderScope(
-            overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+            overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
             child: const FoodieApp(),
           ),
         );
@@ -110,22 +109,12 @@ void main() {
           tester.view.resetDevicePixelRatio();
         });
 
-        const user = User(
-          id: 'user-1',
-          name: 'Najmah',
-          email: 'najmah@foodie.id',
-        );
-        final authMap = {'isLoggedIn': true, 'user': user.toJson()};
-
-        SharedPreferences.setMockInitialValues({
-          'foodie:themeMode': 'dark',
-          'foodie:auth': jsonEncode(authMap),
-        });
-        final prefs = await SharedPreferences.getInstance();
+        // mock storage initialized
+        final boxes = await initTestBoxes();
 
         await tester.pumpWidget(
           ProviderScope(
-            overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+            overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
             child: const FoodieApp(),
           ),
         );

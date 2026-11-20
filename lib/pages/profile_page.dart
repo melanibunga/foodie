@@ -10,6 +10,7 @@ import '../app/app_shell.dart';
 import '../core/theme/app_palette.dart';
 import '../core/theme/app_radius.dart';
 import '../core/theme/app_shadows.dart';
+import '../core/theme/app_text.dart';
 import '../data/user.dart';
 import '../providers/auth_provider.dart';
 import '../providers/cooked_provider.dart';
@@ -18,6 +19,7 @@ import '../providers/recipes_provider.dart';
 import '../providers/reset_data.dart';
 import '../providers/theme_provider.dart';
 import '../providers/ui_helper.dart';
+import '../services/notification_service.dart';
 import '../widgets/ui/app_bottom_sheet.dart';
 import '../widgets/ui/app_button.dart';
 import '../widgets/ui/app_input.dart';
@@ -63,16 +65,72 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   }
 
   Future<void> _handleResetDemoData() async {
-    final confirmed = await showAppConfirmDialog(
-      context,
-      title: 'Reset data demo?',
-      message: 'Semua resep kustom, jadwal meal plan, favorit, dan keranjang belanja akan dikembalikan ke data awal.',
-      confirmLabel: 'Reset',
-      cancelLabel: 'Batal',
-      isDanger: true,
+    final palette = context.palette;
+    final action = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: palette.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16.0),
+          ),
+          title: Text(
+            'Menu Pengembang',
+            style: AppText.sectionTitle.copyWith(color: palette.textStrong),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: Icon(LucideIcons.bell, color: palette.accent),
+                title: Text(
+                  'Kirim notifikasi uji',
+                  style: AppText.bodyMedium.copyWith(color: palette.textStrong),
+                ),
+                subtitle: Text(
+                  'Muncul 5 detik kemudian',
+                  style: AppText.caption.copyWith(color: palette.textSecondary),
+                ),
+                onTap: () => Navigator.of(dialogContext).pop('test_notif'),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: Icon(LucideIcons.refreshCw, color: palette.danger),
+                title: Text(
+                  'Reset data demo',
+                  style: AppText.bodyMedium.copyWith(color: palette.danger),
+                ),
+                subtitle: Text(
+                  'Kembalikan akun demo ke data awal',
+                  style: AppText.caption.copyWith(color: palette.textSecondary),
+                ),
+                onTap: () => Navigator.of(dialogContext).pop('reset_demo'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text(
+                'Batal',
+                style: TextStyle(color: palette.textSecondary),
+              ),
+            ),
+          ],
+        );
+      },
     );
 
-    if (confirmed && mounted) {
+    if (!mounted || action == null) return;
+
+    if (action == 'test_notif') {
+      await ref
+          .read(notificationServiceProvider)
+          .sendTestNotification(delay: const Duration(seconds: 5));
+      if (mounted) {
+        showAppToast(context, 'Notifikasi uji akan muncul dalam 5 detik');
+      }
+    } else if (action == 'reset_demo') {
       await resetAllDataRef(ref);
       if (mounted) {
         showAppToast(context, 'Data demo berhasil di-reset');
@@ -668,10 +726,31 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                 AppToggle(
                                   key: const ValueKey('toggle-meal-reminder'),
                                   value: user.settings.mealReminder,
-                                  onChanged: (_) {
-                                    ref
+                                  onChanged: (_) async {
+                                    final willEnable =
+                                        !user.settings.mealReminder;
+                                    if (willEnable) {
+                                      final granted = await ref
+                                          .read(notificationServiceProvider)
+                                          .requestPermissions();
+                                      if (!granted) {
+                                        if (context.mounted) {
+                                          showAppToast(
+                                            context,
+                                            'Izin notifikasi ditolak',
+                                          );
+                                        }
+                                        return;
+                                      }
+                                    }
+                                    await ref
                                         .read(authProvider.notifier)
                                         .toggleMealReminder();
+                                    if (!willEnable) {
+                                      await ref
+                                          .read(notificationServiceProvider)
+                                          .cancelAll();
+                                    }
                                   },
                                 ),
                               ],

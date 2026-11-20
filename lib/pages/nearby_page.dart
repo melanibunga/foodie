@@ -118,10 +118,7 @@ class _NearbyPageState extends ConsumerState<NearbyPage> {
       });
 
       if (result.isStraightLineFallback) {
-        showAppToast(
-          context,
-          'Rute jalan tidak tersedia, menampilkan garis lurus',
-        );
+        showAppToast(context, 'Rute perkiraan');
       }
     }
   }
@@ -185,7 +182,7 @@ class _NearbyPageState extends ConsumerState<NearbyPage> {
 
     // 4. Sheet Status Filter
     if (_selectedStatus == 'Buka saja') {
-      result = result.where((p) => p.open).toList();
+      result = result.where((p) => p.open && !p.isUnknownHours).toList();
     }
 
     // 5. Quick Chip Filter & Sorting
@@ -194,7 +191,7 @@ class _NearbyPageState extends ConsumerState<NearbyPage> {
         result.sort((a, b) => a.distanceM.compareTo(b.distanceM));
         break;
       case NearbyQuickFilter.bukaSekarang:
-        result = result.where((p) => p.open).toList();
+        result = result.where((p) => p.open && !p.isUnknownHours).toList();
         result.sort((a, b) => a.distanceM.compareTo(b.distanceM));
         break;
       case NearbyQuickFilter.hargaHemat:
@@ -449,8 +446,15 @@ class _NearbyPageState extends ConsumerState<NearbyPage> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<String?>(placesFallbackToastProvider, (prev, next) {
+      if (next != null && mounted) {
+        showAppToast(context, next);
+      }
+    });
+
     final palette = context.palette;
     final allPlaces = ref.watch(placesProvider);
+    final placesAsync = ref.watch(placesAsyncProvider);
     final locationState = ref.watch(locationProvider);
     final filteredPlaces = _filterAndSortPlaces(allPlaces);
 
@@ -701,8 +705,32 @@ class _NearbyPageState extends ConsumerState<NearbyPage> {
 
           const SliverToBoxAdapter(child: SizedBox(height: 12.0)),
 
-          // 6. Daftar Kartu Tempat Makan (atau EmptyState bila kosong)
-          if (filteredPlaces.isEmpty)
+          // 6. Daftar Kartu Tempat Makan (atau EmptyState bila kosong / error)
+          if (placesAsync.hasError &&
+              (!placesAsync.hasValue || placesAsync.value!.isEmpty))
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24.0,
+                  vertical: 20.0,
+                ),
+                child: EmptyState(
+                  icon: LucideIcons.alertCircle,
+                  title: 'Gagal memuat tempat sekitar',
+                  subtitle:
+                      'Periksa koneksi internet Anda atau coba muat kembali.',
+                  action: AppButton(
+                    label: 'Coba lagi',
+                    variant: AppButtonVariant.primary,
+                    size: AppButtonSize.sm,
+                    onPressed: () {
+                      ref.invalidate(placesAsyncProvider);
+                    },
+                  ),
+                ),
+              ),
+            )
+          else if (filteredPlaces.isEmpty)
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.symmetric(

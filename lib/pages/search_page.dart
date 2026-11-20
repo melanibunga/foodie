@@ -13,6 +13,7 @@ import '../models/models.dart';
 import '../providers/cart_provider.dart';
 import '../providers/favorites_provider.dart';
 import '../providers/meal_plan_provider.dart';
+import '../providers/recipes_provider.dart';
 import '../providers/ui_helper.dart';
 import '../services/recipe_service.dart';
 import '../widgets/page_with_header.dart';
@@ -45,8 +46,12 @@ class SearchPage extends ConsumerStatefulWidget {
 class _SearchPageState extends ConsumerState<SearchPage> {
   final _searchController = TextEditingController();
   final _debouncer = Debouncer(delay: const Duration(milliseconds: 250));
+  final _scrollController = ScrollController();
 
   bool _isLoading = false;
+  bool _isLoadingMore = false;
+  bool _hasMore = true;
+  int _currentPage = 1;
   List<Recipe>? _searchResults;
 
   MealType? _selectedMeal;
@@ -66,9 +71,18 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkPastPickDate();
     });
+  }
+
+  void _onScroll() {
+    if (_scrollController.hasClients &&
+        _scrollController.position.pixels >=
+            _scrollController.position.maxScrollExtent - 200) {
+      _loadNextPage();
+    }
   }
 
   void _checkPastPickDate() {
@@ -85,9 +99,70 @@ class _SearchPageState extends ConsumerState<SearchPage> {
 
   @override
   void dispose() {
+    _scrollController.dispose();
     _searchController.dispose();
     _debouncer.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadNextPage() async {
+    if (_isLoadingMore ||
+        !_hasMore ||
+        _searchResults == null ||
+        !_isSearching) {
+      return;
+    }
+
+    setState(() => _isLoadingMore = true);
+
+    int? minTime;
+    int? maxTime;
+    if (_selectedTimeRange == '< 15') {
+      maxTime = 15;
+    } else if (_selectedTimeRange == '15-30') {
+      minTime = 15;
+      maxTime = 30;
+    } else if (_selectedTimeRange == '> 30') {
+      minTime = 31;
+    }
+
+    final query = _searchController.text.trim();
+    final nextPage = _currentPage + 1;
+
+    try {
+      final newResults = await ref
+          .read(recipeServiceProvider)
+          .list(
+            q: query.isEmpty ? null : query,
+            meal: _selectedMeal,
+            difficulty: _selectedDifficulty,
+            mainIngredient: _selectedMainIngredient,
+            minTimeMin: minTime,
+            maxTimeMin: maxTime,
+          );
+
+      if (!mounted) return;
+
+      if (newResults.isEmpty) {
+        setState(() {
+          _isLoadingMore = false;
+          _hasMore = false;
+        });
+      } else {
+        setState(() {
+          _isLoadingMore = false;
+          _currentPage = nextPage;
+          _searchResults = [...?_searchResults, ...newResults];
+          if (newResults.length < 10) {
+            _hasMore = false;
+          }
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isLoadingMore = false);
+      }
+    }
   }
 
   bool get _hasActiveFilters =>
@@ -101,6 +176,10 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       _hasActiveFilters;
 
   Future<void> _executeSearch() async {
+    _currentPage = 1;
+    _hasMore = true;
+    _isLoadingMore = false;
+
     if (!_isSearching) {
       setState(() {
         _isLoading = false;
@@ -530,6 +609,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     return PageWithHeader(
       resizeToAvoidBottomInset: false,
       body: CustomScrollView(
+        controller: _scrollController,
         key: const PageStorageKey<String>('search_scroll_view'),
         slivers: [
           // Banner Pick Mode (bila datang dari Meal Plan)
@@ -685,6 +765,9 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                 ),
                 delegate: SliverChildBuilderDelegate((context, index) {
                   final cat = _categories[index];
+                  final catImage =
+                      ref.watch(mealCategoryImageProvider(cat.meal)) ??
+                      cat.image;
                   return Semantics(
                     label: cat.name,
                     button: true,
@@ -701,12 +784,12 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                           fit: StackFit.expand,
                           children: [
                             SmartImage(
-                              src: cat.image,
+                              src: catImage,
                               borderRadius: AppRadius.cardLarge,
                               fit: BoxFit.cover,
                             ),
-                            // Selama foto masih placeholder, tampilkan nama kategori
-                            if (cat.image == null || cat.image!.isEmpty)
+                            // Selama foto masih placeholder atau kosong, tampilkan nama kategori
+                            if (catImage == null || catImage.isEmpty)
                               Center(
                                 child: Text(
                                   cat.name,

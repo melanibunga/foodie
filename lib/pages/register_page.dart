@@ -112,6 +112,13 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
 
     if (success) {
       context.go('/home');
+    } else {
+      final authError = ref.read(authProvider).errorMessage;
+      if (authError != null && authError.contains('Email')) {
+        setState(() => _emailError = authError);
+      } else {
+        setState(() => _nameError = authError);
+      }
     }
   }
 

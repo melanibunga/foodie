@@ -10,11 +10,12 @@ import 'package:foodie/widgets/app_bottom_nav.dart';
 import 'package:foodie/widgets/app_header.dart';
 import 'package:foodie/widgets/recipe_cards.dart';
 import 'package:foodie/widgets/ui/photo_overlay.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
+import 'test_helper.dart';
 
 void main() {
   setUp(() {
-    SharedPreferences.setMockInitialValues({});
+    // mock storage initialized
   });
 
   group('Fase 5 — Visual & Layout Verification (440x956 & 440x1280)', () {
@@ -25,7 +26,7 @@ void main() {
         tester.view.devicePixelRatio = 1.0;
         addTearDown(() => tester.view.resetPhysicalSize());
 
-        final prefs = await SharedPreferences.getInstance();
+        final boxes = await initTestBoxes();
 
         final router = createRouter(
           initialLocation: '/home',
@@ -34,7 +35,7 @@ void main() {
 
         await tester.pumpWidget(
           ProviderScope(
-            overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+            overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
             child: MaterialApp.router(
               theme: AppTheme.lightTheme,
               routerConfig: router,
@@ -92,7 +93,7 @@ void main() {
         tester.view.devicePixelRatio = 1.0;
         addTearDown(() => tester.view.resetPhysicalSize());
 
-        final prefs = await SharedPreferences.getInstance();
+        final boxes = await initTestBoxes();
 
         final router = createRouter(
           initialLocation: '/home',
@@ -101,7 +102,7 @@ void main() {
 
         await tester.pumpWidget(
           ProviderScope(
-            overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+            overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
             child: MaterialApp.router(
               theme: AppTheme.lightTheme,
               routerConfig: router,

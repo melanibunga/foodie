@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -12,23 +10,19 @@ import 'package:foodie/providers/meal_plan_provider.dart';
 import 'package:foodie/providers/storage_provider.dart';
 import 'package:foodie/widgets/recipe_cards.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
+import 'test_helper.dart';
 
 void main() {
   setUp(() {
-    SharedPreferences.setMockInitialValues({
-      'foodie:auth': jsonEncode(
-        const AuthState(isLoggedIn: true, user: seedUser).toJson(),
-      ),
-      'foodie:meal_plan': jsonEncode([]),
-    });
+    // mock storage initialized
   });
 
   group('Fase B3 — Meal Plan Unit Tests (M2 Logika)', () {
     test('mealPlanProvider.add returns added or exists and prevents duplicate on same date', () async {
-      final prefs = await SharedPreferences.getInstance();
+      final boxes = await initTestBoxes();
       final container = ProviderContainer(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
       );
       addTearDown(container.dispose);
 
@@ -64,9 +58,9 @@ void main() {
     });
 
     test('isPlanned accurately distinguishes past dates from today and future dates', () async {
-      final prefs = await SharedPreferences.getInstance();
+      final boxes = await initTestBoxes();
       final container = ProviderContainer(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
       );
       addTearDown(container.dispose);
 
@@ -131,6 +125,7 @@ void main() {
           ),
         ];
 
+        final boxes = await initTestBoxes();
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString(
           'foodie:meal_plan',
@@ -145,7 +140,7 @@ void main() {
         await tester.pumpWidget(
           ProviderScope(
             overrides: [
-              sharedPreferencesProvider.overrideWithValue(prefs),
+              foodieBoxesProvider.overrideWithValue(boxes),
               clockProvider.overrideWithValue(currentWeekMonday),
             ],
             child: MaterialApp.router(
@@ -224,6 +219,7 @@ void main() {
           ),
         ];
 
+        final boxes = await initTestBoxes();
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString(
           'foodie:meal_plan',
@@ -238,7 +234,7 @@ void main() {
         await tester.pumpWidget(
           ProviderScope(
             overrides: [
-              sharedPreferencesProvider.overrideWithValue(prefs),
+              foodieBoxesProvider.overrideWithValue(boxes),
               clockProvider.overrideWithValue(currentWeekMonday),
             ],
             child: MaterialApp.router(
@@ -320,6 +316,7 @@ void main() {
           ),
         ];
 
+        final boxes = await initTestBoxes();
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString(
           'foodie:meal_plan',
@@ -334,7 +331,7 @@ void main() {
         await tester.pumpWidget(
           ProviderScope(
             overrides: [
-              sharedPreferencesProvider.overrideWithValue(prefs),
+              foodieBoxesProvider.overrideWithValue(boxes),
               clockProvider.overrideWithValue(currentWeekMonday),
             ],
             child: MaterialApp.router(

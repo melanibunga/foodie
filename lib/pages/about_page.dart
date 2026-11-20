@@ -254,6 +254,56 @@ class AboutPage extends StatelessWidget {
                       ),
                     ),
 
+                    const SizedBox(height: 18.0),
+
+                    // Kartu Atribusi Sumber Data sesuai PRD Fase B2
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20.0),
+                      decoration: BoxDecoration(
+                        color: palette.surface,
+                        borderRadius: AppRadius.cardLarge,
+                        boxShadow: AppShadows.card,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Sumber Data & Atribusi',
+                            style: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontSize: 16.0,
+                              fontWeight: FontWeight.w700,
+                              color: palette.textStrong,
+                            ),
+                          ),
+                          const SizedBox(height: 10.0),
+                          Text(
+                            'Data resep masakan Nusantara bersumber dari Resep Masakan Nusantara API (api-resep-masakan.vercel.app).',
+                            style: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontSize: 12.0,
+                              height: 1.5,
+                              fontWeight: FontWeight.w400,
+                              color: palette.textSecondary,
+                            ),
+                          ),
+                          const SizedBox(height: 8.0),
+                          Text(
+                            'Catatan: Informasi porsi, kalori, tingkat kesulitan, dan rating adalah estimasi aplikasi untuk memudahkan eksplorasi kuliner.',
+                            style: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontSize: 11.0,
+                              height: 1.4,
+                              fontStyle: FontStyle.italic,
+                              fontWeight: FontWeight.w400,
+                              color: palette.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
                     const SizedBox(height: 24.0),
 
                     // Copyright & Tagline Bawah

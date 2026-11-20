@@ -12,6 +12,7 @@ class Place {
   final double y;
   final double? lat;
   final double? lng;
+  final bool isUnknownHours;
 
   double get latitude => lat ?? (-7.7653 + (y - 50.0) * 0.00015);
   double get longitude => lng ?? (110.3789 + (x - 50.0) * 0.00015);
@@ -29,6 +30,7 @@ class Place {
     required this.y,
     this.lat,
     this.lng,
+    this.isUnknownHours = false,
   });
 
   Place copyWith({
@@ -44,6 +46,7 @@ class Place {
     double? y,
     double? lat,
     double? lng,
+    bool? isUnknownHours,
   }) {
     return Place(
       id: id ?? this.id,
@@ -58,6 +61,7 @@ class Place {
       y: y ?? this.y,
       lat: lat ?? this.lat,
       lng: lng ?? this.lng,
+      isUnknownHours: isUnknownHours ?? this.isUnknownHours,
     );
   }
 
@@ -75,6 +79,7 @@ class Place {
       'y': y,
       if (lat != null) 'lat': lat,
       if (lng != null) 'lng': lng,
+      'isUnknownHours': isUnknownHours,
     };
   }
 
@@ -92,6 +97,7 @@ class Place {
       y: (json['y'] as num?)?.toDouble() ?? 0.0,
       lat: (json['lat'] as num?)?.toDouble(),
       lng: (json['lng'] as num?)?.toDouble(),
+      isUnknownHours: json['isUnknownHours'] as bool? ?? false,
     );
   }
 

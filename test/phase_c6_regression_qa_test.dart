@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -17,18 +15,14 @@ import 'package:foodie/widgets/app_header.dart';
 import 'package:foodie/widgets/ui/app_bottom_sheet.dart';
 import 'package:foodie/widgets/ui/app_checkbox.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
+import 'test_helper.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUp(() {
-    SharedPreferences.setMockInitialValues({
-      'foodie:auth': jsonEncode(
-        const AuthState(isLoggedIn: true, user: seedUser).toJson(),
-      ),
-      'foodie:favorites': jsonEncode(['ayam-kecap-bawang']),
-    });
+    // mock storage initialized
   });
 
   group('Fase C6 — Bug Fix Matrix Putaran 2 (G1–G2, P1–P2, A1–A3, M1, D1–D3, K1–K2)', () {
@@ -79,10 +73,10 @@ void main() {
         tester.view.devicePixelRatio = 1.0;
         addTearDown(() => tester.view.resetPhysicalSize());
 
-        final prefs = await SharedPreferences.getInstance();
+        final boxes = await initTestBoxes();
         await tester.pumpWidget(
           ProviderScope(
-            overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+            overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
             child: MaterialApp(
               home: Scaffold(
                 body: AppHeader(currentTime: DateTime(2026, 11, 20, 9, 30)),
@@ -154,7 +148,7 @@ void main() {
         tester.view.devicePixelRatio = 1.0;
         addTearDown(() => tester.view.resetPhysicalSize());
 
-        final prefs = await SharedPreferences.getInstance();
+        final boxes = await initTestBoxes();
         final router = createRouter(
           initialLocation: '/favorites',
           getAuthState: () => const AuthState(isLoggedIn: true, user: seedUser),
@@ -162,7 +156,7 @@ void main() {
 
         await tester.pumpWidget(
           ProviderScope(
-            overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+            overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
             child: MaterialApp.router(
               theme: AppTheme.lightTheme,
               routerConfig: router,
@@ -191,7 +185,7 @@ void main() {
         tester.view.devicePixelRatio = 1.0;
         addTearDown(() => tester.view.resetPhysicalSize());
 
-        final prefs = await SharedPreferences.getInstance();
+        final boxes = await initTestBoxes();
         final router = createRouter(
           initialLocation: '/add',
           getAuthState: () => const AuthState(isLoggedIn: true, user: seedUser),
@@ -199,7 +193,7 @@ void main() {
 
         await tester.pumpWidget(
           ProviderScope(
-            overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+            overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
             child: MaterialApp.router(
               theme: AppTheme.lightTheme,
               routerConfig: router,
@@ -238,7 +232,7 @@ void main() {
         addTearDown(() => tester.view.resetPhysicalSize());
 
         final fixedToday = DateTime(2026, 11, 18); // Rabu
-        final prefs = await SharedPreferences.getInstance();
+        final boxes = await initTestBoxes();
 
         final router = createRouter(
           initialLocation: '/recipe/ayam-kecap-bawang',
@@ -248,7 +242,7 @@ void main() {
         await tester.pumpWidget(
           ProviderScope(
             overrides: [
-              sharedPreferencesProvider.overrideWithValue(prefs),
+              foodieBoxesProvider.overrideWithValue(boxes),
               clockProvider.overrideWithValue(fixedToday),
             ],
             child: MaterialApp.router(
@@ -284,7 +278,7 @@ void main() {
         tester.view.devicePixelRatio = 1.0;
         addTearDown(() => tester.view.resetPhysicalSize());
 
-        final prefs = await SharedPreferences.getInstance();
+        final boxes = await initTestBoxes();
         final router = createRouter(
           initialLocation: '/recipe/ayam-kecap-bawang',
           getAuthState: () => const AuthState(isLoggedIn: true, user: seedUser),
@@ -292,7 +286,7 @@ void main() {
 
         await tester.pumpWidget(
           ProviderScope(
-            overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+            overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
             child: MaterialApp.router(
               theme: AppTheme.lightTheme,
               routerConfig: router,
@@ -319,7 +313,7 @@ void main() {
         tester.view.devicePixelRatio = 1.0;
         addTearDown(() => tester.view.resetPhysicalSize());
 
-        final prefs = await SharedPreferences.getInstance();
+        final boxes = await initTestBoxes();
         final router = createRouter(
           initialLocation: '/groceries',
           getAuthState: () => const AuthState(isLoggedIn: true, user: seedUser),
@@ -327,7 +321,7 @@ void main() {
 
         await tester.pumpWidget(
           ProviderScope(
-            overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+            overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
             child: MaterialApp.router(
               theme: AppTheme.lightTheme,
               routerConfig: router,
@@ -370,7 +364,7 @@ void main() {
           tester.view.devicePixelRatio = 1.0;
           addTearDown(() => tester.view.resetPhysicalSize());
 
-          final prefs = await SharedPreferences.getInstance();
+          final boxes = await initTestBoxes();
           final router = createRouter(
             initialLocation: '/home',
             getAuthState: () =>
@@ -379,7 +373,7 @@ void main() {
 
           await tester.pumpWidget(
             ProviderScope(
-              overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+              overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
               child: MaterialApp.router(
                 theme: AppTheme.lightTheme,
                 routerConfig: router,
@@ -410,7 +404,7 @@ void main() {
           tester.view.resetPadding();
         });
 
-        final prefs = await SharedPreferences.getInstance();
+        final boxes = await initTestBoxes();
         final router = createRouter(
           initialLocation: '/groceries',
           getAuthState: () => const AuthState(isLoggedIn: true, user: seedUser),
@@ -418,7 +412,7 @@ void main() {
 
         await tester.pumpWidget(
           ProviderScope(
-            overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+            overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
             child: MaterialApp.router(
               theme: AppTheme.lightTheme,
               routerConfig: router,
@@ -440,7 +434,7 @@ void main() {
         tester.view.devicePixelRatio = 1.0;
         addTearDown(() => tester.view.resetPhysicalSize());
 
-        final prefs = await SharedPreferences.getInstance();
+        final boxes = await initTestBoxes();
         final fixedNow = DateTime(2026, 11, 20, 10, 0); // Pagi
 
         final router = createRouter(
@@ -451,7 +445,7 @@ void main() {
         await tester.pumpWidget(
           ProviderScope(
             overrides: [
-              sharedPreferencesProvider.overrideWithValue(prefs),
+              foodieBoxesProvider.overrideWithValue(boxes),
               clockProvider.overrideWithValue(fixedNow),
             ],
             child: MaterialApp.router(

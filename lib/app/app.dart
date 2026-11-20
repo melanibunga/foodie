@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/theme/app_palette.dart';
 import '../core/theme/app_theme.dart';
 import '../providers/theme_provider.dart';
+import '../services/notification_service.dart';
 import 'app_shell.dart';
 import 'router.dart';
 
@@ -14,6 +15,9 @@ class FoodieApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Pengawas otomatis jadwal notifikasi pengingat makan
+    ref.watch(notificationSchedulerProvider);
+
     final router = ref.watch(routerProvider);
     final themeMode = ref.watch(themeModeProvider);
 

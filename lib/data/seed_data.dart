@@ -139,3 +139,67 @@ List<MealPlanEntry> createSeedMealPlan([DateTime? referenceDate]) {
 
   return entries;
 }
+
+/// 12 entri seed riwayat masak sesuai PRD §9 & §14.10 ("dimasak 12")
+final List<CookedEntry> seedCookedEntries = [
+  const CookedEntry(
+    id: 'cooked-seed-1',
+    recipeId: 'ayam-kecap-bawang',
+    date: '2026-11-18',
+  ),
+  const CookedEntry(
+    id: 'cooked-seed-2',
+    recipeId: 'soto-ayam',
+    date: '2026-11-17',
+  ),
+  const CookedEntry(
+    id: 'cooked-seed-3',
+    recipeId: 'nasi-goreng-nusantara',
+    date: '2026-11-16',
+  ),
+  const CookedEntry(
+    id: 'cooked-seed-4',
+    recipeId: 'rendang-sapi-minang',
+    date: '2026-11-14',
+  ),
+  const CookedEntry(
+    id: 'cooked-seed-5',
+    recipeId: 'gado-gado-siram',
+    date: '2026-11-12',
+  ),
+  const CookedEntry(
+    id: 'cooked-seed-6',
+    recipeId: 'salmon-teriyaki',
+    date: '2026-11-10',
+  ),
+  const CookedEntry(
+    id: 'cooked-seed-7',
+    recipeId: 'sate-ayam',
+    date: '2026-11-08',
+  ),
+  const CookedEntry(
+    id: 'cooked-seed-8',
+    recipeId: 'telur-balado',
+    date: '2026-11-05',
+  ),
+  const CookedEntry(
+    id: 'cooked-seed-9',
+    recipeId: 'tumis-kangkung',
+    date: '2026-11-02',
+  ),
+  const CookedEntry(
+    id: 'cooked-seed-10',
+    recipeId: 'bihun-goreng',
+    date: '2026-10-30',
+  ),
+  const CookedEntry(
+    id: 'cooked-seed-11',
+    recipeId: 'nasi-goreng-spesial',
+    date: '2026-10-26',
+  ),
+  const CookedEntry(
+    id: 'cooked-seed-12',
+    recipeId: 'ayam-kecap-bawang',
+    date: '2026-10-20',
+  ),
+];

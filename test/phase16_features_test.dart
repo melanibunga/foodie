@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -17,7 +15,8 @@ import 'package:foodie/services/location_service.dart';
 import 'package:foodie/widgets/illustrated_map.dart';
 import 'package:foodie/widgets/real_map_view.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
+import 'test_helper.dart';
 
 class MockLocationService extends LocationService {
   final bool serviceEnabled;
@@ -48,11 +47,7 @@ class MockLocationService extends LocationService {
 
 void main() {
   setUp(() {
-    SharedPreferences.setMockInitialValues({
-      'foodie:auth': jsonEncode(
-        const AuthState(isLoggedIn: true, user: seedUser).toJson(),
-      ),
-    });
+    // mock storage initialized
   });
 
   group('Fase 16 — Dark Mode & Real Map Tests', () {
@@ -67,33 +62,31 @@ void main() {
       expect(darkTheme.scaffoldBackgroundColor, palette.bg);
     });
 
-    testWidgets(
-      'FoodieApp applies Dark Theme when themeMode is dark',
-      (tester) async {
-        final prefs = await SharedPreferences.getInstance();
+    testWidgets('FoodieApp applies Dark Theme when themeMode is dark', (
+      tester,
+    ) async {
+      final boxes = await initTestBoxes();
+      final prefs = await SharedPreferences.getInstance();
 
-        await prefs.setString('foodie:themeMode', 'dark');
+      await prefs.setString('foodie:themeMode', 'dark');
 
-        final container = ProviderContainer(
-          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
-        );
-        addTearDown(container.dispose);
+      final container = ProviderContainer(
+        overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
+      );
+      addTearDown(container.dispose);
 
-        await tester.pumpWidget(
-          UncontrolledProviderScope(
-            container: container,
-            child: const FoodieApp(),
-          ),
-        );
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const FoodieApp(),
+        ),
+      );
 
-        await tester.pumpAndSettle();
+      await tester.pumpAndSettle();
 
-        final materialApp = tester.widget<MaterialApp>(
-          find.byType(MaterialApp),
-        );
-        expect(materialApp.themeMode, ThemeMode.dark);
-      },
-    );
+      final materialApp = tester.widget<MaterialApp>(find.byType(MaterialApp));
+      expect(materialApp.themeMode, ThemeMode.dark);
+    });
 
     test(
       'LocationNotifier handles permission denied gracefully with fallback',
@@ -159,7 +152,7 @@ void main() {
         tester.view.devicePixelRatio = 1.0;
         addTearDown(() => tester.view.resetPhysicalSize());
 
-        final prefs = await SharedPreferences.getInstance();
+        final boxes = await initTestBoxes();
 
         const mockService = MockLocationService(
           serviceEnabled: true,
@@ -174,7 +167,7 @@ void main() {
         await tester.pumpWidget(
           ProviderScope(
             overrides: [
-              sharedPreferencesProvider.overrideWithValue(prefs),
+              foodieBoxesProvider.overrideWithValue(boxes),
               locationServiceProvider.overrideWithValue(mockService),
             ],
             child: MaterialApp.router(

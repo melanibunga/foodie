@@ -1,10 +1,10 @@
-import 'dart:convert';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/utils/week_utils.dart';
 import '../data/seed_data.dart';
+import '../data/seed_helper.dart';
 import '../models/models.dart';
+import 'auth_provider.dart';
 import 'storage_provider.dart';
 
 /// Status hasil penambahan menu ke Meal Plan sesuai PRD §14.7, §15.6, §15.8
@@ -13,40 +13,38 @@ enum MealPlanAddResult { added, exists, pastDate }
 /// Injeksi waktu "sekarang" untuk kemudahan pengujian Meal Plan & tanggal lampau (PRD §15.6)
 final clockProvider = Provider<DateTime>((ref) => DateTime.now());
 
-/// State Notifier untuk Meal Plan mingguan sesuai PRD §9, §14.7, §15.6
+/// State Notifier untuk Meal Plan mingguan, diisolasi per akun user (Hive).
 class MealPlanNotifier extends Notifier<List<MealPlanEntry>> {
-  static const String prefKey = 'foodie:meal_plan';
-
   @override
   List<MealPlanEntry> build() {
+    final userId = ref.watch(currentUserIdProvider);
+    if (userId == null) return const [];
+
     try {
-      final prefs = ref.read(sharedPreferencesProvider);
-      final jsonStr = prefs.getString(prefKey);
-      if (jsonStr != null && jsonStr.isNotEmpty) {
-        final decoded = jsonDecode(jsonStr) as List<dynamic>;
-        return decoded
-            .map((item) => MealPlanEntry.fromJson(item as Map<String, dynamic>))
+      final box = ref.watch(mealPlanBoxProvider);
+      final raw = box.get(userId);
+      if (raw is List && raw.isNotEmpty) {
+        return raw
+            .map(
+              (item) => MealPlanEntry.fromJson(
+                Map<String, dynamic>.from(item as Map),
+              ),
+            )
             .toList();
-      } else {
-        final initialSeed = createSeedMealPlan();
-        prefs.setString(
-          prefKey,
-          jsonEncode(initialSeed.map((e) => e.toJson()).toList()),
-        );
-        return initialSeed;
+      } else if (userId == kDemoUserId && raw == null) {
+        return createSeedMealPlan();
       }
-    } catch (_) {
-      return createSeedMealPlan();
-    }
+    } catch (_) {}
+
+    return const [];
   }
 
   Future<void> _saveToStorage() async {
+    final userId = ref.read(currentUserIdProvider);
+    if (userId == null) return;
     try {
-      final prefs = ref.read(sharedPreferencesProvider);
-      await prefs.setString(
-        prefKey,
-        jsonEncode(state.map((e) => e.toJson()).toList()),
-      );
+      final box = ref.read(mealPlanBoxProvider);
+      await box.put(userId, state.map((e) => e.toJson()).toList());
     } catch (_) {}
   }
 
@@ -75,10 +73,10 @@ class MealPlanNotifier extends Notifier<List<MealPlanEntry>> {
   }
 
   /// Tambah resep ke tanggal tertentu (format YYYY-MM-DD)
-  /// Mengembalikan MealPlanAddResult (added / exists / pastDate).
-  /// - Bila tanggal < hari ini: menolak dengan status pastDate (PRD §15.6)
-  /// - Bila exists (resep sama pada tanggal sama), tidak menambah apa pun.
   Future<MealPlanAddResult> add(String date, String recipeId) async {
+    final userId = ref.read(currentUserIdProvider);
+    if (userId == null) return MealPlanAddResult.exists;
+
     final now = ref.read(clockProvider);
     final todayKey = WeekUtils.formatDateKey(
       DateTime(now.year, now.month, now.day),
@@ -102,9 +100,35 @@ class MealPlanNotifier extends Notifier<List<MealPlanEntry>> {
     return MealPlanAddResult.added;
   }
 
-  /// Hapus satu entri meal plan berdasarkan id entri
-  Future<void> remove(String id) async {
-    state = state.where((e) => e.id != id).toList();
+  /// Hapus satu jadwal berdasarkan ID entri
+  Future<void> remove(String entryId) async {
+    final userId = ref.read(currentUserIdProvider);
+    if (userId == null) return;
+
+    state = state.where((e) => e.id != entryId).toList();
+    await _saveToStorage();
+  }
+
+  /// Hapus seluruh rencana menu pada tanggal tertentu
+  Future<void> removeDate(String date) async {
+    final userId = ref.read(currentUserIdProvider);
+    if (userId == null) return;
+
+    state = state.where((e) => e.date != date).toList();
+    await _saveToStorage();
+  }
+
+  /// Hapus rencana yang sudah lewat dari hari ini
+  Future<void> clearPastDates() async {
+    final userId = ref.read(currentUserIdProvider);
+    if (userId == null) return;
+
+    final now = ref.read(clockProvider);
+    final todayKey = WeekUtils.formatDateKey(
+      DateTime(now.year, now.month, now.day),
+    );
+
+    state = state.where((e) => e.date.compareTo(todayKey) >= 0).toList();
     await _saveToStorage();
   }
 
@@ -117,13 +141,17 @@ class MealPlanNotifier extends Notifier<List<MealPlanEntry>> {
 
   /// Reset ke seed demo
   Future<void> resetToSeed() async {
-    final prefs = ref.read(sharedPreferencesProvider);
-    final initialSeed = createSeedMealPlan();
-    await prefs.setString(
-      prefKey,
-      jsonEncode(initialSeed.map((e) => e.toJson()).toList()),
-    );
-    state = initialSeed;
+    final userId = ref.read(currentUserIdProvider);
+    if (userId == null) return;
+
+    final box = ref.read(mealPlanBoxProvider);
+    if (userId == kDemoUserId) {
+      state = createSeedMealPlan();
+      await box.put(userId, state.map((e) => e.toJson()).toList());
+    } else {
+      state = const [];
+      await box.put(userId, <dynamic>[]);
+    }
   }
 }
 
@@ -131,6 +159,15 @@ final mealPlanProvider =
     NotifierProvider<MealPlanNotifier, List<MealPlanEntry>>(() {
       return MealPlanNotifier();
     });
+
+/// Provider daftar entri meal plan yang difilter untuk tanggal tertentu (format YYYY-MM-DD)
+final mealPlanForDateProvider = Provider.family<List<MealPlanEntry>, String>((
+  ref,
+  date,
+) {
+  final entries = ref.watch(mealPlanProvider);
+  return entries.where((e) => e.date == date).toList();
+});
 
 /// Provider entri meal plan per tanggal YYYY-MM-DD
 final mealPlanByDateProvider = Provider.family<List<MealPlanEntry>, String>((
@@ -151,4 +188,10 @@ final isRecipePlannedProvider = Provider.family<bool, String>((ref, recipeId) {
   return entries.any(
     (e) => e.recipeId == recipeId && e.date.compareTo(todayKey) >= 0,
   );
+});
+
+/// Provider total jadwal aktif minggu berjalan
+final mealPlanWeeklyCountProvider = Provider<int>((ref) {
+  final entries = ref.watch(mealPlanProvider);
+  return entries.length;
 });

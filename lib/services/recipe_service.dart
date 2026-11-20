@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/recipes.dart';
 import '../models/models.dart';
 import '../providers/recipes_provider.dart';
+import '../providers/storage_provider.dart';
+import 'api_recipe_service.dart';
 
 /// Kontrak abstraksi data resep sesuai PRD §9.1.
 /// Semua halaman dan store wajib mengakses data melalui service ini.
@@ -38,9 +40,8 @@ class LocalRecipeService implements RecipeService {
       return _fixedRecipePool;
     }
     if (_ref != null) {
-      // Ambil resep dari recipesProvider (seed + user created recipes)
-      final customRecipes = _ref.read(recipesProvider);
-      return customRecipes;
+      final myRecipes = _ref.read(myRecipesProvider);
+      return [...seedRecipes, ...myRecipes];
     }
     return seedRecipes;
   }
@@ -133,7 +134,14 @@ class LocalRecipeService implements RecipeService {
   }
 }
 
-/// Provider utama untuk RecipeService
+/// Provider utama untuk RecipeService sesuai konfigurasi kRecipeSource
 final recipeServiceProvider = Provider<RecipeService>((ref) {
-  return LocalRecipeService(ref);
+  if (kRecipeSource == 'local') {
+    return LocalRecipeService(ref);
+  }
+  return ApiRecipeService(
+    ref: ref,
+    boxes: ref.watch(foodieBoxesProvider),
+    localService: LocalRecipeService(ref),
+  );
 });

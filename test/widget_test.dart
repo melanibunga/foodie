@@ -4,18 +4,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:foodie/app/app.dart';
 import 'package:foodie/pages/splash_page.dart';
 import 'package:foodie/providers/storage_provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
+import 'test_helper.dart';
 
 void main() {
   testWidgets('App renders SplashPage at initial route', (
     WidgetTester tester,
   ) async {
-    SharedPreferences.setMockInitialValues({});
-    final prefs = await SharedPreferences.getInstance();
+    // mock storage initialized
+    final boxes = await initTestBoxes();
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
         child: const FoodieApp(),
       ),
     );

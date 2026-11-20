@@ -1,0 +1,74 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API 0.7.62.11 87bfad18",
+  "osm3s": {
+    "timestamp_osm_base": "2026-11-20T03:10:23Z",
+    "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."
+  },
+  "elements": [
+
+{
+  "type": "node",
+  "id": 1646580099,
+  "lat": -7.7576446,
+  "lon": 110.3817008,
+  "tags": {
+    "alt_name": "Hoka Hoka Bento",
+    "amenity": "fast_food",
+    "brand": "HokBen",
+    "brand:wikidata": "Q5877948",
+    "cuisine": "japanese",
+    "name": "HokBen",
+    "takeaway": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 1748289552,
+  "lat": -7.7659179,
+  "lon": 110.3794555,
+  "tags": {
+    "amenity": "restaurant",
+    "name": "RM Padang AMBO"
+  }
+},
+{
+  "type": "node",
+  "id": 1748289570,
+  "lat": -7.7659964,
+  "lon": 110.3799566,
+  "tags": {
+    "amenity": "restaurant",
+    "name": "RM Padang Lima Sekawan"
+  }
+},
+{
+  "type": "node",
+  "id": 1748292226,
+  "lat": -7.7662178,
+  "lon": 110.3807467,
+  "tags": {
+    "amenity": "fast_food",
+    "name": "Jogja Chicken"
+  }
+},
+{
+  "type": "node",
+  "id": 2564076661,
+  "lat": -7.7615648,
+  "lon": 110.3801430,
+  "tags": {
+    "addr:street": "Jalan Kaliurang",
+    "alt_name": "Dunkin' Donuts",
+    "amenity": "fast_food",
+    "brand": "Dunkin'",
+    "brand:wikidata": "Q847743",
+    "brand:wikipedia": "en:Dunkin' Donuts",
+    "cuisine": "donut;coffee_shop",
+    "name": "Dunkin'",
+    "takeaway": "yes"
+  }
+}
+
+  ]
+}

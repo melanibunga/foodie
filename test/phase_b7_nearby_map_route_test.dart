@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,7 +16,8 @@ import 'package:foodie/services/route_service.dart';
 import 'package:foodie/widgets/real_map_view.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
+import 'test_helper.dart';
 
 class MockLocationService extends LocationService {
   final bool serviceEnabled;
@@ -96,13 +95,7 @@ class MockSuccessfulRouteService implements RouteService {
 
 void main() {
   setUp(() {
-    SharedPreferences.setMockInitialValues({
-      'foodie:auth': jsonEncode(
-        const AuthState(isLoggedIn: true, user: seedUser).toJson(),
-      ),
-      'foodie:favorites': jsonEncode([]),
-      'foodie:ratings': jsonEncode({}),
-    });
+    // mock storage initialized
   });
 
   group('Fase B7 — Unit Test: Parser Respons OSRM (PRD §14.12)', () {
@@ -296,7 +289,7 @@ void main() {
         tester.view.devicePixelRatio = 1.0;
         addTearDown(() => tester.view.resetPhysicalSize());
 
-        final prefs = await SharedPreferences.getInstance();
+        final boxes = await initTestBoxes();
 
         final router = createRouter(
           initialLocation: '/nearby',
@@ -306,7 +299,7 @@ void main() {
         await tester.pumpWidget(
           ProviderScope(
             overrides: [
-              sharedPreferencesProvider.overrideWithValue(prefs),
+              foodieBoxesProvider.overrideWithValue(boxes),
               locationServiceProvider.overrideWithValue(
                 const MockLocationService(),
               ),
@@ -358,7 +351,7 @@ void main() {
         tester.view.devicePixelRatio = 1.0;
         addTearDown(() => tester.view.resetPhysicalSize());
 
-        final prefs = await SharedPreferences.getInstance();
+        final boxes = await initTestBoxes();
 
         final router = createRouter(
           initialLocation: '/nearby',
@@ -368,7 +361,7 @@ void main() {
         await tester.pumpWidget(
           ProviderScope(
             overrides: [
-              sharedPreferencesProvider.overrideWithValue(prefs),
+              foodieBoxesProvider.overrideWithValue(boxes),
               locationServiceProvider.overrideWithValue(
                 const MockLocationService(),
               ),
@@ -408,7 +401,7 @@ void main() {
     testWidgets(
       'Responsive layouts (360x640, 390x844, 440x956) render NearbyPage without overflow',
       (tester) async {
-        final prefs = await SharedPreferences.getInstance();
+        final boxes = await initTestBoxes();
         final sizes = [
           const Size(360, 640),
           const Size(390, 844),
@@ -428,7 +421,7 @@ void main() {
           await tester.pumpWidget(
             ProviderScope(
               overrides: [
-                sharedPreferencesProvider.overrideWithValue(prefs),
+                foodieBoxesProvider.overrideWithValue(boxes),
                 locationServiceProvider.overrideWithValue(
                   const MockLocationService(),
                 ),

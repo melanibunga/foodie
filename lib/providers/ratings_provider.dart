@@ -1,18 +1,18 @@
-import 'dart:convert';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/models.dart';
+import 'auth_provider.dart';
+import 'recipes_provider.dart';
 import 'storage_provider.dart';
 
-/// Hasil kalkulasi rating efektif resep berdasarkan data dasar dan rating lokal user (PRD §14.9).
-class EffectiveRating {
+/// Hasil kalkulasi rating efektif resep berdasarkan data dasar dan rating lokal user (PRD §14.9 & Fase B3).
+class RatingSummary {
   final double rating;
   final int reviews;
   final bool hasUserRating;
   final int? userRating;
 
-  const EffectiveRating({
+  const RatingSummary({
     required this.rating,
     required this.reviews,
     this.hasUserRating = false,
@@ -22,7 +22,7 @@ class EffectiveRating {
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
-    return other is EffectiveRating &&
+    return other is RatingSummary &&
         other.rating == rating &&
         other.reviews == reviews &&
         other.hasUserRating == hasUserRating &&
@@ -33,16 +33,29 @@ class EffectiveRating {
   int get hashCode => Object.hash(rating, reviews, hasUserRating, userRating);
 }
 
-/// Rumus rating efektif PRD §14.9:
-/// (ratingDasar * ulasanDasar + ratingUser) / (ulasanDasar + 1), dibulatkan 1 desimal, ulasan + 1.
-/// Bila user memberi rating lagi untuk resep yang sama, nilainya menggantikan (dihitung selalu dari nilai dasar).
-EffectiveRating calculateEffectiveRating({
+typedef EffectiveRating = RatingSummary;
+
+/// Rumus rating tampil Fase B3:
+/// avg = (base*dummyCount + sum)/(dummyCount + n); reviews = dummyCount + n
+/// Di mana:
+/// - base = rating dasar resep (derived dari hash id)
+/// - dummyCount = ulasan dasar resep (derived dari hash id)
+/// - sum = total bintang dari semua user di box ratings untuk resep ini
+/// - n = jumlah user yang memberi rating untuk resep ini
+RatingSummary calculateRatingSummary({
   required double baseRating,
   required int baseReviews,
-  int? userRating,
+  required Map<String, int> allRatingsForRecipe,
+  String? currentUserId,
 }) {
-  if (userRating == null || userRating < 1 || userRating > 5) {
-    return EffectiveRating(
+  final userRating = currentUserId != null
+      ? allRatingsForRecipe[currentUserId]
+      : null;
+  final hasUser = userRating != null;
+
+  final n = allRatingsForRecipe.length;
+  if (n == 0) {
+    return RatingSummary(
       rating: baseRating,
       reviews: baseReviews,
       hasUserRating: false,
@@ -50,64 +63,97 @@ EffectiveRating calculateEffectiveRating({
     );
   }
 
-  final double raw =
-      ((baseRating * baseReviews) + userRating) / (baseReviews + 1);
+  final int sum = allRatingsForRecipe.values.fold<int>(
+    0,
+    (prev, val) => prev + val,
+  );
+  final double raw = ((baseRating * baseReviews) + sum) / (baseReviews + n);
   final double rounded = double.parse(raw.toStringAsFixed(1));
 
-  return EffectiveRating(
+  return RatingSummary(
     rating: rounded,
-    reviews: baseReviews + 1,
-    hasUserRating: true,
+    reviews: baseReviews + n,
+    hasUserRating: hasUser,
     userRating: userRating,
   );
 }
 
-/// Notifier untuk menyimpan dan mengelola rating lokal user (foodie:ratings).
-class RatingsNotifier extends Notifier<Map<String, int>> {
-  static const String prefKey = 'foodie:ratings';
+/// Helper backward-compatible untuk calculateEffectiveRating lama
+EffectiveRating calculateEffectiveRating({
+  required double baseRating,
+  required int baseReviews,
+  int? userRating,
+}) {
+  return calculateRatingSummary(
+    baseRating: baseRating,
+    baseReviews: baseReviews,
+    allRatingsForRecipe: userRating != null
+        ? {'default_user': userRating}
+        : const {},
+    currentUserId: userRating != null ? 'default_user' : null,
+  );
+}
 
+/// Notifier untuk menyimpan dan mengelola rating lokal user di box `ratings`.
+/// Struktur box: {recipeId: {userId: bintang 1-5}}, diisolasi per akun user.
+class RatingsNotifier extends Notifier<Map<String, int>> {
   @override
   Map<String, int> build() {
-    _loadFromStorage();
-    return state;
-  }
+    final userId = ref.watch(currentUserIdProvider);
+    if (userId == null) return const {};
 
-  void _loadFromStorage() {
     try {
-      final prefs = ref.read(sharedPreferencesProvider);
-      final jsonStr = prefs.getString(prefKey);
-      if (jsonStr != null && jsonStr.isNotEmpty) {
-        final decoded = jsonDecode(jsonStr) as Map<String, dynamic>;
-        state = decoded.map((key, value) => MapEntry(key, value as int));
-      } else {
-        state = {};
+      final box = ref.watch(ratingsBoxProvider);
+      final Map<String, int> userRatings = {};
+      for (final key in box.keys) {
+        final raw = box.get(key);
+        if (raw is Map) {
+          final map = Map<dynamic, dynamic>.from(raw);
+          if (map.containsKey(userId)) {
+            userRatings[key.toString()] = (map[userId] as num).toInt();
+          }
+        }
       }
+      return userRatings;
     } catch (_) {
-      state = {};
+      return const {};
     }
   }
 
-  Future<void> _saveToStorage() async {
-    try {
-      final prefs = ref.read(sharedPreferencesProvider);
-      await prefs.setString(prefKey, jsonEncode(state));
-    } catch (_) {}
-  }
-
-  /// Beri atau ganti rating untuk resep tertentu (1..5).
+  /// Beri atau ganti rating untuk resep tertentu (1..5) oleh user aktif.
   Future<void> rate(String recipeId, int rating) async {
+    final userId = ref.read(currentUserIdProvider);
+    if (userId == null) return;
     if (rating < 1 || rating > 5) return;
+
+    final box = ref.read(ratingsBoxProvider);
+    final raw = box.get(recipeId);
+    final map = raw is Map
+        ? Map<dynamic, dynamic>.from(raw)
+        : <dynamic, dynamic>{};
+    map[userId] = rating;
+
+    await box.put(recipeId, map);
     state = {...state, recipeId: rating};
-    await _saveToStorage();
   }
 
-  /// Ambil rating yang pernah diberikan user untuk resep tertentu
+  /// Ambil rating yang pernah diberikan user aktif untuk resep tertentu
   int? getRating(String recipeId) => state[recipeId];
 
-  /// Reset semua rating
-  Future<void> clearAll() async {
-    state = {};
-    await _saveToStorage();
+  /// Reset rating milik user aktif
+  Future<void> resetToSeed() async {
+    final userId = ref.read(currentUserIdProvider);
+    if (userId == null) return;
+
+    final box = ref.read(ratingsBoxProvider);
+    for (final key in box.keys) {
+      final raw = box.get(key);
+      if (raw is Map && raw.containsKey(userId)) {
+        final map = Map<dynamic, dynamic>.from(raw)..remove(userId);
+        await box.put(key, map);
+      }
+    }
+    state = const {};
   }
 }
 
@@ -115,21 +161,77 @@ final ratingsProvider = NotifierProvider<RatingsNotifier, Map<String, int>>(() {
   return RatingsNotifier();
 });
 
-/// Provider family untuk mengambil rating user spesifik untuk satu resep
-final recipeUserRatingProvider = Provider.family<int?, String>((ref, recipeId) {
+/// Provider untuk mengambil semua rating dari seluruh user untuk resep tertentu {userId: rating}
+final allRecipeRatingsProvider = Provider.family<Map<String, int>, String>((
+  ref,
+  recipeId,
+) {
+  // Watch ratingsProvider agar otomatis reaktif saat user aktif memberi rating
+  ref.watch(ratingsProvider);
+  final box = ref.watch(ratingsBoxProvider);
+  final raw = box.get(recipeId);
+  if (raw is Map) {
+    final Map<String, int> result = {};
+    raw.forEach((k, v) {
+      if (v is num) {
+        result[k.toString()] = v.toInt();
+      }
+    });
+    return result;
+  }
+  return const {};
+});
+
+/// Provider family untuk mengambil rating user aktif untuk satu resep
+final userRatingProvider = Provider.family<int?, String>((ref, recipeId) {
   final ratings = ref.watch(ratingsProvider);
   return ratings[recipeId];
 });
 
-/// Provider family untuk menghitung rating efektif satu resep
-final effectiveRatingProvider = Provider.family<EffectiveRating, Recipe>((
+final recipeUserRatingProvider = userRatingProvider;
+
+/// Provider rating ringkasan gabungan Fase B3:
+/// avg = (base*dummyCount + sum)/(dummyCount + n); reviews = dummyCount + n
+final ratingSummaryProvider = Provider.family<RatingSummary, dynamic>((
   ref,
-  recipe,
+  recipeOrId,
 ) {
-  final userRating = ref.watch(recipeUserRatingProvider(recipe.id));
-  return calculateEffectiveRating(
+  final Recipe recipe;
+  if (recipeOrId is Recipe) {
+    recipe = recipeOrId;
+  } else {
+    final recipes = ref.watch(recipesProvider);
+    recipe = recipes.firstWhere(
+      (r) => r.id == recipeOrId.toString(),
+      orElse: () => const Recipe(
+        id: '',
+        title: '',
+        description: '',
+        category: '',
+        cuisine: '',
+        meal: MealType.lunch,
+        mainIngredient: '',
+        rating: 4.5,
+        reviews: 10,
+        timeMin: 30,
+        servings: 2,
+        kcal: 250,
+        difficulty: Difficulty.mudah,
+        ingredients: [],
+        steps: [],
+      ),
+    );
+  }
+
+  final allRatings = ref.watch(allRecipeRatingsProvider(recipe.id));
+  final currentUserId = ref.watch(currentUserIdProvider);
+
+  return calculateRatingSummary(
     baseRating: recipe.rating,
     baseReviews: recipe.reviews,
-    userRating: userRating,
+    allRatingsForRecipe: allRatings,
+    currentUserId: currentUserId,
   );
 });
+
+final effectiveRatingProvider = ratingSummaryProvider;

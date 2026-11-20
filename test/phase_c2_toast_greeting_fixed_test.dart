@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -13,22 +11,12 @@ import 'package:foodie/providers/auth_provider.dart';
 import 'package:foodie/providers/storage_provider.dart';
 import 'package:foodie/providers/ui_helper.dart';
 import 'package:foodie/widgets/app_header.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
+import 'test_helper.dart';
 
 void main() {
   setUp(() {
-    SharedPreferences.setMockInitialValues({
-      'foodie:auth': jsonEncode(
-        const AuthState(isLoggedIn: true, user: seedUser).toJson(),
-      ),
-      'foodie:recipes': jsonEncode([]),
-      'foodie:favorites': jsonEncode(['resep-1', 'resep-2', 'resep-3']),
-      'foodie:ratings': jsonEncode({}),
-      'foodie:cooked': jsonEncode([
-        {'id': 'c-1', 'recipeId': 'resep-1', 'date': '2026-03-01'},
-        {'id': 'c-2', 'recipeId': 'resep-2', 'date': '2026-03-02'},
-      ]),
-    });
+    // mock storage initialized
   });
 
   group('Fase C2 — Greeting Unit Tests (PRD §15.2)', () {
@@ -73,12 +61,12 @@ void main() {
           email: 'siti@example.com',
         );
 
-        final prefs = await SharedPreferences.getInstance();
+        final boxes = await initTestBoxes();
 
         await tester.pumpWidget(
           ProviderScope(
             overrides: [
-              sharedPreferencesProvider.overrideWithValue(prefs),
+              foodieBoxesProvider.overrideWithValue(boxes),
               currentUserProvider.overrideWith((ref) => longNamedUser),
             ],
             child: MaterialApp(
@@ -190,7 +178,7 @@ void main() {
         tester.view.devicePixelRatio = 1.0;
         addTearDown(() => tester.view.reset());
 
-        final prefs = await SharedPreferences.getInstance();
+        final boxes = await initTestBoxes();
         final router = createRouter(
           initialLocation: '/favorites',
           getAuthState: () => const AuthState(isLoggedIn: true, user: seedUser),
@@ -198,7 +186,7 @@ void main() {
 
         await tester.pumpWidget(
           ProviderScope(
-            overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+            overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
             child: MaterialApp.router(
               theme: AppTheme.lightTheme,
               routerConfig: router,
@@ -244,7 +232,7 @@ void main() {
         tester.view.devicePixelRatio = 1.0;
         addTearDown(() => tester.view.reset());
 
-        final prefs = await SharedPreferences.getInstance();
+        final boxes = await initTestBoxes();
         final router = createRouter(
           initialLocation: '/meal-plan',
           getAuthState: () => const AuthState(isLoggedIn: true, user: seedUser),
@@ -252,7 +240,7 @@ void main() {
 
         await tester.pumpWidget(
           ProviderScope(
-            overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+            overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
             child: MaterialApp.router(
               theme: AppTheme.lightTheme,
               routerConfig: router,
@@ -298,7 +286,7 @@ void main() {
         tester.view.devicePixelRatio = 1.0;
         addTearDown(() => tester.view.reset());
 
-        final prefs = await SharedPreferences.getInstance();
+        final boxes = await initTestBoxes();
         final router = createRouter(
           initialLocation: '/cooked',
           getAuthState: () => const AuthState(isLoggedIn: true, user: seedUser),
@@ -306,7 +294,7 @@ void main() {
 
         await tester.pumpWidget(
           ProviderScope(
-            overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+            overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
             child: MaterialApp.router(
               theme: AppTheme.lightTheme,
               routerConfig: router,
@@ -345,7 +333,7 @@ void main() {
         tester.view.devicePixelRatio = 1.0;
         addTearDown(() => tester.view.reset());
 
-        final prefs = await SharedPreferences.getInstance();
+        final boxes = await initTestBoxes();
         final router = createRouter(
           initialLocation: '/my-recipes',
           getAuthState: () => const AuthState(isLoggedIn: true, user: seedUser),
@@ -353,7 +341,7 @@ void main() {
 
         await tester.pumpWidget(
           ProviderScope(
-            overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+            overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
             child: MaterialApp.router(
               theme: AppTheme.lightTheme,
               routerConfig: router,
@@ -392,7 +380,7 @@ void main() {
         tester.view.devicePixelRatio = 1.0;
         addTearDown(() => tester.view.reset());
 
-        final prefs = await SharedPreferences.getInstance();
+        final boxes = await initTestBoxes();
         final router = createRouter(
           initialLocation: '/favorites',
           getAuthState: () => const AuthState(isLoggedIn: true, user: seedUser),
@@ -400,7 +388,7 @@ void main() {
 
         await tester.pumpWidget(
           ProviderScope(
-            overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+            overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
             child: MaterialApp.router(
               theme: AppTheme.lightTheme,
               routerConfig: router,

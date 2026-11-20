@@ -1,9 +1,10 @@
-import 'dart:convert';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/utils/week_utils.dart';
+import '../data/seed_data.dart';
+import '../data/seed_helper.dart';
 import '../models/models.dart';
+import 'auth_provider.dart';
 import 'storage_provider.dart';
 
 /// Ringkasan statistik per resep yang sudah dimasak (PRD §14.10)
@@ -11,11 +12,13 @@ class CookedRecipeSummary {
   final String recipeId;
   final int count;
   final String latestDate; // Format YYYY-MM-DD
+  final int? latestRating; // Rating bintang terakhir yang diberikan
 
   const CookedRecipeSummary({
     required this.recipeId,
     required this.count,
     required this.latestDate,
+    this.latestRating,
   });
 
   @override
@@ -24,125 +27,77 @@ class CookedRecipeSummary {
     return other is CookedRecipeSummary &&
         other.recipeId == recipeId &&
         other.count == count &&
-        other.latestDate == latestDate;
+        other.latestDate == latestDate &&
+        other.latestRating == latestRating;
   }
 
   @override
-  int get hashCode => Object.hash(recipeId, count, latestDate);
+  int get hashCode => Object.hash(recipeId, count, latestDate, latestRating);
 }
 
-/// 12 entri seed riwayat masak sesuai PRD §9 & §14.10 ("dimasak 12")
-final List<CookedEntry> seedCookedEntries = [
-  const CookedEntry(
-    id: 'cooked-seed-1',
-    recipeId: 'ayam-kecap-bawang',
-    date: '2026-11-18',
-  ),
-  const CookedEntry(
-    id: 'cooked-seed-2',
-    recipeId: 'soto-ayam',
-    date: '2026-11-17',
-  ),
-  const CookedEntry(
-    id: 'cooked-seed-3',
-    recipeId: 'nasi-goreng-nusantara',
-    date: '2026-11-16',
-  ),
-  const CookedEntry(
-    id: 'cooked-seed-4',
-    recipeId: 'rendang-sapi-minang',
-    date: '2026-11-14',
-  ),
-  const CookedEntry(
-    id: 'cooked-seed-5',
-    recipeId: 'gado-gado-siram',
-    date: '2026-11-12',
-  ),
-  const CookedEntry(
-    id: 'cooked-seed-6',
-    recipeId: 'salmon-teriyaki',
-    date: '2026-11-10',
-  ),
-  const CookedEntry(
-    id: 'cooked-seed-7',
-    recipeId: 'sate-ayam',
-    date: '2026-11-08',
-  ),
-  const CookedEntry(
-    id: 'cooked-seed-8',
-    recipeId: 'telur-balado',
-    date: '2026-11-05',
-  ),
-  const CookedEntry(
-    id: 'cooked-seed-9',
-    recipeId: 'tumis-kangkung',
-    date: '2026-11-02',
-  ),
-  const CookedEntry(
-    id: 'cooked-seed-10',
-    recipeId: 'bihun-goreng',
-    date: '2026-10-30',
-  ),
-  const CookedEntry(
-    id: 'cooked-seed-11',
-    recipeId: 'nasi-goreng-spesial',
-    date: '2026-10-26',
-  ),
-  const CookedEntry(
-    id: 'cooked-seed-12',
-    recipeId: 'ayam-kecap-bawang',
-    date: '2026-10-20',
-  ),
-];
-
-/// Notifier untuk mengelola daftar riwayat memasak (foodie:cooked).
+/// Notifier untuk mengelola daftar riwayat memasak, diisolasi per akun user (Hive).
 class CookedNotifier extends Notifier<List<CookedEntry>> {
-  static const String prefKey = 'foodie:cooked';
-
   @override
   List<CookedEntry> build() {
-    _loadFromStorage();
-    return state;
-  }
+    final userId = ref.watch(currentUserIdProvider);
+    if (userId == null) return const [];
 
-  void _loadFromStorage() {
     try {
-      final prefs = ref.read(sharedPreferencesProvider);
-      final jsonStr = prefs.getString(prefKey);
-      if (jsonStr != null && jsonStr.isNotEmpty) {
-        final decoded = jsonDecode(jsonStr) as List<dynamic>;
-        state = decoded
-            .map((item) => CookedEntry.fromJson(item as Map<String, dynamic>))
+      final box = ref.watch(cookedBoxProvider);
+      final raw = box.get(userId);
+      if (raw is List && raw.isNotEmpty) {
+        return raw
+            .map(
+              (item) =>
+                  CookedEntry.fromJson(Map<String, dynamic>.from(item as Map)),
+            )
             .toList();
-      } else {
-        state = seedCookedEntries;
+      } else if (userId == kDemoUserId && raw == null) {
+        return List<CookedEntry>.from(seedCookedEntries);
       }
-    } catch (_) {
-      state = seedCookedEntries;
-    }
+    } catch (_) {}
+
+    return const [];
   }
 
   Future<void> _saveToStorage() async {
+    final userId = ref.read(currentUserIdProvider);
+    if (userId == null) return;
     try {
-      final prefs = ref.read(sharedPreferencesProvider);
-      await prefs.setString(
-        prefKey,
-        jsonEncode(state.map((e) => e.toJson()).toList()),
-      );
+      final box = ref.read(cookedBoxProvider);
+      await box.put(userId, state.map((e) => e.toJson()).toList());
     } catch (_) {}
   }
 
   /// Tambahkan 1 entri selesai memasak untuk suatu resep
-  Future<void> add(String recipeId, [String? dateKey]) async {
+  Future<void> add(String recipeId, [String? dateKey, int? rating]) async {
+    final userId = ref.read(currentUserIdProvider);
+    if (userId == null) return;
+
     final date = dateKey ?? WeekUtils.formatDateKey(DateTime.now());
     final newEntry = CookedEntry(
       id: 'cooked-${DateTime.now().millisecondsSinceEpoch}',
       recipeId: recipeId,
       date: date,
+      rating: rating,
     );
 
     state = [newEntry, ...state];
     await _saveToStorage();
+  }
+
+  /// Update rating pada entri masak terbaru untuk resep tersebut
+  Future<void> updateLatestRating(String recipeId, int rating) async {
+    final userId = ref.read(currentUserIdProvider);
+    if (userId == null) return;
+
+    final index = state.indexWhere((e) => e.recipeId == recipeId);
+    if (index != -1) {
+      final updated = List<CookedEntry>.from(state);
+      updated[index] = updated[index].copyWith(rating: rating);
+      state = updated;
+      await _saveToStorage();
+    }
   }
 
   /// Ringkasan grouped per resep: jumlah kali dimasak & tanggal terakhir.
@@ -158,39 +113,56 @@ class CookedNotifier extends Notifier<List<CookedEntry>> {
       final recipeId = entry.key;
       final entries = entry.value;
 
-      // Cari tanggal terbaru
       String maxDate = entries.first.date;
+      int? latestRating;
       for (final e in entries) {
-        if (e.date.compareTo(maxDate) > 0) {
+        if (e.date.compareTo(maxDate) >= 0) {
           maxDate = e.date;
+          if (e.rating != null) {
+            latestRating = e.rating;
+          }
         }
       }
+      latestRating ??= entries
+          .firstWhere((e) => e.rating != null, orElse: () => entries.first)
+          .rating;
 
       summaries.add(
         CookedRecipeSummary(
           recipeId: recipeId,
           count: entries.length,
           latestDate: maxDate,
+          latestRating: latestRating,
         ),
       );
     }
 
-    // Urutkan dari tanggal terbaru ke terlama
     summaries.sort((a, b) => b.latestDate.compareTo(a.latestDate));
     return summaries;
   }
 
   /// Kosongkan riwayat
   Future<void> clearAll() async {
+    final userId = ref.read(currentUserIdProvider);
+    if (userId == null) return;
+
     state = [];
     await _saveToStorage();
   }
 
   /// Reset ke seed demo
   Future<void> resetToSeed() async {
-    final prefs = ref.read(sharedPreferencesProvider);
-    await prefs.remove(prefKey);
-    state = seedCookedEntries;
+    final userId = ref.read(currentUserIdProvider);
+    if (userId == null) return;
+
+    final box = ref.read(cookedBoxProvider);
+    if (userId == kDemoUserId) {
+      state = List<CookedEntry>.from(seedCookedEntries);
+      await box.put(userId, state.map((e) => e.toJson()).toList());
+    } else {
+      state = const [];
+      await box.put(userId, <dynamic>[]);
+    }
   }
 }
 
@@ -198,7 +170,7 @@ final cookedProvider = NotifierProvider<CookedNotifier, List<CookedEntry>>(() {
   return CookedNotifier();
 });
 
-/// Total berapa kali user telah memasak (menggantikan user.cooked)
+/// Total berapa kali user telah memasak (panjang riwayat cooked user aktif)
 final cookedCountProvider = Provider<int>((ref) {
   final entries = ref.watch(cookedProvider);
   return entries.length;
@@ -206,7 +178,6 @@ final cookedCountProvider = Provider<int>((ref) {
 
 /// Ringkasan resep unik yang sudah dimasak beserta frekuensi & tanggal terakhir
 final cookedSummaryProvider = Provider<List<CookedRecipeSummary>>((ref) {
-  // Watch cookedProvider state to rebuild when entries change
   ref.watch(cookedProvider);
   return ref.read(cookedProvider.notifier).byRecipe();
 });

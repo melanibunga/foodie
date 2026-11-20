@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,11 +10,12 @@ import 'package:foodie/providers/auth_provider.dart';
 import 'package:foodie/providers/cart_provider.dart';
 import 'package:foodie/providers/storage_provider.dart';
 import 'package:foodie/widgets/grocery_group_header.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
+import 'test_helper.dart';
 
 void main() {
   setUp(() {
-    SharedPreferences.setMockInitialValues({});
+    // mock storage initialized
   });
 
   group('Fase E1 — Bagian A: Groceries Hapus Menu Alignment Test', () {
@@ -30,6 +29,7 @@ void main() {
           tester.view.devicePixelRatio = 1.0;
           addTearDown(() => tester.view.resetPhysicalSize());
 
+          final boxes = await initTestBoxes();
           final prefs = await SharedPreferences.getInstance();
 
           final testGroups = [
@@ -89,7 +89,7 @@ void main() {
 
           await tester.pumpWidget(
             ProviderScope(
-              overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+              overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
               child: MaterialApp.router(
                 theme: AppTheme.lightTheme,
                 routerConfig: router,

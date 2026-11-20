@@ -80,6 +80,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
     if (success) {
       context.go('/home');
+    } else {
+      final authError = ref.read(authProvider).errorMessage;
+      setState(() {
+        _passwordError = authError ?? 'Email atau kata sandi salah';
+      });
     }
   }
 
@@ -248,47 +253,24 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
                     const SizedBox(height: 16),
 
-                    // Baris: "Ingat saya" & "Lupa kata sandi?"
+                    // Baris: "Ingat saya"
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Flexible(
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              AppCheckbox(
-                                value: _rememberMe,
-                                onChanged: (val) {
-                                  setState(() => _rememberMe = val);
-                                },
-                              ),
-                              const SizedBox(width: 8),
-                              Flexible(
-                                child: Text(
-                                  'Ingat saya',
-                                  style: TextStyle(
-                                    fontFamily: 'Poppins',
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w400,
-                                    color: palette.textBody,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
+                        AppCheckbox(
+                          value: _rememberMe,
+                          onChanged: (val) {
+                            setState(() => _rememberMe = val);
+                          },
                         ),
                         const SizedBox(width: 8),
-                        GestureDetector(
-                          onTap: () => context.push('/forgot'),
-                          child: Text(
-                            'Lupa kata sandi?',
-                            style: TextStyle(
-                              fontFamily: 'Poppins',
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: palette.danger,
-                            ),
+                        Text(
+                          'Ingat saya',
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 12,
+                            fontWeight: FontWeight.w400,
+                            color: palette.textBody,
                           ),
                         ),
                       ],

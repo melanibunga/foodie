@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -24,7 +22,8 @@ import 'package:foodie/widgets/ui/sticky_bottom_bar.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
+import 'test_helper.dart';
 
 class MockLocationService extends LocationService {
   final bool serviceEnabled;
@@ -70,15 +69,7 @@ class MockTestRouteService implements RouteService {
 
 void main() {
   setUp(() {
-    SharedPreferences.setMockInitialValues({
-      'foodie:auth': jsonEncode(
-        const AuthState(isLoggedIn: true, user: seedUser).toJson(),
-      ),
-      'foodie:groceries': jsonEncode(['Bawang merah::5 siung::false::bumbu']),
-      'foodie:ratings': jsonEncode(<String, dynamic>{'ayam-kecap-bawang': 5}),
-      'foodie:favorites': jsonEncode(['ayam-kecap-bawang']),
-      'foodie:recipes': jsonEncode([]),
-    });
+    // mock storage initialized
   });
 
   group('Fase B8: End-to-End User Flow', () {
@@ -89,7 +80,7 @@ void main() {
         tester.view.devicePixelRatio = 1.0;
         addTearDown(() => tester.view.resetPhysicalSize());
 
-        final prefs = await SharedPreferences.getInstance();
+        final boxes = await initTestBoxes();
         final router = createRouter(
           initialLocation: '/home',
           getAuthState: () => const AuthState(isLoggedIn: true, user: seedUser),
@@ -98,7 +89,7 @@ void main() {
         await tester.pumpWidget(
           ProviderScope(
             overrides: [
-              sharedPreferencesProvider.overrideWithValue(prefs),
+              foodieBoxesProvider.overrideWithValue(boxes),
               routeServiceProvider.overrideWithValue(MockTestRouteService()),
               locationServiceProvider.overrideWithValue(
                 const MockLocationService(),
@@ -247,7 +238,7 @@ void main() {
         tester.view.devicePixelRatio = 1.0;
         addTearDown(() => tester.view.resetPhysicalSize());
 
-        final prefs = await SharedPreferences.getInstance();
+        final boxes = await initTestBoxes();
         final router = createRouter(
           initialLocation: '/add',
           getAuthState: () => const AuthState(isLoggedIn: true, user: seedUser),
@@ -255,7 +246,7 @@ void main() {
 
         await tester.pumpWidget(
           ProviderScope(
-            overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+            overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
             child: MaterialApp.router(
               theme: AppTheme.lightTheme,
               routerConfig: router,
@@ -337,7 +328,7 @@ void main() {
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() => tester.view.resetPhysicalSize());
 
-      final prefs = await SharedPreferences.getInstance();
+      final boxes = await initTestBoxes();
       final router = createRouter(
         initialLocation: '/nearby',
         getAuthState: () => const AuthState(isLoggedIn: true, user: seedUser),
@@ -346,7 +337,7 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
-            sharedPreferencesProvider.overrideWithValue(prefs),
+            foodieBoxesProvider.overrideWithValue(boxes),
             locationServiceProvider.overrideWithValue(
               const MockLocationService(),
             ),

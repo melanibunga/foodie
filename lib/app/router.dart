@@ -12,7 +12,6 @@ import '../pages/create_recipe_page.dart';
 import '../pages/dev_components_page.dart';
 import '../pages/dev_tokens_page.dart';
 import '../pages/favorites_page.dart';
-import '../pages/forgot_page.dart';
 import '../pages/groceries_page.dart';
 import '../pages/home_page.dart';
 import '../pages/login_page.dart';
@@ -62,10 +61,9 @@ GoRouter createRouter({
           path == '/' ||
           path == '/login' ||
           path == '/register' ||
-          path == '/forgot' ||
           path.startsWith('/dev');
 
-      // Guard: tanpa session -> redirect ke /login (kecuali /, /login, /register, /forgot, /dev/*)
+      // Guard: tanpa session -> redirect ke /login (kecuali /, /login, /register, /dev/*)
       if (!isLoggedIn && !isPublic) {
         return '/login';
       }
@@ -87,7 +85,6 @@ GoRouter createRouter({
         path: '/register',
         builder: (context, state) => const RegisterPage(),
       ),
-      GoRoute(path: '/forgot', builder: (context, state) => const ForgotPage()),
 
       // ShellRoute untuk tab utama dengan floating bottom nav (Home, Search, Add, Meal Plan, Nearby)
       // /add kembali ke dalam shell (dengan bottom nav aktif) sesuai PRD §15.5

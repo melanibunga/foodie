@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -11,15 +9,12 @@ import 'package:foodie/providers/storage_provider.dart';
 import 'package:foodie/widgets/app_bottom_nav.dart';
 import 'package:foodie/widgets/ui/app_button.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
+import 'test_helper.dart';
 
 void main() {
   setUp(() {
-    SharedPreferences.setMockInitialValues({
-      'foodie:auth': jsonEncode(
-        const AuthState(isLoggedIn: true, user: seedUser).toJson(),
-      ),
-    });
+    // mock storage initialized
   });
 
   group('Fase B1 — Insets, Keyboard, Sheet, & Focus Tests', () {
@@ -34,7 +29,7 @@ void main() {
           tester.view.resetViewInsets();
         });
 
-        final prefs = await SharedPreferences.getInstance();
+        final boxes = await initTestBoxes();
 
         // 1. Test CreateRecipePage DONE button
         final addRouter = createRouter(
@@ -44,7 +39,7 @@ void main() {
 
         await tester.pumpWidget(
           ProviderScope(
-            overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+            overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
             child: MaterialApp.router(
               theme: AppTheme.lightTheme,
               routerConfig: addRouter,
@@ -79,7 +74,7 @@ void main() {
 
         await tester.pumpWidget(
           ProviderScope(
-            overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+            overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
             child: MaterialApp.router(
               theme: AppTheme.lightTheme,
               routerConfig: favRouter,
@@ -113,7 +108,7 @@ void main() {
 
         await tester.pumpWidget(
           ProviderScope(
-            overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+            overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
             child: MaterialApp.router(
               theme: AppTheme.lightTheme,
               routerConfig: myRouter,
@@ -147,7 +142,7 @@ void main() {
 
         await tester.pumpWidget(
           ProviderScope(
-            overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+            overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
             child: MaterialApp.router(
               theme: AppTheme.lightTheme,
               routerConfig: shellRouter,
@@ -185,7 +180,7 @@ void main() {
           tester.view.resetViewInsets();
         });
 
-        final prefs = await SharedPreferences.getInstance();
+        final boxes = await initTestBoxes();
 
         // 1. Edit Profil sheet "Simpan" button
         for (final p in [0.0, 24.0, 34.0, 48.0]) {
@@ -200,7 +195,7 @@ void main() {
 
           await tester.pumpWidget(
             ProviderScope(
-              overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+              overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
               child: MaterialApp.router(
                 theme: AppTheme.lightTheme,
                 routerConfig: profileRouter,
@@ -242,7 +237,7 @@ void main() {
 
           await tester.pumpWidget(
             ProviderScope(
-              overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+              overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
               child: MaterialApp.router(
                 theme: AppTheme.lightTheme,
                 routerConfig: nearbyRouter,
@@ -294,7 +289,7 @@ void main() {
           tester.view.resetViewInsets();
         });
 
-        final prefs = await SharedPreferences.getInstance();
+        final boxes = await initTestBoxes();
         final profileRouter = createRouter(
           initialLocation: '/profile',
           getAuthState: () => const AuthState(isLoggedIn: true, user: seedUser),
@@ -302,7 +297,7 @@ void main() {
 
         await tester.pumpWidget(
           ProviderScope(
-            overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+            overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
             child: MaterialApp.router(
               theme: AppTheme.lightTheme,
               routerConfig: profileRouter,
@@ -376,7 +371,7 @@ void main() {
           tester.view.resetViewInsets();
         });
 
-        final prefs = await SharedPreferences.getInstance();
+        final boxes = await initTestBoxes();
         final addRouter = createRouter(
           initialLocation: '/add',
           getAuthState: () => const AuthState(isLoggedIn: true, user: seedUser),
@@ -384,7 +379,7 @@ void main() {
 
         await tester.pumpWidget(
           ProviderScope(
-            overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+            overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
             child: MaterialApp.router(
               theme: AppTheme.lightTheme,
               routerConfig: addRouter,

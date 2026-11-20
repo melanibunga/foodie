@@ -157,6 +157,11 @@ class _CookPageState extends ConsumerState<CookPage> {
       ref.read(authProvider.notifier).incrementCooked();
       ref.read(cookedProvider.notifier).add(widget.recipeId);
     }
+    final existingRating = ref.read(recipeUserRatingProvider(widget.recipeId));
+    if (existingRating != null && existingRating > 0) {
+      _selectedRating = existingRating;
+      _ratingSubmitted = true;
+    }
     setState(() {
       _isCompleted = true;
     });
@@ -241,8 +246,17 @@ class _CookPageState extends ConsumerState<CookPage> {
 
   Widget _buildCookingContent(BuildContext context, Recipe recipe) {
     final palette = context.palette;
-    final steps = recipe.steps;
-    final totalSteps = steps.isNotEmpty ? steps.length : 1;
+    final rawSteps = recipe.steps;
+    final List<RecipeStep> steps = rawSteps.isNotEmpty
+        ? rawSteps
+        : [
+            const RecipeStep(
+              id: 'step-fallback-1',
+              title: 'Persiapan Memasak',
+              description: 'Siapkan bahan-bahan yang telah tersedia dan masak dengan api sedang hingga matang sempurna.',
+            ),
+          ];
+    final totalSteps = steps.length;
     final topPadding = math.max(MediaQuery.paddingOf(context).top, 24.0);
     final bottomPadding = math.max(MediaQuery.paddingOf(context).bottom, 24.0);
 
@@ -688,13 +702,12 @@ class _CookPageState extends ConsumerState<CookPage> {
                           label: 'Rating $starNumber bintang',
                           button: true,
                           child: GestureDetector(
-                            onTap: _ratingSubmitted
-                                ? null
-                                : () {
-                                    setState(() {
-                                      _selectedRating = starNumber;
-                                    });
-                                  },
+                            onTap: () {
+                              setState(() {
+                                _selectedRating = starNumber;
+                                _ratingSubmitted = false;
+                              });
+                            },
                             child: Container(
                               width: 44.0,
                               height: 44.0,
@@ -740,6 +753,12 @@ class _CookPageState extends ConsumerState<CookPage> {
                                 await ref
                                     .read(ratingsProvider.notifier)
                                     .rate(recipe.id, _selectedRating);
+                                await ref
+                                    .read(cookedProvider.notifier)
+                                    .updateLatestRating(
+                                      recipe.id,
+                                      _selectedRating,
+                                    );
                                 setState(() {
                                   _ratingSubmitted = true;
                                 });

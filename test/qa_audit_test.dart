@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,7 +9,7 @@ import 'package:foodie/pages/about_page.dart';
 import 'package:foodie/pages/cook_page.dart';
 import 'package:foodie/pages/create_recipe_page.dart';
 import 'package:foodie/pages/favorites_page.dart';
-import 'package:foodie/pages/forgot_page.dart';
+// forgot_page removed in Phase B1
 import 'package:foodie/pages/groceries_page.dart';
 import 'package:foodie/pages/home_page.dart';
 import 'package:foodie/pages/login_page.dart';
@@ -25,15 +23,12 @@ import 'package:foodie/pages/search_page.dart';
 import 'package:foodie/pages/splash_page.dart';
 import 'package:foodie/providers/auth_provider.dart';
 import 'package:foodie/providers/storage_provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
+import 'test_helper.dart';
 
 void main() {
   setUp(() {
-    SharedPreferences.setMockInitialValues({
-      'foodie:auth': jsonEncode(
-        const AuthState(isLoggedIn: true, user: seedUser).toJson(),
-      ),
-    });
+    // mock storage initialized
   });
 
   group('Fase 15 — QA Audit: Multi-Resolution & Responsive Tests', () {
@@ -53,7 +48,7 @@ void main() {
           tester.view.devicePixelRatio = 1.0;
           addTearDown(() => tester.view.resetPhysicalSize());
 
-          final prefs = await SharedPreferences.getInstance();
+          final boxes = await initTestBoxes();
 
           final router = createRouter(
             initialLocation: '/home',
@@ -63,7 +58,7 @@ void main() {
 
           await tester.pumpWidget(
             ProviderScope(
-              overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+              overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
               child: MaterialApp.router(
                 theme: AppTheme.lightTheme,
                 routerConfig: router,
@@ -93,13 +88,13 @@ void main() {
         tester.view.devicePixelRatio = 1.0;
         addTearDown(() => tester.view.resetPhysicalSize());
 
-        final prefs = await SharedPreferences.getInstance();
+        final boxes = await initTestBoxes();
 
         final routesToTest = [
           '/',
           '/login',
           '/register',
-          '/forgot',
+          // '/forgot',
           '/home',
           '/search',
           '/meal-plan',
@@ -119,7 +114,7 @@ void main() {
               route == '/' ||
               route == '/login' ||
               route == '/register' ||
-              route == '/forgot';
+              false;
           final router = createRouter(
             initialLocation: route,
             getAuthState: () => AuthState(
@@ -130,7 +125,7 @@ void main() {
 
           await tester.pumpWidget(
             ProviderScope(
-              overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+              overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
               child: MaterialApp.router(
                 theme: AppTheme.lightTheme,
                 routerConfig: router,
@@ -153,9 +148,7 @@ void main() {
             case '/register':
               expect(find.byType(RegisterPage), findsOneWidget);
               break;
-            case '/forgot':
-              expect(find.byType(ForgotPage), findsOneWidget);
-              break;
+            // case '/forgot' removed
             case '/home':
               expect(find.byType(HomePage), findsOneWidget);
               break;
@@ -204,7 +197,7 @@ void main() {
         tester.view.devicePixelRatio = 1.0;
         addTearDown(() => tester.view.resetPhysicalSize());
 
-        final prefs = await SharedPreferences.getInstance();
+        final boxes = await initTestBoxes();
 
         final router = createRouter(
           initialLocation: '/home',
@@ -213,7 +206,7 @@ void main() {
 
         await tester.pumpWidget(
           ProviderScope(
-            overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+            overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
             child: MediaQuery(
               data: const MediaQueryData(
                 size: Size(440, 956),
@@ -240,7 +233,7 @@ void main() {
         tester.view.devicePixelRatio = 1.0;
         addTearDown(() => tester.view.resetPhysicalSize());
 
-        final prefs = await SharedPreferences.getInstance();
+        final boxes = await initTestBoxes();
 
         final router = createRouter(
           initialLocation: '/home',
@@ -249,7 +242,7 @@ void main() {
 
         await tester.pumpWidget(
           ProviderScope(
-            overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+            overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
             child: MaterialApp.router(
               theme: AppTheme.lightTheme,
               routerConfig: router,

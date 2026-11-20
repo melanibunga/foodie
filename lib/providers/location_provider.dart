@@ -61,8 +61,7 @@ class LocationNotifier extends Notifier<LocationState> {
         status: LocationStatus.serviceDisabled,
         coordinates: UserCoordinates.defaultKaliurang,
         isRealMap: true,
-        message:
-            'Layanan lokasi (GPS) tidak aktif, menggunakan lokasi default.',
+        message: 'Lokasi tidak tersedia, memakai lokasi contoh',
       );
       return;
     }
@@ -80,7 +79,7 @@ class LocationNotifier extends Notifier<LocationState> {
             : LocationStatus.denied,
         coordinates: UserCoordinates.defaultKaliurang,
         isRealMap: true,
-        message: 'Izin lokasi tidak diberikan, menggunakan lokasi default.',
+        message: 'Lokasi tidak tersedia, memakai lokasi contoh',
       );
       return;
     }

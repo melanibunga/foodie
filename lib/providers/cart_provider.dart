@@ -1,17 +1,17 @@
-import 'dart:convert';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/seed_data.dart';
+import '../data/seed_helper.dart';
 import '../models/models.dart';
+import 'auth_provider.dart';
 import 'meal_plan_provider.dart';
 import 'storage_provider.dart';
 
 enum AddRecipeStatus { added, exists }
 
-/// State Notifier untuk keranjang belanja bahan masakan (My Groceries).
+/// State Notifier untuk keranjang belanja bahan masakan (My Groceries), diisolasi per akun user (Hive).
 class CartNotifier extends Notifier<List<CartGroup>> {
-  static const String prefKey = 'foodie:cart';
+  static const String prefKey = 'cart';
   static const String customGroupName = 'Belanjaan Kamu Nich';
 
   @override
@@ -20,36 +20,42 @@ class CartNotifier extends Notifier<List<CartGroup>> {
   }
 
   List<CartGroup> _loadFromStorage() {
+    final userId = ref.watch(currentUserIdProvider);
+    if (userId == null) return const [];
+
     try {
-      final prefs = ref.read(sharedPreferencesProvider);
-      final jsonStr = prefs.getString(prefKey);
-      if (jsonStr != null && jsonStr.isNotEmpty) {
-        final decoded = jsonDecode(jsonStr) as List<dynamic>;
+      final box = ref.watch(cartBoxProvider);
+      final raw = box.get(userId);
+      if (raw is List && raw.isNotEmpty) {
         final baseTime = DateTime(2026, 1, 1);
-        return decoded.asMap().entries.map((entry) {
+        return raw.asMap().entries.map((entry) {
           final idx = entry.key;
-          final map = entry.value as Map<String, dynamic>;
+          final map = Map<String, dynamic>.from(entry.value as Map);
           final fallbackTime = baseTime.add(Duration(minutes: idx));
           return CartGroup.fromJson(map, fallbackTime);
         }).toList();
+      } else if (userId == kDemoUserId && raw == null) {
+        return List<CartGroup>.from(seedCartGroups);
       }
     } catch (_) {}
-    return seedCartGroups;
+
+    return const [];
   }
 
   Future<void> _saveToStorage() async {
+    final userId = ref.read(currentUserIdProvider);
+    if (userId == null) return;
     try {
-      final prefs = ref.read(sharedPreferencesProvider);
-      await prefs.setString(
-        prefKey,
-        jsonEncode(state.map((g) => g.toJson()).toList()),
-      );
+      final box = ref.read(cartBoxProvider);
+      await box.put(userId, state.map((g) => g.toJson()).toList());
     } catch (_) {}
   }
 
   /// Tambah semua bahan dari resep ke dalam satu grup resep di keranjang.
-  /// Jika resep sudah ada di keranjang, tidak menduplikasi dan mengembalikan [AddRecipeStatus.exists].
   Future<AddRecipeStatus> addRecipe(Recipe recipe) async {
+    final userId = ref.read(currentUserIdProvider);
+    if (userId == null) return AddRecipeStatus.exists;
+
     final alreadyExists = state.any((g) => g.recipeId == recipe.id);
     if (alreadyExists) {
       return AddRecipeStatus.exists;
@@ -90,6 +96,9 @@ class CartNotifier extends Notifier<List<CartGroup>> {
     required String qty,
     required int price,
   }) async {
+    final userId = ref.read(currentUserIdProvider);
+    if (userId == null) return;
+
     final now = ref.read(clockProvider);
     final groups = List<CartGroup>.from(state);
     final customIndex = groups.indexWhere((g) => g.recipeId == null);
@@ -105,14 +114,14 @@ class CartNotifier extends Notifier<List<CartGroup>> {
 
     if (customIndex >= 0) {
       final existingGroup = groups[customIndex];
-      final updatedItems = [newItem, ...existingGroup.items];
-      groups[customIndex] = existingGroup.copyWith(
+      final updatedGroup = existingGroup.copyWith(
         addedAt: now,
-        items: updatedItems,
+        items: [newItem, ...existingGroup.items],
       );
+      groups[customIndex] = updatedGroup;
     } else {
       final newCustomGroup = CartGroup(
-        id: 'cg-custom-${now.millisecondsSinceEpoch}',
+        id: 'cart-group-custom',
         recipeId: null,
         name: customGroupName,
         addedAt: now,
@@ -125,27 +134,38 @@ class CartNotifier extends Notifier<List<CartGroup>> {
     await _saveToStorage();
   }
 
-  /// Toggle status centang item
-  Future<void> toggleItem(String groupId, String itemId) async {
-    final groups = state.map((group) {
-      if (group.id == groupId) {
-        final updatedItems = group.items.map((item) {
-          if (item.id == itemId) {
-            return item.copyWith(checked: !item.checked);
-          }
-          return item;
-        }).toList();
-        return group.copyWith(items: updatedItems);
-      }
-      return group;
+  /// Toggle status centang item (mendukung pemanggilan toggleItem(itemId) atau toggleItem(groupId, itemId))
+  Future<void> toggleItem(
+    dynamic groupIdOrItemId, [
+    String? maybeItemId,
+  ]) async {
+    final userId = ref.read(currentUserIdProvider);
+    if (userId == null) return;
+
+    final String itemId = maybeItemId ?? groupIdOrItemId.toString();
+    final String? groupId = maybeItemId != null
+        ? groupIdOrItemId.toString()
+        : null;
+
+    state = state.map((group) {
+      if (groupId != null && group.id != groupId) return group;
+      final itemIndex = group.items.indexWhere((i) => i.id == itemId);
+      if (itemIndex == -1) return group;
+
+      final updatedItems = List<CartItem>.from(group.items);
+      final item = updatedItems[itemIndex];
+      updatedItems[itemIndex] = item.copyWith(checked: !item.checked);
+      return group.copyWith(items: updatedItems);
     }).toList();
 
-    state = groups;
     await _saveToStorage();
   }
 
   /// Ubah estimasi harga item
   Future<void> updatePrice(String groupId, String itemId, int newPrice) async {
+    final userId = ref.read(currentUserIdProvider);
+    if (userId == null) return;
+
     final groups = state.map((group) {
       if (group.id == groupId) {
         final updatedItems = group.items.map((item) {
@@ -163,25 +183,65 @@ class CartNotifier extends Notifier<List<CartGroup>> {
     await _saveToStorage();
   }
 
-  /// Hapus satu item dari suatu grup (dipakai saat swipe hapus bahan custom)
-  Future<void> removeItem(String groupId, String itemId) async {
-    final groups = state.map((group) {
-      if (group.id == groupId) {
-        final updatedItems = group.items
-            .where((item) => item.id != itemId)
-            .toList();
-        return group.copyWith(items: updatedItems);
-      }
-      return group;
+  /// Centang/batalkan centang semua item dalam satu grup
+  Future<void> toggleAllInGroup(String groupId, bool checked) async {
+    final userId = ref.read(currentUserIdProvider);
+    if (userId == null) return;
+
+    state = state.map((group) {
+      if (group.id != groupId) return group;
+      final updatedItems = group.items
+          .map((item) => item.copyWith(checked: checked))
+          .toList();
+      return group.copyWith(items: updatedItems);
     }).toList();
 
-    state = groups;
+    await _saveToStorage();
+  }
+
+  /// Hapus semua item yang sudah dicentang (checked) di semua grup
+  Future<void> removeCheckedItems() async {
+    final userId = ref.read(currentUserIdProvider);
+    if (userId == null) return;
+
+    state = state
+        .map((group) {
+          final remainingItems = group.items
+              .where((item) => !item.checked)
+              .toList();
+          return group.copyWith(items: remainingItems);
+        })
+        .where((group) => group.items.isNotEmpty)
+        .toList();
+
     await _saveToStorage();
   }
 
   /// Hapus satu grup menu dari keranjang
   Future<void> removeGroup(String groupId) async {
+    final userId = ref.read(currentUserIdProvider);
+    if (userId == null) return;
+
     state = state.where((g) => g.id != groupId).toList();
+    await _saveToStorage();
+  }
+
+  /// Hapus satu item spesifik dari grup tertentu
+  Future<void> removeItem(String groupId, String itemId) async {
+    final userId = ref.read(currentUserIdProvider);
+    if (userId == null) return;
+
+    state = state
+        .map((group) {
+          if (group.id != groupId) return group;
+          final remainingItems = group.items
+              .where((i) => i.id != itemId)
+              .toList();
+          return group.copyWith(items: remainingItems);
+        })
+        .where((group) => group.items.isNotEmpty)
+        .toList();
+
     await _saveToStorage();
   }
 
@@ -192,21 +252,35 @@ class CartNotifier extends Notifier<List<CartGroup>> {
 
   /// Hapus grup resep berdasarkan [recipeId] dari keranjang
   Future<void> removeByRecipe(String recipeId) async {
+    final userId = ref.read(currentUserIdProvider);
+    if (userId == null) return;
+
     state = state.where((g) => g.recipeId != recipeId).toList();
     await _saveToStorage();
   }
 
-  /// Kosongkan semua item di keranjang
+  /// Kosongkan seluruh keranjang belanja user
   Future<void> clearAll() async {
+    final userId = ref.read(currentUserIdProvider);
+    if (userId == null) return;
+
     state = [];
     await _saveToStorage();
   }
 
-  /// Reset ke seed demo
+  /// Reset ke data demo
   Future<void> resetToSeed() async {
-    final prefs = ref.read(sharedPreferencesProvider);
-    await prefs.remove(prefKey);
-    state = seedCartGroups;
+    final userId = ref.read(currentUserIdProvider);
+    if (userId == null) return;
+
+    final box = ref.read(cartBoxProvider);
+    if (userId == kDemoUserId) {
+      state = List<CartGroup>.from(seedCartGroups);
+      await box.put(userId, state.map((g) => g.toJson()).toList());
+    } else {
+      state = const [];
+      await box.put(userId, <dynamic>[]);
+    }
   }
 }
 
@@ -215,14 +289,13 @@ final cartProvider = NotifierProvider<CartNotifier, List<CartGroup>>(() {
 });
 
 /// Provider untuk grup belanja yang siap ditampilkan di halaman My Groceries:
-/// 1. Grup custom ("Belanjaan Kamu Nich") SELALU di paling atas (index 0), selalu ada meski kosong.
+/// 1. Grup custom ("Belanjaan Kamu Nich") SELALU di paling atas (index 0).
 /// 2. Grup resep diurutkan DESCENDING menurut addedAt (terbaru di atas).
 /// 3. Item di grup custom diurutkan DESCENDING menurut addedAt (terbaru di atas).
 /// 4. Item di grup resep tetap dalam urutan resep aslinya.
 final displayCartGroupsProvider = Provider<List<CartGroup>>((ref) {
   final groups = ref.watch(cartProvider);
 
-  // 1. Cari atau buat grup custom
   final customIndex = groups.indexWhere((g) => g.recipeId == null);
   final CartGroup customGroup;
   if (customIndex >= 0) {
@@ -240,11 +313,38 @@ final displayCartGroupsProvider = Provider<List<CartGroup>>((ref) {
     );
   }
 
-  // 2. Grup resep diurutkan descending menurut addedAt
   final recipeGroups = groups.where((g) => g.recipeId != null).toList()
     ..sort((a, b) => b.addedAt.compareTo(a.addedAt));
 
   return [customGroup, ...recipeGroups];
+});
+
+/// Total harga seluruh item yang dicentang (checked) di keranjang
+final cartCheckedTotalProvider = Provider<int>((ref) {
+  final groups = ref.watch(cartProvider);
+  int total = 0;
+  for (final group in groups) {
+    for (final item in group.items) {
+      if (item.checked) {
+        total += item.price;
+      }
+    }
+  }
+  return total;
+});
+
+/// Jumlah seluruh item yang dicentang di keranjang
+final cartCheckedCountProvider = Provider<int>((ref) {
+  final groups = ref.watch(cartProvider);
+  int count = 0;
+  for (final group in groups) {
+    for (final item in group.items) {
+      if (item.checked) {
+        count++;
+      }
+    }
+  }
+  return count;
 });
 
 /// Jumlah semua CartItem di semua grup (untuk badge keranjang header)

@@ -6,21 +6,21 @@ import 'package:foodie/core/theme/app_theme.dart';
 import 'package:foodie/data/recipes.dart';
 import 'package:foodie/providers/storage_provider.dart';
 import 'package:foodie/widgets/widgets.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
+import 'test_helper.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  late SharedPreferences prefs;
+  late FoodieBoxes boxes;
 
   setUp(() async {
-    SharedPreferences.setMockInitialValues({});
-    prefs = await SharedPreferences.getInstance();
+    boxes = await initTestBoxes();
   });
 
   Widget wrapWithTheme(Widget child) {
     return ProviderScope(
-      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
       child: MaterialApp(
         theme: AppTheme.lightTheme,
         home: Scaffold(body: child),

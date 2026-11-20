@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -11,29 +9,23 @@ import 'package:foodie/providers/auth_provider.dart';
 import 'package:foodie/providers/meal_plan_provider.dart';
 import 'package:foodie/providers/storage_provider.dart';
 import 'package:foodie/widgets/ui/app_checkbox.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
+import 'test_helper.dart';
 
 void main() {
   // Rabu, 18 November 2026
   final fixedClock = DateTime(2026, 11, 18, 10, 0);
 
   setUp(() {
-    SharedPreferences.setMockInitialValues({
-      'foodie:auth': jsonEncode(
-        const AuthState(isLoggedIn: true, user: seedUser).toJson(),
-      ),
-      'foodie:meal_plan': jsonEncode([]),
-      'foodie:cart': jsonEncode([]),
-      'foodie:favorites': jsonEncode([]),
-    });
+    // mock storage initialized
   });
 
   group('Fase C4 — Unit Tests (mealPlanProvider.add & pastDate rejection)', () {
     test('add for yesterday -> pastDate and entries count unchanged; today -> added; duplicate -> exists', () async {
-      final prefs = await SharedPreferences.getInstance();
+      final boxes = await initTestBoxes();
       final container = ProviderContainer(
         overrides: [
-          sharedPreferencesProvider.overrideWithValue(prefs),
+          foodieBoxesProvider.overrideWithValue(boxes),
           clockProvider.overrideWithValue(fixedClock),
         ],
       );
@@ -83,7 +75,7 @@ void main() {
         tester.view.devicePixelRatio = 1.0;
         addTearDown(() => tester.view.resetPhysicalSize());
 
-        final prefs = await SharedPreferences.getInstance();
+        final boxes = await initTestBoxes();
         final router = createRouter(
           initialLocation: '/recipe/ayam-kecap-bawang',
           getAuthState: () => const AuthState(isLoggedIn: true, user: seedUser),
@@ -92,7 +84,7 @@ void main() {
         await tester.pumpWidget(
           ProviderScope(
             overrides: [
-              sharedPreferencesProvider.overrideWithValue(prefs),
+              foodieBoxesProvider.overrideWithValue(boxes),
               clockProvider.overrideWithValue(fixedClock),
             ],
             child: MaterialApp.router(
@@ -160,7 +152,7 @@ void main() {
         tester.view.devicePixelRatio = 1.0;
         addTearDown(() => tester.view.resetPhysicalSize());
 
-        final prefs = await SharedPreferences.getInstance();
+        final boxes = await initTestBoxes();
         final router = createRouter(
           initialLocation: '/recipe/ayam-kecap-bawang',
           getAuthState: () => const AuthState(isLoggedIn: true, user: seedUser),
@@ -169,7 +161,7 @@ void main() {
         await tester.pumpWidget(
           ProviderScope(
             overrides: [
-              sharedPreferencesProvider.overrideWithValue(prefs),
+              foodieBoxesProvider.overrideWithValue(boxes),
               clockProvider.overrideWithValue(fixedClock),
             ],
             child: MaterialApp.router(
@@ -217,7 +209,7 @@ void main() {
         tester.view.devicePixelRatio = 1.0;
         addTearDown(() => tester.view.resetPhysicalSize());
 
-        final prefs = await SharedPreferences.getInstance();
+        final boxes = await initTestBoxes();
         final router = createRouter(
           initialLocation: '/recipe/ayam-kecap-bawang',
           getAuthState: () => const AuthState(isLoggedIn: true, user: seedUser),
@@ -228,7 +220,7 @@ void main() {
         await tester.pumpWidget(
           ProviderScope(
             overrides: [
-              sharedPreferencesProvider.overrideWithValue(prefs),
+              foodieBoxesProvider.overrideWithValue(boxes),
               clockProvider.overrideWithValue(fixedClock),
             ],
             child: Consumer(
@@ -305,7 +297,7 @@ void main() {
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() => tester.view.resetPhysicalSize());
 
-      final prefs = await SharedPreferences.getInstance();
+      final boxes = await initTestBoxes();
       final router = createRouter(
         initialLocation: '/meal-plan',
         getAuthState: () => const AuthState(isLoggedIn: true, user: seedUser),
@@ -314,7 +306,7 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
-            sharedPreferencesProvider.overrideWithValue(prefs),
+            foodieBoxesProvider.overrideWithValue(boxes),
             clockProvider.overrideWithValue(fixedClock),
           ],
           child: MaterialApp.router(
@@ -374,7 +366,7 @@ void main() {
         tester.view.devicePixelRatio = 1.0;
         addTearDown(() => tester.view.resetPhysicalSize());
 
-        final prefs = await SharedPreferences.getInstance();
+        final boxes = await initTestBoxes();
         // Buka /search dengan query param pick tanggal kemarin (2026-11-17)
         final router = createRouter(
           initialLocation: '/search?pick=2026-11-17',
@@ -384,7 +376,7 @@ void main() {
         await tester.pumpWidget(
           ProviderScope(
             overrides: [
-              sharedPreferencesProvider.overrideWithValue(prefs),
+              foodieBoxesProvider.overrideWithValue(boxes),
               clockProvider.overrideWithValue(fixedClock),
             ],
             child: MaterialApp.router(

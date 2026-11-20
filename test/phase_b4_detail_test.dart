@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -13,27 +11,21 @@ import 'package:foodie/providers/auth_provider.dart';
 import 'package:foodie/providers/cart_provider.dart';
 import 'package:foodie/providers/storage_provider.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
+import 'test_helper.dart';
 
 void main() {
   setUp(() {
-    SharedPreferences.setMockInitialValues({
-      'foodie:auth': jsonEncode(
-        const AuthState(isLoggedIn: true, user: seedUser).toJson(),
-      ),
-      'foodie:cart': jsonEncode([]),
-      'foodie:meal_plan': jsonEncode([]),
-      'foodie:favorites': jsonEncode([]),
-    });
+    // mock storage initialized
   });
 
   group('Fase B4 — Unit Tests (CartNotifier hasRecipe & removeByRecipe)', () {
     test(
       'hasRecipe returns true if recipe exists in cart, false otherwise',
       () async {
-        final prefs = await SharedPreferences.getInstance();
+        final boxes = await initTestBoxes();
         final container = ProviderContainer(
-          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+          overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
         );
         addTearDown(container.dispose);
 
@@ -51,9 +43,9 @@ void main() {
     );
 
     test('removeByRecipe removes only the matching recipe group', () async {
-      final prefs = await SharedPreferences.getInstance();
+      final boxes = await initTestBoxes();
       final container = ProviderContainer(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
       );
       addTearDown(container.dispose);
 
@@ -83,7 +75,7 @@ void main() {
         tester.view.devicePixelRatio = 1.0;
         addTearDown(() => tester.view.resetPhysicalSize());
 
-        final prefs = await SharedPreferences.getInstance();
+        final boxes = await initTestBoxes();
         final router = createRouter(
           initialLocation: '/recipe/ayam-kecap-bawang',
           getAuthState: () => const AuthState(isLoggedIn: true, user: seedUser),
@@ -91,7 +83,7 @@ void main() {
 
         await tester.pumpWidget(
           ProviderScope(
-            overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+            overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
             child: MaterialApp.router(
               theme: AppTheme.lightTheme,
               routerConfig: router,
@@ -147,7 +139,7 @@ void main() {
         tester.view.devicePixelRatio = 1.0;
         addTearDown(() => tester.view.resetPhysicalSize());
 
-        final prefs = await SharedPreferences.getInstance();
+        final boxes = await initTestBoxes();
         final router = createRouter(
           initialLocation: '/recipe/ayam-kecap-bawang',
           getAuthState: () => const AuthState(isLoggedIn: true, user: seedUser),
@@ -155,7 +147,7 @@ void main() {
 
         await tester.pumpWidget(
           ProviderScope(
-            overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+            overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
             child: MaterialApp.router(
               theme: AppTheme.lightTheme,
               routerConfig: router,
@@ -208,7 +200,7 @@ void main() {
         tester.view.devicePixelRatio = 1.0;
         addTearDown(() => tester.view.resetPhysicalSize());
 
-        final prefs = await SharedPreferences.getInstance();
+        final boxes = await initTestBoxes();
         final router = createRouter(
           initialLocation: '/recipe/ayam-kecap-bawang',
           getAuthState: () => const AuthState(isLoggedIn: true, user: seedUser),
@@ -216,7 +208,7 @@ void main() {
 
         await tester.pumpWidget(
           ProviderScope(
-            overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+            overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
             child: MaterialApp.router(
               theme: AppTheme.lightTheme,
               routerConfig: router,
@@ -288,7 +280,7 @@ void main() {
         tester.view.devicePixelRatio = 1.0;
         addTearDown(() => tester.view.resetPhysicalSize());
 
-        final prefs = await SharedPreferences.getInstance();
+        final boxes = await initTestBoxes();
         final router = createRouter(
           initialLocation: '/recipe/ayam-kecap-bawang',
           getAuthState: () => const AuthState(isLoggedIn: true, user: seedUser),
@@ -296,7 +288,7 @@ void main() {
 
         await tester.pumpWidget(
           ProviderScope(
-            overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+            overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
             child: MaterialApp.router(
               theme: AppTheme.lightTheme,
               routerConfig: router,
