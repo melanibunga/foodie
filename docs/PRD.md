@@ -715,41 +715,141 @@ Semua foto sementara **abu-abu**. Sumber foto asli (API resep) menyusul di luar 
 
 ---
 
-## 17. Arsitektur Data, Backend API, Lokasi & Notifikasi (Fase B1–B6)
+## 17. Perubahan Setelah Integrasi API
 
-17.1 Prioritas: §17 menang atas spesifikasi mock awal di §1, §2, §9, §11, dan §12.
+17.1 Daily Inspiration: maksimal 5 resep dari API, acak deterministik per hari (seed = yyyy-MM-dd), disimpan (persist) per tanggal sehingga stabil seharian dan otomatis berganti saat tanggal berubah (dicek saat app dibuka, saat kembali ke foreground, dan saat Home dibangun). Gagal API: pakai daftar terakhir yang tersimpan; bila tidak ada, data seed lokal.
 
-17.2 Penyimpanan Lokal Hive (Fase B1):
+17.2 Gambar resep dari API selalu lewat SmartImage; adapter wajib memetakan field gambar dari endpoint yang dipakai (list maupun detail).
+
+17.3 Penyimpanan Lokal Hive (Fase B1):
 - `shared_preferences` dihapus total dan digantikan oleh Hive NoSQL multi-box tanpa TypeAdapter/code generation (disimpan sebagai JSON Map).
 - Terdiri dari 13 box: `users`, `session`, `favorites`, `cart`, `mealPlan`, `myRecipes`, `cooked`, `ratings`, `settings`, `meta`, `recipes`, `recipeCache`, dan `placesCache`.
 - Kredensial akun: Sandi di-hash menggunakan SHA-256 + salt acak unik per pengguna (`passwordHash = SHA-256(salt + password)`). Sandi tidak pernah disimpan dalam format teks polos.
 - Isolasi multi-user: Seluruh state personal (favorit, keranjang belanjaan, jadwal meal plan, resep buatan sendiri, riwayat dimasak, rating, dan preferensi tema) tersimpan terpisah berdasarkan `userId` aktif. Logout membersihkan sesi aktif; berganti akun menampilkan data yang sepenuhnya bersih dan terisolasi.
 
-17.3 Integrasi API Resep Masakan Nusantara (Fase B2):
+17.4 Integrasi API Resep Masakan Nusantara (Fase B2):
 - Endpoint utama: `https://api-resep-masakan.vercel.app/api/v1` via Dio client dengan timeout 15 detik.
 - Mengambil data nyata: nama menu, gambar foto asli, daftar bahan, dan langkah memasak.
 - Field yang dikelola sendiri (*derived deterministik* dari hash id): porsi (1–6), kalori (150–700 kcal), tingkat kesulitan (Mudah/Sedang/Sulit), rating dasar & jumlah ulasan dasar.
 - Harga bahan: Diatur Rp0 dari API dan diisi secara mandiri oleh user melalui edit harga inline di Groceries.
 - Caching offline: Resep tersimpan di Hive box `recipeCache` (TTL 24 jam). Resep yang pernah dibuka tetap dapat diakses saat offline; resep baru menampilkan pesan error informatif dengan tombol "Coba lagi".
 
-17.4 Rating & Riwayat Dimasak (Fase B3):
+17.5 Rating & Riwayat Dimasak (Fase B3):
 - Rating rata-rata dihitung menggunakan formula berbobot ulasan: `avg = (base * dummyCount + sum) / (dummyCount + n)` dengan `reviews = dummyCount + n`.
 - Kartu resep dan halaman detail resep sinkron secara langsung dengan rating pengguna.
 - Alur selesai memasak (*Start Cooking*) secara otomatis mencatat riwayat ke box `cooked` dan rating ke box `ratings`.
 
-17.5 Notifikasi Lokal Pengingat Makan (Fase B4):
+17.6 Notifikasi Lokal Pengingat Makan (Fase B4):
 - Menggunakan `flutter_local_notifications`, `timezone`, dan `flutter_timezone`.
 - Jadwal tetap jam 07:00 waktu perangkat lokal untuk setiap tanggal yang memiliki menu di meal plan (hari ini s/d 14 hari ke depan).
 - Judul: "Waktunya masak! 🍳", isi: "Hari ini: {Menu A}, {Menu B}".
 - Mode alarm hemat daya (`allowWhileIdle`, tanpa permission agresif `SCHEDULE_EXACT_ALARM`).
 - Penjadwalan ulang otomatis saat ada penambahan/penghapusan menu meal plan, saat login/logout, dan saat perangkat selesai boot ulang (`RECEIVE_BOOT_COMPLETED`).
 
-17.6 Lokasi Nyata, Overpass API & Rute OSRM (Fase B5):
+17.7 Lokasi Nyata, Overpass API & Rute OSRM (Fase B5):
 - Deteksi posisi pengguna menggunakan `geolocator`. Izin ditolak/GPS mati fallback aman ke koordinat Kaliurang (`UserCoordinates.defaultKaliurang`) dengan toast informatif.
 - Query tempat makan nyata sekitar menggunakan OpenStreetMap Overpass API (`https://overpass-api.de/api/interpreter`) untuk amenity `restaurant|cafe|fast_food` dalam radius 500m–5km.
 - Parser jam buka pintar `OpeningHoursParser`: memproses format OSM (`24/7`, rentang jam hari, buka lewat tengah malam); format tidak dikenal ditandai `isUnknownHours = true` dan dikecualikan dari filter "Buka sekarang".
 - Cache tempat makan di Hive box `placesCache` (TTL 1 jam) dengan fallback berantai: Overpass -> Cache Hive -> LocalPlaceService (dengan toast informatif "Memakai data contoh"). Debounce pergeseran posisi < 100 meter.
 - Rute jalan kaki nyata menggunakan Open Source Routing Machine (OSRM). Request lama otomatis dibatalkan via `CancelToken` saat memilih tujuan baru. Rute digambar solid di peta; bila OSRM gagal/offline langsung fallback ke garis putus-putus perkiraan dengan toast "Rute perkiraan". Atribusi lisensi `"© OpenStreetMap contributors"` selalu ditampilkan.
+
+17.8 Resolusi Resep & Cache Ringkasan LRU (Fase G2):
+- Masalah teratasi: Kartu Meal Plan kosong setelah menambah menu dari API karena sebelumnya hanya mencari di data lokal/seed memori (`recipesProvider`).
+- Cache persist ringkasan resep (`RecipeSummary`) disimpan di Hive box `recipeCache` (prefix key `summary:`, dibatasi ±300 entri dengan penggusuran LRU berdasarkan timestamp `_lastAccessed`).
+- Diisi secara otomatis setiap kali resep dimuat dari API (list, detail, inspirasi, pencarian) serta saat penambahan menu ke Meal Plan, Favorit, dan Riwayat Masak.
+- Pola resolusi 3-tahap: Memori -> Cache Persist Hive -> API `getById`.
+- Kartu resep Meal Plan langsung tampil instan dari cache persist tanpa menunggu API getById dan tanpa berkedip (flicker).
+- Tidak ada ruang kosong (`SizedBox.shrink()`): state loading menampilkan `Skeleton` berukuran presisi (330x315); state error menampilkan kartu error interaktif dengan tombol "Coba lagi" dan aksi hapus menu via tekan lama.
+- Pola resolusi sinkron yang sama diterapkan pada menu Favorit (`FavoritesPage`), Riwayat Masak (`CookedPage`), dan Keranjang Belanjaan (`GroceriesPage`).
+
+17.9 Detail Menu & Normalisasi Data API (Fase G3):
+- Header Bar Fixed Sage (D1):
+  - Bar atas fixed Detail Menu menggunakan latar sage (`#717665`, dark: `navSurface`) dengan tombol back lingkaran olive (`palette.actionBg`, diameter 44 dp) berisi panah putih di kiri (x=24).
+  - Menggunakan helper terpusat `AppHeaderMetrics` (`fixedHeight(context)` dan `rowTop(context)`) yang dipakai bersama antara `AppHeader` dan bar Detail Menu, menjamin keseragaman tinggi dan posisi vertikal tombol back sejajar dengan avatar di AppHeader.
+  - Hero image dimulai tepat di bawah bar tanpa celah atau tumpang tindih; seluruh konten halaman ter-scroll mulus di bawah bar. Tombol Share dan Favorit tetap berada di kanan atas foto hero dan ikut ter-scroll.
+- Normalisasi Bahan Resep API (RecipeFormatters):
+  - Memisahkan nama bahan dan takaran dari teks mentah API (`formatIngredients`), membersihkan duplikasi kata takaran ("secukupnya secukupnya"), teks kembar panjang, dan angka tanpa satuan ("10" -> "10 buah").
+  - Menangani baris bahan dengan `Expanded` dan `ConstrainedBox(maxWidth: 0.35 width)` sehingga tahan RenderFlex overflow pada layar sempit 360px & pembesaran teks sistem 1.3x.
+- Pemecahan Langkah Memasak Kuliner (RecipeFormatters):
+  - Memecah blok teks instruksi tunggal dari API menjadi N langkah bernomor dengan judul tahapan kuliner bermakna ("Menyiapkan Bahan", "Menghaluskan Bumbu", "Menumis Bumbu", "Memasak Daging", "Proses Slow Cooking", "Penyelesaian").
+- Derived & Fallback Field Konsisten:
+  - Nilai turunan `servings`, `kcal`, `difficulty`, dan `timeMin` dihasilkan secara deterministik dan konsisten dari hash ID resep dan ditandai komentar `// derived`.
+  - Penanganan state lengkap: loading skeleton, error dengan tombol "Coba lagi", dan tampilan 404 ramah ("Resep Tidak Ditemukan") bila ID resep tidak valid.
+
+17.10 Search by Region & Filter API Nyata (Fase G4):
+- **Search by Region (S2)**:
+  - Grid "Search by Meal" (Breakfast, Lunch, Dinner, Snack, Dessert, Drinks) diganti menjadi "Search by Region".
+  - Dikelompokkan di `lib/data/regions.dart` berdasarkan pulau di Indonesia dan mancanegara: Sumatra, Jawa, Bali & Nusa Tenggara, Kalimantan, Sulawesi, Maluku & Papua, Mancanegara, dan Lainnya (Indonesia selalu paling atas, daerah tak terpetakan jatuh ke Lainnya tanpa hilang).
+  - Gaya kartu konsisten: grid 2 kolom, radius 20 dp, tinggi 90 dp, latar placeholder abu-abu, teks nama daerah di tengah (warna olive / textStrong 600 fontSize 14).
+  - Mengetuk kartu daerah langsung menampilkan hasil pencarian resep daerah tersebut (`GridRecipeCard`) dengan judul `"Hasil: {daerah}"` dan tombol `"Bersihkan"`.
+  - Ketergantungan UI pada enum `MealType` untuk tile utama dihapus sepenuhnya.
+- **Filter Sheet Sinkron & Nyata (S1)**:
+  - **Akar Masalah "Ngawur"**: Filter `Tingkat kesulitan` (Mudah, Sedang, Sulit) dan `Waktu masak` sebelumnya dihitung secara acak dari `hash % 3` di klien, menghasilkan data acak yang membingungkan pengguna. Keduanya **dihapus** dari Filter Sheet.
+  - **Filter Nyata yang Didukung API**: Filter Sheet hanya menampilkan filter yang didukung API secara nyata:
+    1. Kategori Resep (11 kategori nyata dari API: Ayam & Unggas, Daging Sapi & Kambing, Ikan & Seafood, Kudapan, dll.).
+    2. Wilayah / Asal Daerah (grup pulau/wilayah: Sumatra, Jawa, Bali & NTB, Kalimantan, Sulawesi, Maluku & Papua, Mancanegara).
+    3. Bahan Utama (bahan nyata dari resep: Ayam, Sapi, Ikan, Telur, Tahu & Tempe, Sayur, Udang).
+  - **Semantik Filter**: Antar kelompok filter = `AND`, di dalam kelompok = `OR`, digabungkan dengan kata kunci pencarian teks = `AND`.
+  - **Anti-Race Condition & Debounce**: Setiap perubahan query/filter menggunakan sequence request token (`_searchRequestId`). Respons usang dari request lama otomatis diabaikan sehingga input selalu sinkron dengan output. Pengetikan pencarian menggunakan debounce 250 ms.
+  - **Indikator Badge**: Tombol filter dilengkapi badge angka merah yang menunjukkan jumlah filter aktif, teks jumlah hasil resep ditemukan (`Hasil pencarian (N resep)`), serta tombol "Reset" di sheet dan "Bersihkan" di hasil pencarian.
+
+17.11 Sheet Tambah Bahan: Pilihan Satuan & Keyboard Tetap (Fase G5):
+- **Masalah Teratasi**: Saat dropdown `DropdownButton` satuan dibuka, keyboard turun (fokus berpindah ke dropdown dialog) sehingga proses pengisian terputus-putus.
+- **Field Satuan Fleksibel**: Dropdown diganti dengan `TextField` biasa dengan placeholder `"g, sdm, butir…"`. Keyboard teks tetap terbuka dan satuan kustom bebas diketik pengguna.
+- **Baris Chip Saran Satuan**: Tepat di bawah baris Jumlah & Satuan, tersedia baris chip saran satuan standar (`g`, `kg`, `ml`, `l`, `sdm`, `sdt`, `butir`, `siung`, `buah`, `bungkus`, `ikat`, `secukupnya`) setinggi ±36 dp yang dapat di-scroll horizontal memakai gaya `AppChip`.
+  - Mengetik di field menyaring daftar chip saran yang tampil.
+  - Mengetuk chip langsung mengisi field Satuan dan memindahkan fokus ke field estimasi harga tanpa menutup keyboard (tidak memanggil `unfocus()`).
+  - Setelah satuan terisi dan field tidak lagi fokus, chip diringkas menjadi 1 chip terpilih dengan ikon `(x)` untuk menghapus.
+- **Urutan Fokus Lancar**: Nama -> Jumlah (keyboard angka) -> Satuan (keyboard teks) -> Estimasi Harga / Tambah. Setelah menekan "+ Tambah ke Daftar", bahan langsung masuk ke daftar sementara dan fokus otomatis kembali ke field Nama bahan tanpa menutup keyboard sehingga pengisian bahan berikutnya berjalan cepat dan mulus.
+- **Ketahanan Keyboard Inset (B1/C1)**: Sheet dibungkus dengan scrollable dan padding inset `MediaQuery.viewInsetsOf(context).bottom` sehingga form, baris chip saran, dan tombol Tambah selalu terangkat di atas keyboard (teruji pada inset keyboard 300 dp tanpa RenderFlex overflow). Saat sheet ditutup, keyboard di-unfocus sehingga tidak ada fokus otomatis yang tertinggal di layar utama.
+
+17.12 Nearby: Peta Penuh & POI Nyata Overpass (Fase G6):
+- **Tata Letak Peta Penuh (Full-screen Map)**:
+  - Halaman Nearby sepenuhnya berupa peta layar penuh interaktif OpenStreetMap (`FlutterMap`).
+  - `AppHeader` tetap fixed di atas (§14.3) dan `BottomNav` tetap fixed melayang di bawah.
+  - Komponen lama dihapus sepenuhnya: kartu peta statis berukuran 375x210, filter sheet chip, judul "Pilihan Di Sekitarmu", dan daftar scroll kartu tempat makan (§6.8 & §14.12).
+- **POI Tempat Makan Nyata (Overpass API)**:
+  - POI diambil dinamis untuk area yang sedang terlihat pada layar (bounding box peta) dengan kueri Overpass untuk `amenity: restaurant|fast_food|cafe|food_court` (node dan way/center).
+  - Dibatasi maksimal 80 titik (`out center 80;`). Elemen tanpa nama atau nama kosong otomatis diabaikan (`ignoreNameless: true`).
+  - Panggilan API dipicu saat kamera berhenti bergerak dengan debounce 600 ms, dan hanya dijalankan bila `zoom >= 14` (bila zoom < 14, tampil banner petunjuk *"Perbesar peta untuk melihat tempat makan"* dan API tidak dipanggil guna menghemat kuota).
+  - Cache per-bounding box di-cache in-memory selama 10 menit (panggilan kedua dengan bbox yang sama dalam 10 menit tidak memukul jaringan).
+  - Pembatalan request usang via `CancelToken` saat kamera bergerak cepat, timeout request 15 detik, dan User-Agent aplikasi resmi (`FoodieApp/1.0 (id.foodie.foodie)`).
+  - Titik tempat makan digambar sebagai penanda kecil berbentuk lingkaran konsisten (amber untuk terpilih, olive/actionBg untuk lainnya; tanpa dependensi package cluster eksternal).
+- **Pencarian Dalam App (Search by Name)**:
+  - Kolom pencarian melayang di atas peta (pill putih/surface radius 999, tinggi ±44 dp, placeholder *"Cari warung makan…"*, tombol clear `(x)`).
+  - Debounce pengetikan 400 ms memicu pencarian regex case-insensitive nama tempat makan di sekitar pusat peta/posisi pengguna (radius ±5 km).
+  - Hasil pencarian (maksimal 8 tempat terdekat terurut jarak) tampil sebagai dropdown melayang di bawah search bar. Mengetuk hasil memindahkan kamera ke tempat tersebut, memilih marker (amber), dan menampilkan kartu info tempat.
+- **Kartu Info Tempat Terpilih Melayang**:
+  - Melayang di atas BottomNav (latar surface/putih, radius 16, shadow lembut): menampilkan nama tempat, jenis masakan/cuisine, jam buka (bila tercatat di OSM), jarak jalan kaki dari posisi pengguna, tombol "Rute", dan tombol tutup `(x)`. Mengetuk area kosong pada peta otomatis menutup kartu info.
+  - Tombol "Rute" memicu routing pejalan kaki nyata via OSRM (`OsrmRouteService`), menggambar polyline rute jalan, dan melakukan `fitCamera` ke bounds rute dengan informasi jarak & durasi waktu tempuh yang akurat.
+- **Model Place & Pembersihan Kode**:
+  - Model `Place` diperbarui mendukung: `id`, `name`, `cuisine`, `type` (amenity), `openingHours`, `tags`, `priceMin`, `priceMax`, `distanceM`, `walkMin`, `open`, `isUnknownHours`, `x`, `y`, `lat`, `lng`.
+  - Fallback aman: jika izin lokasi ditolak, tetap fallback ke area default Kaliurang; jika tile OSM gagal, beralih ke `IllustratedMap` tanpa crash.
+
+17.13 Nearby: Izin Lokasi On-Demand & Akurasi Tinggi (Fase G6b):
+- **Alur Izin Lokasi On-Demand (Bukan Saat App Start)**:
+  - Akses GPS/lokasi hanya diminta saat pengguna sengaja membuka tab Nearby (`/nearby`), **tidak pernah** dipanggil saat aplikasi pertama kali dijalankan (app startup).
+  - State machine terstruktur pada `LocationNotifier` (`LocationStatus`): `initial`, `checking`, `needsRationale`, `requesting`, `granted`, `denied`, `deniedForever`, `serviceOff`, `error`.
+  - Kartu penjelasan melayang (*rationale*) di atas peta dengan gaya tema (radius 16, border, shadow): ikon map-pin, judul *"Izinkan akses lokasi"*, teks penjelasan bahwa lokasi tidak disimpan, tombol utama *"Izinkan lokasi"* (memicu perizinan sistem), dan tombol ghost *"Nanti saja"*.
+  - Opsi *"Nanti saja"* menandai `askedInSession = true` sehingga tidak menanyakan ulang secara agresif dalam sesi yang sama; peta default tetap interaktif untuk mencari tempat makan, dan banner kecil *"Lokasi belum aktif · Aktifkan"* melayang di atas peta untuk membuka alur izin kapan pun diinginkan.
+  - Penanganan status komprehensif:
+    - `denied`: Kartu penjelasan *"Izin lokasi ditolak"* + tombol *"Coba lagi"*.
+    - `deniedForever`: Kartu *"Izin lokasi dimatikan"* + tombol *"Buka Pengaturan"* (`openAppSettings()`).
+    - `serviceOff`: Kartu *"Layanan GPS dinonaktifkan"* + tombol *"Aktifkan GPS"* (`openLocationSettings()`). Menggunakan `WidgetsBindingObserver` untuk otomatis mendeteksi ketika pengguna kembali ke foreground (*resumed*) setelah menyalakan GPS.
+- **Akurasi Lokasi Tinggi & Larangan Titik Default Pengguna**:
+  - `LocationSettings` dikonfigurasi akurasi tinggi: Android `high` & `distanceFilter 5m`; iOS `best` & `distanceFilter 5m`.
+  - Stream lokasi real-time via `getPositionStream()`. Kriteria fix akurat pertama: diterima bila `accuracyM <= 50.0` m dan umur fix `< 30` detik (`isApproximate = false`).
+  - Timeout maksimal 15 detik: bila fix $\le 50$ m belum tercapai, sistem menggunakan posisi terbaik yang sempat diterima dan menandainya `isApproximate = true`. Bila sama sekali tidak ada fix, koordinat tetap `null` dan tampil banner *"Lokasi belum didapat"*.
+  - **Larangan Titik Default**: Marker titik pengguna **HANYA** digambar jika ada fix nyata dan berstatus `granted`. Titik default (Jl. Kaliurang) hanya berfungsi sebagai pusat kamera awal peta dan **TIDAK PERNAH** digambar sebagai titik pengguna bila GPS belum aktif atau izin belum diberikan.
+  - Lingkaran akurasi interaktif (`CircleLayer`) digambar dengan radius akurasi meter nyata di sekeliling titik pengguna dengan halo lembut warna aksen/sage (`alpha: 0.15`).
+  - Banner peringatan *"Lokasi kurang akurat - keluar ruangan atau aktifkan lokasi presisi"* melayang di atas peta jika akurasi GPS $> 100$ m.
+  - Deteksi akurasi berkurang pada Android 12+/iOS 14+ (`LocationAccuracyStatus.reduced`) memicu kartu/banner penjelasan *"Lokasi presisi dimatikan"* + tombol *"Aktifkan lokasi presisi"*.
+  - Deteksi lokasi tiruan (`isMocked == true`) memunculkan badge debug *"Lokasi tiruan"*.
+  - Efisiensi baterai & kontrol mandiri: stream posisi di-pause saat halaman/aplikasi tidak aktif (*inactive/paused*) dan di-resume saat aktif. Kamera tidak auto-follow saat pengguna menggeser peta (`hasGesture`). Tombol *"Pusatkan"* memusatkan kamera ke lokasi pengguna dan menampilkan toast *"Peta dipusatkan ke lokasi kamu"*.
+
+
+
+
 
 
 

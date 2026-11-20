@@ -154,8 +154,14 @@ class _CookPageState extends ConsumerState<CookPage> {
     _timer?.cancel();
     if (!_cookedIncremented) {
       _cookedIncremented = true;
+      final recipe = ref
+          .read(recipeDetailProvider(widget.recipeId))
+          .asData
+          ?.value;
       ref.read(authProvider.notifier).incrementCooked();
-      ref.read(cookedProvider.notifier).add(widget.recipeId);
+      ref
+          .read(cookedProvider.notifier)
+          .add(widget.recipeId, null, null, recipe);
     }
     final existingRating = ref.read(recipeUserRatingProvider(widget.recipeId));
     if (existingRating != null && existingRating > 0) {

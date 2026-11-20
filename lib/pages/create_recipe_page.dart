@@ -18,6 +18,7 @@ import '../widgets/expandable_card_list.dart';
 import '../widgets/page_with_header.dart';
 import '../widgets/ui/app_bottom_sheet.dart';
 import '../widgets/ui/app_button.dart';
+import '../widgets/ui/app_chip.dart';
 import '../widgets/ui/smart_image.dart';
 import '../widgets/ui/sticky_bottom_bar.dart';
 
@@ -151,370 +152,27 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
     );
   }
 
-  void _openIngredientsSheet() {
-    final palette = context.palette;
-    FocusScope.of(context).unfocus();
+  Future<void> _openIngredientsSheet() async {
+    FocusManager.instance.primaryFocus?.unfocus();
     _titleFocusNode.unfocus();
-    final tempIngredients = List<Ingredient>.from(_ingredients);
 
-    final nameController = TextEditingController();
-    final qtyController = TextEditingController();
-    final priceController = TextEditingController();
-    String selectedUnit = 'g';
-
-    final units = [
-      'g',
-      'kg',
-      'ml',
-      'l',
-      'sdm',
-      'sdt',
-      'butir',
-      'siung',
-      'buah',
-      'bungkus',
-      'ikat',
-    ];
-
-    showAppBottomSheet(
+    final result = await showAppBottomSheet<List<Ingredient>>(
       context: context,
       isScrollControlled: true,
       builder: (sheetContext) {
-        return StatefulBuilder(
-          builder: (context, setSheetState) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 24.0,
-                vertical: 8.0,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Tambah Bahan',
-                        style: AppText.sectionTitle.copyWith(
-                          color: palette.textStrong,
-                        ),
-                      ),
-                      IconButton(
-                        icon: Icon(LucideIcons.x, color: palette.textStrong),
-                        onPressed: () => Navigator.of(sheetContext).pop(),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12.0),
-
-                  // Input Nama Bahan
-                  Text(
-                    'Nama Bahan',
-                    style: AppText.formLabel.copyWith(
-                      color: palette.textStrong,
-                    ),
-                  ),
-                  const SizedBox(height: 6.0),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14.0),
-                    decoration: BoxDecoration(
-                      color: palette.chip,
-                      borderRadius: BorderRadius.circular(10.0),
-                    ),
-                    child: TextField(
-                      controller: nameController,
-                      scrollPadding: const EdgeInsets.symmetric(
-                        vertical: 32.0,
-                        horizontal: 20.0,
-                      ),
-                      style: AppText.body.copyWith(color: palette.textBody),
-                      decoration: InputDecoration(
-                        hintText: 'Mis. Bawang merah',
-                        hintStyle: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 13.0,
-                          color: palette.textSecondary,
-                        ),
-                        border: InputBorder.none,
-                        isDense: true,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12.0),
-
-                  // Input Jumlah & Satuan
-                  Row(
-                    children: [
-                      Expanded(
-                        flex: 3,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Jumlah',
-                              style: AppText.formLabel.copyWith(
-                                color: palette.textStrong,
-                              ),
-                            ),
-                            const SizedBox(height: 6.0),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14.0,
-                              ),
-                              decoration: BoxDecoration(
-                                color: palette.chip,
-                                borderRadius: BorderRadius.circular(10.0),
-                              ),
-                              child: TextField(
-                                controller: qtyController,
-                                scrollPadding: const EdgeInsets.symmetric(
-                                  vertical: 32.0,
-                                  horizontal: 20.0,
-                                ),
-                                style: AppText.body.copyWith(
-                                  color: palette.textBody,
-                                ),
-                                decoration: InputDecoration(
-                                  hintText: 'Mis. 4',
-                                  hintStyle: TextStyle(
-                                    fontFamily: 'Poppins',
-                                    fontSize: 13.0,
-                                    color: palette.textSecondary,
-                                  ),
-                                  border: InputBorder.none,
-                                  isDense: true,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 12.0),
-                      Expanded(
-                        flex: 3,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Satuan',
-                              style: AppText.formLabel.copyWith(
-                                color: palette.textStrong,
-                              ),
-                            ),
-                            const SizedBox(height: 6.0),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12.0,
-                              ),
-                              decoration: BoxDecoration(
-                                color: palette.chip,
-                                borderRadius: BorderRadius.circular(10.0),
-                              ),
-                              child: DropdownButtonHideUnderline(
-                                child: DropdownButton<String>(
-                                  value: selectedUnit,
-                                  dropdownColor: palette.surface,
-                                  isExpanded: true,
-                                  items: units.map((u) {
-                                    return DropdownMenuItem(
-                                      value: u,
-                                      child: Text(
-                                        u,
-                                        style: AppText.body.copyWith(
-                                          color: palette.textBody,
-                                        ),
-                                      ),
-                                    );
-                                  }).toList(),
-                                  onChanged: (val) {
-                                    if (val != null) {
-                                      setSheetState(() => selectedUnit = val);
-                                    }
-                                  },
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12.0),
-
-                  // Input Estimasi Harga
-                  Text(
-                    'Estimasi Harga (Rp, opsional)',
-                    style: AppText.formLabel.copyWith(
-                      color: palette.textStrong,
-                    ),
-                  ),
-                  const SizedBox(height: 6.0),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14.0),
-                    decoration: BoxDecoration(
-                      color: palette.chip,
-                      borderRadius: BorderRadius.circular(10.0),
-                    ),
-                    child: TextField(
-                      controller: priceController,
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      scrollPadding: const EdgeInsets.symmetric(
-                        vertical: 32.0,
-                        horizontal: 20.0,
-                      ),
-                      style: AppText.body.copyWith(color: palette.textBody),
-                      decoration: InputDecoration(
-                        hintText: '0',
-                        hintStyle: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 13.0,
-                          color: palette.textSecondary,
-                        ),
-                        border: InputBorder.none,
-                        isDense: true,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 14.0),
-
-                  // Tombol Tambah ke daftar
-                  SizedBox(
-                    width: double.infinity,
-                    height: 44.0,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: palette.accent,
-                        foregroundColor: palette.onAccent,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10.0),
-                        ),
-                      ),
-                      onPressed: () {
-                        final name = nameController.text.trim();
-                        final qty = qtyController.text.trim();
-                        if (name.isEmpty) return;
-
-                        final price =
-                            int.tryParse(priceController.text.trim()) ?? 0;
-                        setSheetState(() {
-                          tempIngredients.add(
-                            Ingredient(
-                              id: 'ing-${DateTime.now().millisecondsSinceEpoch}',
-                              name: name,
-                              qty: qty.isNotEmpty ? qty : '1',
-                              unit: selectedUnit,
-                              price: price,
-                            ),
-                          );
-                          nameController.clear();
-                          qtyController.clear();
-                          priceController.clear();
-                        });
-                      },
-                      child: Text(
-                        '+ Tambah ke Daftar',
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 13.0,
-                          fontWeight: FontWeight.w700,
-                          color: palette.onAccent,
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 16.0),
-
-                  // Daftar bahan yang sudah ditambahkan
-                  if (tempIngredients.isNotEmpty) ...[
-                    Text(
-                      'Bahan Terdaftar:',
-                      style: AppText.formLabel.copyWith(
-                        color: palette.textStrong,
-                      ),
-                    ),
-                    const SizedBox(height: 8.0),
-                    ...tempIngredients.asMap().entries.map((entry) {
-                      final idx = entry.key;
-                      final ing = entry.value;
-
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 6.0),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12.0,
-                          vertical: 8.0,
-                        ),
-                        decoration: BoxDecoration(
-                          color: palette.surface,
-                          borderRadius: BorderRadius.circular(8.0),
-                          border: Border.all(color: palette.border),
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                '${ing.name} (${ing.qty} ${ing.unit ?? ''})',
-                                style: TextStyle(
-                                  fontFamily: 'Poppins',
-                                  fontSize: 13.0,
-                                  fontWeight: FontWeight.w600,
-                                  color: palette.textStrong,
-                                ),
-                              ),
-                            ),
-                            GestureDetector(
-                              onTap: () {
-                                setSheetState(() {
-                                  tempIngredients.removeAt(idx);
-                                });
-                              },
-                              child: Icon(
-                                LucideIcons.trash2,
-                                size: 16.0,
-                                color: palette.danger,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }),
-                    const SizedBox(height: 16.0),
-                  ],
-
-                  // Tombol Simpan
-                  AppButton(
-                    label: 'Simpan',
-                    variant: AppButtonVariant.primary,
-                    size: AppButtonSize.lg,
-                    fullWidth: true,
-                    onPressed: () {
-                      FocusScope.of(context).unfocus();
-                      _titleFocusNode.unfocus();
-                      setState(() {
-                        _ingredients.clear();
-                        _ingredients.addAll(tempIngredients);
-                        if (_ingredients.isNotEmpty) {
-                          _ingredientsError = null;
-                        }
-                      });
-                      Navigator.of(sheetContext).pop();
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        FocusScope.of(context).unfocus();
-                        _titleFocusNode.unfocus();
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 8.0),
-                ],
-              ),
-            );
-          },
-        );
+        return _IngredientsSheetContent(initialIngredients: _ingredients);
       },
     );
+
+    if (result != null && mounted) {
+      setState(() {
+        _ingredients.clear();
+        _ingredients.addAll(result);
+        if (_ingredients.isNotEmpty) {
+          _ingredientsError = null;
+        }
+      });
+    }
   }
 
   void _openCookingInstructionsSheet() {
@@ -528,7 +186,7 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
       isScrollControlled: true,
       builder: (sheetContext) {
         return StatefulBuilder(
-          builder: (context, setSheetState) {
+          builder: (sheetBuilderContext, setSheetState) {
             return Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: 24.0,
@@ -698,8 +356,7 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                     size: AppButtonSize.lg,
                     fullWidth: true,
                     onPressed: () {
-                      FocusScope.of(context).unfocus();
-                      _titleFocusNode.unfocus();
+                      FocusManager.instance.primaryFocus?.unfocus();
                       setState(() {
                         _steps.clear();
                         _steps.addAll(tempSteps);
@@ -708,10 +365,6 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                         }
                       });
                       Navigator.of(sheetContext).pop();
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        FocusScope.of(context).unfocus();
-                        _titleFocusNode.unfocus();
-                      });
                     },
                   ),
                   const SizedBox(height: 8.0),
@@ -1404,6 +1057,7 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                             ),
                             const SizedBox(height: 8.0),
                             GestureDetector(
+                              key: const Key('add-ingredients-button'),
                               onTap: _openIngredientsSheet,
                               child: Container(
                                 height: 104.0,
@@ -1684,6 +1338,504 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _IngredientsSheetContent extends StatefulWidget {
+  final List<Ingredient> initialIngredients;
+
+  const _IngredientsSheetContent({required this.initialIngredients});
+
+  @override
+  State<_IngredientsSheetContent> createState() =>
+      _IngredientsSheetContentState();
+}
+
+class _IngredientsSheetContentState extends State<_IngredientsSheetContent> {
+  late final List<Ingredient> _tempIngredients;
+  late final TextEditingController _nameController;
+  late final TextEditingController _qtyController;
+  late final TextEditingController _unitController;
+  late final TextEditingController _priceController;
+
+  late final FocusNode _nameFocusNode;
+  late final FocusNode _qtyFocusNode;
+  late final FocusNode _unitFocusNode;
+  late final FocusNode _priceFocusNode;
+
+  static const _units = [
+    'g',
+    'kg',
+    'ml',
+    'l',
+    'sdm',
+    'sdt',
+    'butir',
+    'siung',
+    'buah',
+    'bungkus',
+    'ikat',
+    'secukupnya',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _tempIngredients = List<Ingredient>.from(widget.initialIngredients);
+    _nameController = TextEditingController();
+    _qtyController = TextEditingController();
+    _unitController = TextEditingController();
+    _priceController = TextEditingController();
+
+    _nameFocusNode = FocusNode();
+    _qtyFocusNode = FocusNode();
+    _unitFocusNode = FocusNode();
+    _priceFocusNode = FocusNode();
+
+    _unitFocusNode.addListener(_onUnitFocusChanged);
+  }
+
+  void _onUnitFocusChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _unitFocusNode.removeListener(_onUnitFocusChanged);
+    _nameFocusNode.dispose();
+    _qtyFocusNode.dispose();
+    _unitFocusNode.dispose();
+    _priceFocusNode.dispose();
+    _nameController.dispose();
+    _qtyController.dispose();
+    _unitController.dispose();
+    _priceController.dispose();
+    super.dispose();
+  }
+
+  void _addIngredient() {
+    final name = _nameController.text.trim();
+    final qty = _qtyController.text.trim();
+    final unit = _unitController.text.trim();
+    final effectiveUnit = unit.isNotEmpty ? unit : 'g';
+    if (name.isEmpty) {
+      _nameFocusNode.requestFocus();
+      return;
+    }
+
+    final price = int.tryParse(_priceController.text.trim()) ?? 0;
+    setState(() {
+      _tempIngredients.add(
+        Ingredient(
+          id: 'ing-${DateTime.now().millisecondsSinceEpoch}',
+          name: name,
+          qty: qty.isNotEmpty ? qty : '1',
+          unit: effectiveUnit,
+          price: price,
+        ),
+      );
+      _nameController.clear();
+      _qtyController.clear();
+      _unitController.clear();
+      _priceController.clear();
+    });
+    _nameFocusNode.requestFocus();
+  }
+
+  void _saveAndPop() {
+    final name = _nameController.text.trim();
+    if (name.isNotEmpty) {
+      final qty = _qtyController.text.trim();
+      final unit = _unitController.text.trim();
+      final effectiveUnit = unit.isNotEmpty ? unit : 'g';
+      final price = int.tryParse(_priceController.text.trim()) ?? 0;
+      _tempIngredients.add(
+        Ingredient(
+          id: 'ing-${DateTime.now().millisecondsSinceEpoch}',
+          name: name,
+          qty: qty.isNotEmpty ? qty : '1',
+          unit: effectiveUnit,
+          price: price,
+        ),
+      );
+    }
+    FocusManager.instance.primaryFocus?.unfocus();
+    Navigator.of(context).pop(_tempIngredients);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    final currentUnit = _unitController.text.trim();
+    final isUnitFocused = _unitFocusNode.hasFocus;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Tambah Bahan',
+                style: AppText.sectionTitle.copyWith(color: palette.textStrong),
+              ),
+              IconButton(
+                icon: Icon(LucideIcons.x, color: palette.textStrong),
+                onPressed: () {
+                  FocusManager.instance.primaryFocus?.unfocus();
+                  Navigator.of(context).pop();
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 12.0),
+
+          // Input Nama Bahan
+          Text(
+            'Nama Bahan',
+            style: AppText.formLabel.copyWith(color: palette.textStrong),
+          ),
+          const SizedBox(height: 6.0),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14.0),
+            decoration: BoxDecoration(
+              color: palette.chip,
+              borderRadius: BorderRadius.circular(10.0),
+            ),
+            child: TextField(
+              controller: _nameController,
+              focusNode: _nameFocusNode,
+              textInputAction: TextInputAction.next,
+              onSubmitted: (_) => _qtyFocusNode.requestFocus(),
+              scrollPadding: const EdgeInsets.symmetric(
+                vertical: 32.0,
+                horizontal: 20.0,
+              ),
+              style: AppText.body.copyWith(color: palette.textBody),
+              decoration: InputDecoration(
+                hintText: 'Mis. Bawang merah',
+                hintStyle: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 13.0,
+                  color: palette.textSecondary,
+                ),
+                border: InputBorder.none,
+                isDense: true,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12.0),
+
+          // Input Jumlah & Satuan
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Kolom Jumlah
+              Expanded(
+                flex: 3,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Jumlah',
+                      style: AppText.formLabel.copyWith(
+                        color: palette.textStrong,
+                      ),
+                    ),
+                    const SizedBox(height: 6.0),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14.0),
+                      decoration: BoxDecoration(
+                        color: palette.chip,
+                        borderRadius: BorderRadius.circular(10.0),
+                      ),
+                      child: TextField(
+                        controller: _qtyController,
+                        focusNode: _qtyFocusNode,
+                        keyboardType: TextInputType.number,
+                        textInputAction: TextInputAction.next,
+                        onSubmitted: (_) => _unitFocusNode.requestFocus(),
+                        scrollPadding: const EdgeInsets.symmetric(
+                          vertical: 32.0,
+                          horizontal: 20.0,
+                        ),
+                        style: AppText.body.copyWith(color: palette.textBody),
+                        decoration: InputDecoration(
+                          hintText: 'Mis. 4',
+                          hintStyle: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 13.0,
+                            color: palette.textSecondary,
+                          ),
+                          border: InputBorder.none,
+                          isDense: true,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12.0),
+              // Kolom Satuan (TextField biasa, keyboard tetap terbuka)
+              Expanded(
+                flex: 3,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Satuan',
+                      style: AppText.formLabel.copyWith(
+                        color: palette.textStrong,
+                      ),
+                    ),
+                    const SizedBox(height: 6.0),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14.0),
+                      decoration: BoxDecoration(
+                        color: palette.chip,
+                        borderRadius: BorderRadius.circular(10.0),
+                      ),
+                      child: TextField(
+                        controller: _unitController,
+                        focusNode: _unitFocusNode,
+                        textInputAction: TextInputAction.next,
+                        onSubmitted: (_) => _priceFocusNode.requestFocus(),
+                        onChanged: (_) => setState(() {}),
+                        scrollPadding: const EdgeInsets.symmetric(
+                          vertical: 32.0,
+                          horizontal: 20.0,
+                        ),
+                        style: AppText.body.copyWith(color: palette.textBody),
+                        decoration: InputDecoration(
+                          hintText: 'g, sdm, butir…',
+                          hintStyle: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 13.0,
+                            color: palette.textSecondary,
+                          ),
+                          border: InputBorder.none,
+                          isDense: true,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          // Baris Chip Saran Satuan (tinggi ±36 dp)
+          if (currentUnit.isNotEmpty && !isUnitFocused)
+            Padding(
+              padding: const EdgeInsets.only(top: 8.0),
+              child: SizedBox(
+                height: 36.0,
+                child: Row(
+                  children: [
+                    AppChip(
+                      label: currentUnit,
+                      selected: true,
+                      icon: Icon(
+                        Icons.close,
+                        size: 14,
+                        color: palette.onChipSelected,
+                      ),
+                      onTap: () {
+                        setState(() {
+                          _unitController.clear();
+                        });
+                        _unitFocusNode.requestFocus();
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else ...[
+            Builder(
+              builder: (context) {
+                final filtered = currentUnit.isEmpty
+                    ? _units
+                    : _units
+                          .where(
+                            (u) => u.toLowerCase().contains(
+                              currentUnit.toLowerCase(),
+                            ),
+                          )
+                          .toList();
+
+                if (filtered.isEmpty) return const SizedBox.shrink();
+
+                return Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: SizedBox(
+                    height: 36.0,
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: filtered.map((u) {
+                          final isSelected =
+                              currentUnit.toLowerCase() == u.toLowerCase();
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 6.0),
+                            child: AppChip(
+                              label: u,
+                              selected: isSelected,
+                              onTap: () {
+                                setState(() {
+                                  _unitController.text = u;
+                                });
+                                // Pindahkan fokus tanpa menutup keyboard
+                                _priceFocusNode.requestFocus();
+                              },
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+
+          const SizedBox(height: 12.0),
+
+          // Input Estimasi Harga
+          Text(
+            'Estimasi Harga (Rp, opsional)',
+            style: AppText.formLabel.copyWith(color: palette.textStrong),
+          ),
+          const SizedBox(height: 6.0),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14.0),
+            decoration: BoxDecoration(
+              color: palette.chip,
+              borderRadius: BorderRadius.circular(10.0),
+            ),
+            child: TextField(
+              controller: _priceController,
+              focusNode: _priceFocusNode,
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _addIngredient(),
+              scrollPadding: const EdgeInsets.symmetric(
+                vertical: 32.0,
+                horizontal: 20.0,
+              ),
+              style: AppText.body.copyWith(color: palette.textBody),
+              decoration: InputDecoration(
+                hintText: '0',
+                hintStyle: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 13.0,
+                  color: palette.textSecondary,
+                ),
+                border: InputBorder.none,
+                isDense: true,
+              ),
+            ),
+          ),
+          const SizedBox(height: 14.0),
+
+          // Tombol Tambah ke daftar
+          SizedBox(
+            width: double.infinity,
+            height: 44.0,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: palette.accent,
+                foregroundColor: palette.onAccent,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10.0),
+                ),
+              ),
+              onPressed: _addIngredient,
+              child: Text(
+                '+ Tambah ke Daftar',
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 13.0,
+                  fontWeight: FontWeight.w700,
+                  color: palette.onAccent,
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16.0),
+
+          // Daftar bahan yang sudah ditambahkan
+          if (_tempIngredients.isNotEmpty) ...[
+            Text(
+              'Bahan Terdaftar:',
+              style: AppText.formLabel.copyWith(color: palette.textStrong),
+            ),
+            const SizedBox(height: 8.0),
+            ..._tempIngredients.asMap().entries.map((entry) {
+              final idx = entry.key;
+              final ing = entry.value;
+
+              return Container(
+                margin: const EdgeInsets.only(bottom: 6.0),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12.0,
+                  vertical: 8.0,
+                ),
+                decoration: BoxDecoration(
+                  color: palette.surface,
+                  borderRadius: BorderRadius.circular(8.0),
+                  border: Border.all(color: palette.border),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '${ing.name} (${ing.qty} ${ing.unit ?? ''})',
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 13.0,
+                          fontWeight: FontWeight.w600,
+                          color: palette.textStrong,
+                        ),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _tempIngredients.removeAt(idx);
+                        });
+                      },
+                      child: Icon(
+                        LucideIcons.trash2,
+                        size: 16.0,
+                        color: palette.danger,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+            const SizedBox(height: 16.0),
+          ],
+
+          // Tombol Simpan
+          AppButton(
+            label: 'Simpan',
+            variant: AppButtonVariant.primary,
+            size: AppButtonSize.lg,
+            fullWidth: true,
+            onPressed: _saveAndPop,
+          ),
+          const SizedBox(height: 8.0),
         ],
       ),
     );

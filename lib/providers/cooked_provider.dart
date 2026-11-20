@@ -4,6 +4,7 @@ import '../core/utils/week_utils.dart';
 import '../data/seed_data.dart';
 import '../data/seed_helper.dart';
 import '../models/models.dart';
+import '../services/recipe_cache_service.dart';
 import 'auth_provider.dart';
 import 'storage_provider.dart';
 
@@ -70,9 +71,21 @@ class CookedNotifier extends Notifier<List<CookedEntry>> {
   }
 
   /// Tambahkan 1 entri selesai memasak untuk suatu resep
-  Future<void> add(String recipeId, [String? dateKey, int? rating]) async {
+  Future<void> add(
+    String recipeId, [
+    String? dateKey,
+    int? rating,
+    Recipe? recipe,
+  ]) async {
     final userId = ref.read(currentUserIdProvider);
     if (userId == null) return;
+
+    if (recipe != null) {
+      try {
+        final cacheBox = ref.read(recipeCacheBoxProvider);
+        await RecipeCacheService.saveSummary(cacheBox, recipe);
+      } catch (_) {}
+    }
 
     final date = dateKey ?? WeekUtils.formatDateKey(DateTime.now());
     final newEntry = CookedEntry(

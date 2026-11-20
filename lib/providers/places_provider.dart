@@ -76,9 +76,11 @@ final placesAsyncProvider = FutureProvider<List<Place>>((ref) async {
   final service = ref.watch(placeServiceProvider);
   final radius = ref.watch(nearbyRadiusMetersProvider);
 
+  final coords = locationState.effectiveCoordinates;
+
   return service.nearby(
-    latitude: locationState.coordinates.latitude,
-    longitude: locationState.coordinates.longitude,
+    latitude: coords.latitude,
+    longitude: coords.longitude,
     radiusMeters: radius,
   );
 });
@@ -93,9 +95,10 @@ final placesProvider = Provider<List<Place>>((ref) {
 
   // Fallback cepat saat inisialisasi awal agar UI tidak kosong melompong
   final locationState = ref.watch(locationProvider);
+  final coords = locationState.effectiveCoordinates;
   return const LocalPlaceService().getPlacesSync(
-    latitude: locationState.coordinates.latitude,
-    longitude: locationState.coordinates.longitude,
+    latitude: coords.latitude,
+    longitude: coords.longitude,
     radiusMeters: 5000,
   );
 });

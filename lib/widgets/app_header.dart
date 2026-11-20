@@ -9,6 +9,7 @@ import '../core/theme/app_text.dart';
 import '../providers/auth_provider.dart';
 import '../providers/cart_provider.dart';
 import '../providers/favorites_provider.dart';
+import 'app_header_metrics.dart';
 import 'ui/smart_image.dart';
 
 /// Menghitung sapaan berdasarkan jam sesuai PRD §15.2:
@@ -72,11 +73,10 @@ class AppHeader extends ConsumerWidget {
               .firstWhere((w) => w.isNotEmpty, orElse: () => 'Teman')
         : 'Teman';
 
-    final topInset = MediaQuery.paddingOf(context).top;
-    // Jarak header berjarak sekitar 45px dengan logo baterai hp di status bar
-    final headerTop = includeTopPadding
-        ? (topInset > 0 ? (topInset + 16.0) : 45.0)
-        : 0.0;
+    final headerTop = AppHeaderMetrics.rowTop(
+      context,
+      includeTopPadding: includeTopPadding,
+    );
     final now = currentTime ?? DateTime.now();
 
     final pillBg = palette.isDark ? palette.accent : palette.actionBg;
@@ -89,7 +89,7 @@ class AppHeader extends ConsumerWidget {
         top: headerTop,
         left: 24.0,
         right: 24.0,
-        bottom: 12.0,
+        bottom: AppHeaderMetrics.bottomPadding,
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,

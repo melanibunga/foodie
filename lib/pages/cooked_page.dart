@@ -66,15 +66,12 @@ class _CookedPageState extends ConsumerState<CookedPage> {
   Widget build(BuildContext context) {
     final summaries = ref.watch(cookedSummaryProvider);
     final uniqueCount = ref.watch(cookedUniqueCountProvider);
-    final allRecipes = ref.watch(recipesProvider);
     final favorites = ref.watch(favoritesProvider);
     final ratings = ref.watch(ratingsProvider);
 
-    final recipeMap = {for (final r in allRecipes) r.id: r};
-
-    // Filter berdasarkan pencarian nama resep
+    // Filter berdasarkan pencarian nama resep dengan resolusi sinkron memori + persist cache
     final filteredSummaries = summaries.where((s) {
-      final recipe = recipeMap[s.recipeId];
+      final recipe = resolveRecipeSync(ref, s.recipeId);
       if (recipe == null) return false;
       if (_searchQuery.trim().isEmpty) return true;
       final q = _searchQuery.trim().toLowerCase();
@@ -132,7 +129,7 @@ class _CookedPageState extends ConsumerState<CookedPage> {
                 ),
                 delegate: SliverChildBuilderDelegate((context, index) {
                   final summary = filteredSummaries[index];
-                  final recipe = recipeMap[summary.recipeId];
+                  final recipe = resolveRecipeSync(ref, summary.recipeId);
                   if (recipe == null) return const SizedBox.shrink();
 
                   final isFav = favorites.contains(recipe.id);

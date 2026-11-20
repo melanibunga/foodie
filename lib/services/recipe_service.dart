@@ -14,17 +14,21 @@ abstract class RecipeService {
   Future<List<Recipe>> list({
     String? q,
     MealType? meal,
+    String? category,
+    String? cuisine,
     String? mainIngredient,
     Difficulty? difficulty,
     int? maxTimeMin,
     int? minTimeMin,
+    int page = 1,
+    int limit = 10,
   });
 
   Future<Recipe?> getById(String id);
 
   Future<List<Recipe>> popular({int limit = 10});
 
-  Future<List<Recipe>> inspiration(String dateKey, {int limit = 6});
+  Future<List<Recipe>> inspiration(String dateKey, {int limit = 5});
 }
 
 /// Implementasi lokal untuk v1 yang menggabungkan data seed dan resep buatan user,
@@ -50,10 +54,14 @@ class LocalRecipeService implements RecipeService {
   Future<List<Recipe>> list({
     String? q,
     MealType? meal,
+    String? category,
+    String? cuisine,
     String? mainIngredient,
     Difficulty? difficulty,
     int? maxTimeMin,
     int? minTimeMin,
+    int page = 1,
+    int limit = 10,
   }) async {
     await Future.delayed(const Duration(milliseconds: 150));
     var results = List<Recipe>.from(_getAllRecipes());
@@ -70,6 +78,25 @@ class LocalRecipeService implements RecipeService {
 
     if (meal != null) {
       results = results.where((r) => r.meal == meal).toList();
+    }
+
+    if (category != null && category.trim().isNotEmpty) {
+      final cat = category.trim().toLowerCase();
+      results = results
+          .where(
+            (r) =>
+                r.category.toLowerCase() == cat ||
+                r.category.toLowerCase().contains(cat),
+          )
+          .toList();
+    }
+
+    if (cuisine != null && cuisine.trim().isNotEmpty) {
+      final cui = cuisine.trim().toLowerCase();
+      results = results.where((r) {
+        final rc = r.cuisine.toLowerCase();
+        return rc == cui || rc.contains(cui);
+      }).toList();
     }
 
     if (mainIngredient != null && mainIngredient.trim().isNotEmpty) {
@@ -120,7 +147,7 @@ class LocalRecipeService implements RecipeService {
   }
 
   @override
-  Future<List<Recipe>> inspiration(String dateKey, {int limit = 6}) async {
+  Future<List<Recipe>> inspiration(String dateKey, {int limit = 5}) async {
     await Future.delayed(const Duration(milliseconds: 150));
     final recipes = List<Recipe>.from(_getAllRecipes());
     if (recipes.isEmpty) return [];
@@ -130,7 +157,7 @@ class LocalRecipeService implements RecipeService {
     final random = Random(seed);
 
     final shuffled = List<Recipe>.from(recipes)..shuffle(random);
-    return shuffled.take(limit).toList();
+    return shuffled.take(limit.clamp(1, 5)).toList();
   }
 }
 

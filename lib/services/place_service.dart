@@ -33,11 +33,6 @@ class OpeningHoursParser {
   };
 
   /// Parse format opening_hours string OSM
-  /// Format umum yang didukung:
-  /// - "24/7" -> buka
-  /// - "off" / "closed" -> tutup
-  /// - "Mo-Su 08:00-21:00", "08:00-22:00", "Mo-Fr 09:00-18:00; Sa 09:00-15:00"
-  /// - Format tak dikenal / null / kosong -> isUnknown: true, isOpen: false
   static OpeningHoursResult parse(String? raw, {DateTime? now}) {
     if (raw == null) {
       return const OpeningHoursResult(isOpen: false, isUnknown: true);
@@ -74,7 +69,6 @@ class OpeningHoursParser {
         continue;
       }
 
-      // Cari rentang waktu jam: HH:mm-HH:mm
       final timeMatch = RegExp(r'(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})')
           .firstMatch(r);
       if (timeMatch == null) {
@@ -90,17 +84,14 @@ class OpeningHoursParser {
       final startMinutes = startHour * 60 + startMin;
       final endMinutes = endHour * 60 + endMin;
 
-      // Cek apakah ada spesifikasi hari sebelum jam
       final dayPart = r.substring(0, timeMatch.start).trim();
       bool dayApplies = false;
 
       if (dayPart.isEmpty) {
-        // Berlaku untuk semua hari
         dayApplies = true;
         isAnyDayRule = true;
       } else {
         hasDaySpecification = true;
-        // Cek hari (misal Mo-Fr, Sa-Su, Mo,Tu,We)
         dayApplies = _isDayApplicable(dayPart, currentWeekday);
         if (dayApplies) {
           matchedDay = true;
@@ -122,12 +113,10 @@ class OpeningHoursParser {
       return const OpeningHoursResult(isOpen: false, isUnknown: false);
     }
 
-    // Jika format tidak dikenali
     return const OpeningHoursResult(isOpen: false, isUnknown: true);
   }
 
   static bool _isDayApplicable(String dayPart, int targetWeekday) {
-    // Normalisasi pecahan hari (mis. "mo-su", "mo-fr,sa")
     final tokens = dayPart.split(RegExp(r'[\s,]+'));
 
     for (final token in tokens) {
@@ -141,7 +130,6 @@ class OpeningHoursParser {
             if (start <= end) {
               if (targetWeekday >= start && targetWeekday <= end) return true;
             } else {
-              // Mis. Su-Fr (wrap around)
               if (targetWeekday >= start || targetWeekday <= end) return true;
             }
           }
@@ -158,8 +146,16 @@ class OpeningHoursParser {
   }
 }
 
+/// Entri cache bounding box dengan waktu simpan
+class _BboxCacheEntry {
+  final List<Place> places;
+  final DateTime timestamp;
+
+  _BboxCacheEntry(this.places, this.timestamp);
+}
+
 /// Interface abstraksi untuk sumber data tempat makan sekitar (Nearby)
-/// sesuai PRD §14.12 & §6.8
+/// sesuai PRD §14.12, §6.8, dan §17.6
 abstract class PlaceService {
   Future<List<Place>> list();
 
@@ -168,10 +164,30 @@ abstract class PlaceService {
     required double longitude,
     int radiusMeters = 5000,
   });
+
+  /// Mengambil daftar tempat makan dalam area terlihat (bounding box)
+  Future<List<Place>> getPlacesInBbox({
+    required double minLat,
+    required double minLon,
+    required double maxLat,
+    required double maxLon,
+    double? userLat,
+    double? userLng,
+    CancelToken? cancelToken,
+  });
+
+  /// Mencari tempat makan berdasarkan nama di sekitar lokasi
+  Future<List<Place>> searchByName({
+    required String query,
+    required double latitude,
+    required double longitude,
+    int radiusMeters = 5000,
+    CancelToken? cancelToken,
+  });
 }
 
 /// Implementasi PlaceService menggunakan Overpass API (OpenStreetMap)
-/// dengan cache Hive dan fallback berantai ke LocalPlaceService
+/// dengan cache per-bbox 10 menit, pembatalan request lama, dan batas kuota publik.
 class OverpassPlaceService implements PlaceService {
   final Dio _dio;
   final LocalPlaceService _localService;
@@ -184,6 +200,9 @@ class OverpassPlaceService implements PlaceService {
   int? _lastRadius;
   List<Place>? _inMemoryPlaces;
   bool _hasShownFallbackToast = false;
+
+  // Bounding box in-memory cache (TTL: 10 menit)
+  final Map<String, _BboxCacheEntry> _bboxCache = {};
 
   OverpassPlaceService({
     Dio? dio,
@@ -270,7 +289,6 @@ class OverpassPlaceService implements PlaceService {
         _inMemoryPlaces = places;
         _hasShownFallbackToast = false;
 
-        // Simpan ke Hive cache
         _saveToCache(cacheKey, places);
         return places;
       }
@@ -289,7 +307,7 @@ class OverpassPlaceService implements PlaceService {
       return cachedPlaces;
     }
 
-    // 4. Fallback ke LocalPlaceService (mock relative)
+    // 4. Fallback ke LocalPlaceService
     debugPrint(
       'Overpass & cache unavailable, falling back to LocalPlaceService',
     );
@@ -309,6 +327,126 @@ class OverpassPlaceService implements PlaceService {
     _lastRadius = radiusMeters;
     _inMemoryPlaces = localPlaces;
     return localPlaces;
+  }
+
+  @override
+  Future<List<Place>> getPlacesInBbox({
+    required double minLat,
+    required double minLon,
+    required double maxLat,
+    required double maxLon,
+    double? userLat,
+    double? userLng,
+    CancelToken? cancelToken,
+  }) async {
+    final centerLat = userLat ?? ((minLat + maxLat) / 2);
+    final centerLng = userLng ?? ((minLon + maxLon) / 2);
+
+    // Kunci cache rounded bbox (~100 meter akurasi grid)
+    final cacheKey =
+        '${(minLat * 100).round()}_${(minLon * 100).round()}_${(maxLat * 100).round()}_${(maxLon * 100).round()}';
+
+    // Cek cache in-memory 10 menit
+    final cached = _bboxCache[cacheKey];
+    if (cached != null) {
+      final age = DateTime.now().difference(cached.timestamp);
+      if (age < const Duration(minutes: 10)) {
+        return cached.places;
+      } else {
+        _bboxCache.remove(cacheKey);
+      }
+    }
+
+    final query =
+        '''
+[out:json][timeout:15];
+(
+  node["amenity"~"restaurant|fast_food|cafe|food_court"]($minLat,$minLon,$maxLat,$maxLon);
+  way["amenity"~"restaurant|fast_food|cafe|food_court"]($minLat,$minLon,$maxLat,$maxLon);
+);
+out center 80;
+''';
+
+    final response = await _dio.post<Map<String, dynamic>>(
+      'https://overpass-api.de/api/interpreter',
+      data: 'data=${Uri.encodeQueryComponent(query)}',
+      cancelToken: cancelToken,
+      options: Options(
+        contentType: Headers.formUrlEncodedContentType,
+        headers: {'User-Agent': 'FoodieApp/1.0 (id.foodie.foodie)'},
+      ),
+    );
+
+    if (response.statusCode == 200 && response.data != null) {
+      final places = parseOverpassResponse(
+        response.data!,
+        latitude: centerLat,
+        longitude: centerLng,
+        radiusMeters: 5000,
+        ignoreNameless: true,
+        limit: 80,
+      );
+
+      _bboxCache[cacheKey] = _BboxCacheEntry(places, DateTime.now());
+      return places;
+    }
+
+    return const [];
+  }
+
+  @override
+  Future<List<Place>> searchByName({
+    required String query,
+    required double latitude,
+    required double longitude,
+    int radiusMeters = 5000,
+    CancelToken? cancelToken,
+  }) async {
+    final cleanQuery = query.trim();
+    if (cleanQuery.isEmpty) return const [];
+
+    // Escape regex characters untuk Overpass QL
+    final escaped = cleanQuery
+        .replaceAll(r'\', r'\\')
+        .replaceAll('"', r'\"')
+        .replaceAll('/', r'\/');
+
+    final overpassQuery =
+        '''
+[out:json][timeout:15];
+(
+  node["amenity"~"restaurant|fast_food|cafe|food_court"]["name"~"$escaped",i](around:$radiusMeters,$latitude,$longitude);
+  way["amenity"~"restaurant|fast_food|cafe|food_court"]["name"~"$escaped",i](around:$radiusMeters,$latitude,$longitude);
+);
+out center 8;
+''';
+
+    final response = await _dio.post<Map<String, dynamic>>(
+      'https://overpass-api.de/api/interpreter',
+      data: 'data=${Uri.encodeQueryComponent(overpassQuery)}',
+      cancelToken: cancelToken,
+      options: Options(
+        contentType: Headers.formUrlEncodedContentType,
+        headers: {'User-Agent': 'FoodieApp/1.0 (id.foodie.foodie)'},
+      ),
+    );
+
+    if (response.statusCode == 200 && response.data != null) {
+      final results = parseOverpassResponse(
+        response.data!,
+        latitude: latitude,
+        longitude: longitude,
+        radiusMeters: radiusMeters,
+        ignoreNameless: true,
+        limit: 8,
+      );
+
+      // Urutkan berdasarkan jarak dari lokasi pengguna
+      results.sort((a, b) => a.distanceM.compareTo(b.distanceM));
+      return results;
+    }
+
+    return const [];
   }
 
   Future<List<Place>> _fetchOverpass({
@@ -347,12 +485,14 @@ out center 40;
     return const [];
   }
 
-  /// Parser terpisah untuk response Overpass JSON agar mudah diuji secara unit test
+  /// Parser terpisah untuk response Overpass JSON
   static List<Place> parseOverpassResponse(
     Map<String, dynamic> data, {
     required double latitude,
     required double longitude,
     required int radiusMeters,
+    bool ignoreNameless = false,
+    int limit = 80,
   }) {
     final elements = data['elements'] as List<dynamic>?;
     if (elements == null || elements.isEmpty) return const [];
@@ -388,6 +528,13 @@ out center 40;
       final tags = (el['tags'] as Map<String, dynamic>?) ?? {};
       final rawName = tags['name'] as String?;
       final brand = tags['brand'] as String?;
+
+      if (ignoreNameless &&
+          (rawName == null || rawName.trim().isEmpty) &&
+          (brand == null || brand.trim().isEmpty)) {
+        continue;
+      }
+
       final amenity =
           (tags['amenity'] as String?)?.toLowerCase() ?? 'restaurant';
 
@@ -400,7 +547,6 @@ out center 40;
               ? 'Kedai Cepat Saji'
               : 'Rumah Makan');
 
-      // Cuisine derivation
       final rawCuisine = tags['cuisine'] as String?;
       final cuisine = rawCuisine != null && rawCuisine.isNotEmpty
           ? rawCuisine.split(';').map((s) => s.trim()).join(', ')
@@ -410,7 +556,6 @@ out center 40;
                 ? 'Makanan Cepat Saji'
                 : 'Restoran & Kuliner');
 
-      // Hitung jarak & waktu jalan
       final distanceM = distanceBetween(
         latitude,
         longitude,
@@ -420,19 +565,15 @@ out center 40;
       final rawWalkMin = (distanceM / 80).ceil();
       final walkMin = rawWalkMin < 1 ? 1 : rawWalkMin;
 
-      // Derived harga dari hash id & amenity
-      // derived deterministik
       final hash = (placeId.hashCode).abs();
-      final baseMin = 12000 + (hash % 15) * 1000; // 12.000 - 26.000
-      final span = 10000 + ((hash ~/ 15) % 15) * 2000; // 10.000 - 38.000
+      final baseMin = 12000 + (hash % 15) * 1000;
+      final span = 10000 + ((hash ~/ 15) % 15) * 2000;
       final priceMin = baseMin;
       final priceMax = baseMin + span;
 
-      // Status buka
       final openingHoursRaw = tags['opening_hours'] as String?;
       final openingResult = OpeningHoursParser.parse(openingHoursRaw);
 
-      // Posisi mock 0–100 untuk fallback IllustratedMap
       final deltaMetersLat = (placeLat - latitude) * 111139.0;
       final deltaMetersLng =
           (placeLng - longitude) * (111139.0 * effectiveCosLat);
@@ -444,6 +585,9 @@ out center 40;
           id: placeId,
           name: name,
           cuisine: cuisine,
+          type: amenity,
+          openingHours: openingHoursRaw,
+          tags: tags,
           priceMin: priceMin,
           priceMax: priceMax,
           distanceM: distanceM,
@@ -456,6 +600,10 @@ out center 40;
           lng: placeLng,
         ),
       );
+
+      if (places.length >= limit) {
+        break;
+      }
     }
 
     places.sort((a, b) => a.distanceM.compareTo(b.distanceM));
@@ -488,7 +636,6 @@ out center 40;
       final timestamp = raw['timestamp'] as num?;
       if (timestamp == null) return null;
 
-      // TTL: 1 jam
       final savedTime = DateTime.fromMillisecondsSinceEpoch(timestamp.toInt());
       if (DateTime.now().difference(savedTime) > const Duration(hours: 1)) {
         return null;
@@ -507,15 +654,10 @@ out center 40;
   }
 }
 
-/// Implementasi lokal/mock untuk PlaceService.
-///
-/// MOCK IMPLEMENTATION: Menghasilkan tempat makan mock RELATIF terhadap lokasi pengguna.
-/// Offset koordinat dihitung berdasarkan distanceM pada arah yang berbeda
-/// sehingga rute jalan kaki selalu dapat dihitung di mana pun pengguna berada.
+/// Fallback minimal LocalPlaceService
 class LocalPlaceService implements PlaceService {
   const LocalPlaceService();
 
-  // Template data tempat makan (diadaptasi dari seed data desain location.jpg)
   static const List<_PlaceTemplate> _templates = [
     _PlaceTemplate(
       id: 'warung-bu-sari',
@@ -526,7 +668,7 @@ class LocalPlaceService implements PlaceService {
       distanceM: 180,
       walkMin: 3,
       open: true,
-      bearingDegrees: 35.0, // Arah Timur Laut
+      bearingDegrees: 35.0,
       mockX: 47.0,
       mockY: 35.0,
     ),
@@ -539,7 +681,7 @@ class LocalPlaceService implements PlaceService {
       distanceM: 450,
       walkMin: 6,
       open: true,
-      bearingDegrees: 130.0, // Arah Tenggara
+      bearingDegrees: 130.0,
       mockX: 76.0,
       mockY: 44.0,
     ),
@@ -552,7 +694,7 @@ class LocalPlaceService implements PlaceService {
       distanceM: 700,
       walkMin: 10,
       open: false,
-      bearingDegrees: 235.0, // Arah Barat Daya
+      bearingDegrees: 235.0,
       mockX: 21.0,
       mockY: 46.0,
     ),
@@ -565,7 +707,7 @@ class LocalPlaceService implements PlaceService {
       distanceM: 1200,
       walkMin: 16,
       open: true,
-      bearingDegrees: 310.0, // Arah Barat Laut
+      bearingDegrees: 310.0,
       mockX: 85.0,
       mockY: 20.0,
     ),
@@ -578,7 +720,7 @@ class LocalPlaceService implements PlaceService {
       distanceM: 2200,
       walkMin: 30,
       open: true,
-      bearingDegrees: 85.0, // Arah Timur
+      bearingDegrees: 85.0,
       mockX: 15.0,
       mockY: 75.0,
     ),
@@ -586,7 +728,6 @@ class LocalPlaceService implements PlaceService {
 
   @override
   Future<List<Place>> list() async {
-    // Pusat default area desain: Jl. Kaliurang KM 5 (-7.7653, 110.3789)
     return nearby(latitude: -7.7653, longitude: 110.3789, radiusMeters: 5000);
   }
 
@@ -603,7 +744,35 @@ class LocalPlaceService implements PlaceService {
     );
   }
 
-  /// Helper sinkron untuk menghasilkan data tempat makan mock
+  @override
+  Future<List<Place>> getPlacesInBbox({
+    required double minLat,
+    required double minLon,
+    required double maxLat,
+    required double maxLon,
+    double? userLat,
+    double? userLng,
+    CancelToken? cancelToken,
+  }) async {
+    return getPlacesSync(
+      latitude: userLat ?? ((minLat + maxLat) / 2),
+      longitude: userLng ?? ((minLon + maxLon) / 2),
+    );
+  }
+
+  @override
+  Future<List<Place>> searchByName({
+    required String query,
+    required double latitude,
+    required double longitude,
+    int radiusMeters = 5000,
+    CancelToken? cancelToken,
+  }) async {
+    final lower = query.toLowerCase();
+    final all = getPlacesSync(latitude: latitude, longitude: longitude);
+    return all.where((p) => p.name.toLowerCase().contains(lower)).toList();
+  }
+
   List<Place> getPlacesSync({
     required double latitude,
     required double longitude,
@@ -614,12 +783,8 @@ class LocalPlaceService implements PlaceService {
     for (final template in _templates) {
       if (template.distanceM > radiusMeters) continue;
 
-      // Hitung koordinat relatif berdasarkan jarak (meter) dan sudut (bearing)
       final rad = template.bearingDegrees * (math.pi / 180.0);
       final latRad = latitude * (math.pi / 180.0);
-
-      // 1 meter lat ~ 1 / 111139 derajat
-      // 1 meter lng ~ 1 / (111139 * cos(lat)) derajat
       final cosLat = math.cos(latRad).abs();
       final effectiveCosLat = cosLat < 0.01 ? 0.01 : cosLat;
 

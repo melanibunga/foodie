@@ -2,11 +2,14 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive/hive.dart';
 
+import '../core/utils/recipe_formatters.dart';
 import '../models/models.dart';
 import '../providers/storage_provider.dart';
+import 'recipe_cache_service.dart';
 import 'recipe_service.dart';
 
 /// Notifier untuk notifikasi toast fallback data cadangan
@@ -57,7 +60,23 @@ class ResepMasakanApiAdapter {
       name = 'Resep Nusantara';
     }
 
-    final String? imageUrl = json['imageUrl'] as String?;
+    // Ekstraksi gambar yang tangguh dari berbagai kemungkinan nama field
+    final dynamic rawImage =
+        json['imageUrl'] ??
+        json['image'] ??
+        json['image_url'] ??
+        json['thumbnail'] ??
+        json['photo'] ??
+        json['picture'] ??
+        json['img'];
+    String? imageUrl;
+    if (rawImage != null) {
+      final s = rawImage.toString().trim();
+      if (s.isNotEmpty && s != 'null') {
+        imageUrl = s;
+      }
+    }
+
     final String origin = (json['origin'] as String? ?? 'Nusantara').trim();
 
     String categoryName = 'Tradisional';
@@ -253,6 +272,14 @@ class ResepMasakanApiAdapter {
       meal = MealType.values[hash % MealType.values.length];
     }
 
+    final formattedIngredients = RecipeFormatters.formatIngredients(
+      ingredients,
+    );
+    final formattedSteps = RecipeFormatters.formatSteps(
+      steps,
+      rawContent: json['rawContent'] as String?,
+    );
+
     return Recipe(
       id: id,
       title: name,
@@ -268,8 +295,8 @@ class ResepMasakanApiAdapter {
       servings: servings,
       kcal: kcal,
       difficulty: difficulty,
-      ingredients: ingredients,
-      steps: steps,
+      ingredients: formattedIngredients,
+      steps: formattedSteps,
     );
   }
 }
@@ -433,6 +460,8 @@ class ApiRecipeService implements RecipeService {
   Future<List<Recipe>> list({
     String? q,
     MealType? meal,
+    String? category,
+    String? cuisine,
     String? mainIngredient,
     Difficulty? difficulty,
     int? maxTimeMin,
@@ -445,6 +474,8 @@ class ApiRecipeService implements RecipeService {
       return _localService.list(
         q: q,
         meal: meal,
+        category: category,
+        cuisine: cuisine,
         mainIngredient: mainIngredient,
         difficulty: difficulty,
         maxTimeMin: maxTimeMin,
@@ -457,9 +488,14 @@ class ApiRecipeService implements RecipeService {
       _searchCancelToken?.cancel();
       _searchCancelToken = CancelToken();
 
+      final fetchLimit =
+          (category != null || cuisine != null || mainIngredient != null)
+          ? 100
+          : (limit > 100 ? 100 : limit);
+
       final queryParams = <String, dynamic>{
         'scope': 'INDONESIA',
-        'limit': limit > 100 ? 100 : limit,
+        'limit': fetchLimit,
         'page': page,
       };
 
@@ -484,13 +520,16 @@ class ApiRecipeService implements RecipeService {
 
           // Simpan ke Cache Hive: box recipes (detail) dan box recipeCache (list TTL 24 jam)
           await _saveListToCache(
-            key: 'list_p${page}_q${q ?? ''}_m${meal?.name ?? ''}',
+            key:
+                'list_p${page}_q${q ?? ''}_c${category ?? ''}_cu${cuisine ?? ''}',
             recipes: recipes,
           );
 
           return _filterClientSide(
             recipes: recipes,
             meal: meal,
+            category: category,
+            cuisine: cuisine,
             mainIngredient: mainIngredient,
             difficulty: difficulty,
             minTimeMin: minTimeMin,
@@ -528,6 +567,8 @@ class ApiRecipeService implements RecipeService {
           return _filterClientSide(
             recipes: recipes,
             meal: meal,
+            category: category,
+            cuisine: cuisine,
             mainIngredient: mainIngredient,
             difficulty: difficulty,
             minTimeMin: minTimeMin,
@@ -539,13 +580,15 @@ class ApiRecipeService implements RecipeService {
 
     // 3. Coba Cache Hive
     final cached = _readListFromCache(
-      'list_p${page}_q${q ?? ''}_m${meal?.name ?? ''}',
+      'list_p${page}_q${q ?? ''}_c${category ?? ''}_cu${cuisine ?? ''}',
     );
     if (cached != null && cached.isNotEmpty) {
       _showFallbackToastOnce();
       return _filterClientSide(
         recipes: cached,
         meal: meal,
+        category: category,
+        cuisine: cuisine,
         mainIngredient: mainIngredient,
         difficulty: difficulty,
         minTimeMin: minTimeMin,
@@ -558,6 +601,8 @@ class ApiRecipeService implements RecipeService {
     return _localService.list(
       q: q,
       meal: meal,
+      category: category,
+      cuisine: cuisine,
       mainIngredient: mainIngredient,
       difficulty: difficulty,
       minTimeMin: minTimeMin,
@@ -604,11 +649,15 @@ class ApiRecipeService implements RecipeService {
           if (recipesBox != null) {
             await recipesBox.put(recipe.id, recipe.toJson());
           }
+          final cacheBox = _recipeCacheBox;
+          if (cacheBox != null) {
+            await RecipeCacheService.saveSummary(cacheBox, recipe);
+          }
           return recipe;
         }
       }
     } catch (e) {
-      print('Error fetching recipe detail from API ($slug): $e');
+      debugPrint('Error fetching recipe detail from API ($slug): $e');
     }
 
     // 3. Fallback jika offline / fetch gagal:
@@ -638,21 +687,124 @@ class ApiRecipeService implements RecipeService {
   }
 
   @override
-  Future<List<Recipe>> inspiration(String dateKey, {int limit = 6}) async {
-    final recipes = await list(limit: 30);
-    if (recipes.isEmpty) {
-      return _localService.inspiration(dateKey, limit: limit);
+  Future<List<Recipe>> inspiration(String dateKey, {int limit = 5}) async {
+    final effectiveLimit = limit.clamp(1, 5);
+    final cacheBox = _recipeCacheBox;
+    final cacheKey = 'foodie:inspiration:$dateKey';
+
+    // 1. Cek persist cache untuk tanggal ini
+    if (cacheBox != null) {
+      try {
+        final cached = cacheBox.get(cacheKey);
+        if (cached is List && cached.isNotEmpty) {
+          final list = cached
+              .whereType<Map>()
+              .map((item) => Recipe.fromJson(Map<String, dynamic>.from(item)))
+              .toList();
+          if (list.isNotEmpty) {
+            return list.take(effectiveLimit).toList();
+          }
+        }
+      } catch (_) {}
     }
 
-    // Acak stabil per hari berdasarkan dateKey
-    final seed = dateKey.codeUnits.fold<int>(0, (prev, elem) => prev + elem);
-    final shuffled = List<Recipe>.from(recipes)..shuffle(Random(seed));
-    return shuffled.take(limit).toList();
+    // 2. Jika belum ada di cache untuk tanggal ini, fetch kandidat dari API #1
+    try {
+      final response = await _dio.get(
+        '/recipes',
+        queryParameters: {'scope': 'INDONESIA', 'limit': 50, 'page': 1},
+      );
+      if (response.statusCode == 200 && response.data != null) {
+        final data = response.data;
+        if (data is Map && data['data'] is List) {
+          final items = data['data'] as List;
+          final recipes = items
+              .whereType<Map<String, dynamic>>()
+              .map((item) => ResepMasakanApiAdapter.fromJson(item))
+              .toList();
+
+          if (recipes.isNotEmpty) {
+            // Acak deterministik per hari dari seed dateKey (yyyy-MM-dd)
+            final seed = dateKey.codeUnits.fold<int>(
+              0,
+              (prev, elem) => prev + elem,
+            );
+            final shuffled = List<Recipe>.from(recipes)..shuffle(Random(seed));
+
+            // Maksimal 5 resep unik
+            final selected = <Recipe>[];
+            final seenIds = <String>{};
+            for (final r in shuffled) {
+              if (seenIds.add(r.id)) {
+                selected.add(r);
+                if (selected.length >= effectiveLimit) break;
+              }
+            }
+
+            // Simpan ke cache persist
+            if (cacheBox != null) {
+              await RecipeCacheService.saveSummaries(cacheBox, selected);
+              await cacheBox.put(
+                cacheKey,
+                selected.map((r) => r.toJson()).toList(),
+              );
+
+              // Bersihkan cache tanggal lama
+              final keysToDelete = <dynamic>[];
+              for (final key in cacheBox.keys) {
+                final keyStr = key.toString();
+                if (keyStr.startsWith('foodie:inspiration:') &&
+                    keyStr != cacheKey) {
+                  keysToDelete.add(key);
+                }
+              }
+              for (final k in keysToDelete) {
+                await cacheBox.delete(k);
+              }
+            }
+
+            return selected;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error fetching inspiration from API: $e');
+    }
+
+    // 3. Fallback jika API gagal: pakai daftar terakhir yang tersimpan di cache
+    if (cacheBox != null) {
+      try {
+        for (final key in cacheBox.keys) {
+          final keyStr = key.toString();
+          if (keyStr.startsWith('foodie:inspiration:')) {
+            final cached = cacheBox.get(key);
+            if (cached is List && cached.isNotEmpty) {
+              final list = cached
+                  .whereType<Map>()
+                  .map(
+                    (item) => Recipe.fromJson(Map<String, dynamic>.from(item)),
+                  )
+                  .toList();
+              if (list.isNotEmpty) {
+                _showFallbackToastOnce();
+                return list.take(effectiveLimit).toList();
+              }
+            }
+          }
+        }
+      } catch (_) {}
+    }
+
+    // 4. Bila tidak ada cache sama sekali, fallback ke seed lokal
+    _showFallbackToastOnce();
+    return _localService.inspiration(dateKey, limit: effectiveLimit);
   }
 
   List<Recipe> _filterClientSide({
     required List<Recipe> recipes,
     MealType? meal,
+    String? category,
+    String? cuisine,
     String? mainIngredient,
     Difficulty? difficulty,
     int? minTimeMin,
@@ -662,6 +814,26 @@ class ApiRecipeService implements RecipeService {
 
     if (meal != null) {
       results = results.where((r) => r.meal == meal).toList();
+    }
+    if (category != null && category.trim().isNotEmpty) {
+      final cat = category.trim().toLowerCase();
+      results = results
+          .where(
+            (r) =>
+                r.category.toLowerCase() == cat ||
+                r.category.toLowerCase().contains(cat),
+          )
+          .toList();
+    }
+    if (cuisine != null && cuisine.trim().isNotEmpty) {
+      final cui = cuisine.trim().toLowerCase();
+      results = results
+          .where(
+            (r) =>
+                r.cuisine.toLowerCase() == cui ||
+                r.cuisine.toLowerCase().contains(cui),
+          )
+          .toList();
     }
     if (mainIngredient != null && mainIngredient.trim().isNotEmpty) {
       final mi = mainIngredient.trim().toLowerCase();
@@ -691,6 +863,7 @@ class ApiRecipeService implements RecipeService {
       final recipesBox = _recipesBox;
 
       if (cacheBox != null) {
+        await RecipeCacheService.saveSummaries(cacheBox, recipes);
         await cacheBox.put(key, {
           'timestamp': DateTime.now().millisecondsSinceEpoch,
           'data': recipes.map((r) => r.toJson()).toList(),

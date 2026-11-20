@@ -9,6 +9,7 @@ import '../core/theme/app_palette.dart';
 import '../core/theme/app_radius.dart';
 import '../core/theme/app_shadows.dart';
 import '../core/theme/app_text.dart';
+import '../core/utils/recipe_formatters.dart';
 import '../core/utils/week_utils.dart';
 import '../models/models.dart';
 import '../providers/cart_provider.dart';
@@ -17,6 +18,7 @@ import '../providers/meal_plan_provider.dart';
 import '../providers/ratings_provider.dart';
 import '../providers/recipes_provider.dart';
 import '../providers/ui_helper.dart';
+import '../widgets/app_header_metrics.dart';
 import '../widgets/ui/app_bottom_sheet.dart';
 import '../widgets/ui/app_button.dart';
 import '../widgets/ui/skeleton.dart';
@@ -174,7 +176,7 @@ class _RecipeDetailPageState extends ConsumerState<RecipeDetailPage> {
                           onTapAction = () async {
                             final status = await ref
                                 .read(mealPlanProvider.notifier)
-                                .add(dateKey, recipe.id);
+                                .add(dateKey, recipe.id, recipe: recipe);
                             if (!sheetContext.mounted) return;
                             if (status == MealPlanAddResult.added) {
                               Navigator.of(sheetContext).pop();
@@ -481,775 +483,821 @@ class _RecipeDetailPageState extends ConsumerState<RecipeDetailPage> {
             final fixedBarColor = palette.isDark
                 ? palette.navSurface
                 : palette.surface;
+            final barHeight = AppHeaderMetrics.fixedHeight(context);
+            final rowTop = AppHeaderMetrics.rowTop(context);
+            final formattedIngredients = RecipeFormatters.formatIngredients(
+              recipe.ingredients,
+            );
+            final formattedSteps = RecipeFormatters.formatSteps(recipe.steps);
 
-            return Stack(
-              children: [
-                SingleChildScrollView(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.only(bottom: 40.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // 1. Foto Hero edge-to-edge di atas (lebar penuh, tinggi ≈ 310, radius bawah ≈ 28)
-                      ClipRRect(
-                        borderRadius: const BorderRadius.only(
-                          bottomLeft: Radius.circular(28.0),
-                          bottomRight: Radius.circular(28.0),
-                        ),
-                        child: SizedBox(
-                          width: double.infinity,
-                          height: 310.0,
-                          child: SmartImage(
-                            src: recipe.image,
-                            fit: BoxFit.cover,
+            return AnnotatedRegion<SystemUiOverlayStyle>(
+              value: SystemUiOverlayStyle(
+                statusBarColor: Colors.transparent,
+                statusBarIconBrightness: palette.isDark
+                    ? Brightness.light
+                    : (t >= 0.5 ? Brightness.dark : Brightness.light),
+                statusBarBrightness: palette.isDark
+                    ? Brightness.dark
+                    : (t >= 0.5 ? Brightness.light : Brightness.dark),
+              ),
+              child: Stack(
+                children: [
+                  SingleChildScrollView(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.only(bottom: 40.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // 1. Foto Hero edge-to-edge di atas (lebar penuh, tinggi ≈ 310, radius bawah ≈ 28)
+                        ClipRRect(
+                          borderRadius: const BorderRadius.only(
+                            bottomLeft: Radius.circular(28.0),
+                            bottomRight: Radius.circular(28.0),
+                          ),
+                          child: SizedBox(
+                            width: double.infinity,
+                            height: 310.0,
+                            child: SmartImage(
+                              src: recipe.image,
+                              fit: BoxFit.cover,
+                            ),
                           ),
                         ),
-                      ),
 
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 25.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Space antara foto hero dan judul menu agar tidak terlalu mepet
-                            const SizedBox(height: 24.0),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 25.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Space antara foto hero dan judul menu agar tidak terlalu mepet
+                              const SizedBox(height: 24.0),
 
-                            // 2. Baris Judul: Nama resep + ikon calendar meal plan
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    recipe.title,
-                                    style: TextStyle(
-                                      fontFamily: 'Poppins',
-                                      fontSize: 22.0,
-                                      fontWeight: FontWeight.w700,
-                                      color: palette.textStrong,
-                                      height: 1.25,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 12.0),
-                                Consumer(
-                                  builder: (context, ref, child) {
-                                    final isPlanned = ref.watch(
-                                      isRecipePlannedProvider(recipe.id),
-                                    );
-                                    return Semantics(
-                                      label: isPlanned
-                                          ? 'Menu terjadwal di Meal Plan'
-                                          : 'Tambah ke Meal Plan',
-                                      button: true,
-                                      child: GestureDetector(
-                                        onTap: () => _openMealPlanSheet(
-                                          context,
-                                          ref,
-                                          recipe,
-                                        ),
-                                        child: Container(
-                                          width: 40.0,
-                                          height: 40.0,
-                                          decoration: BoxDecoration(
-                                            color: isPlanned
-                                                ? palette.accentSoft
-                                                : Colors.transparent,
-                                            borderRadius: BorderRadius.circular(
-                                              10.0,
-                                            ),
-                                          ),
-                                          alignment: Alignment.center,
-                                          child: Icon(
-                                            isPlanned
-                                                ? LucideIcons.calendarCheck
-                                                : LucideIcons.calendarPlus,
-                                            color: isPlanned
-                                                ? palette.onAccentSoft
-                                                : palette.textStrong,
-                                            size: 22.0,
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ],
-                            ),
-
-                            // Deskripsi resep jika tersedia
-                            if (recipe.description.trim().isNotEmpty) ...[
-                              const SizedBox(height: 6.0),
-                              _ExpandableDescription(text: recipe.description),
-                              const SizedBox(height: 8.0),
-                            ] else
-                              const SizedBox(height: 6.0),
-
-                            // 3. Rating: Bintang accent + nilai rating + (ulasan)
-                            Consumer(
-                              builder: (context, ref, _) {
-                                final effective = ref.watch(
-                                  effectiveRatingProvider(recipe),
-                                );
-                                return Row(
-                                  children: [
-                                    Icon(
-                                      Icons.star,
-                                      color: palette.accent,
-                                      size: 18.0,
-                                    ),
-                                    const SizedBox(width: 4.0),
-                                    Text(
-                                      effective.rating.toStringAsFixed(1),
-                                      style: TextStyle(
-                                        fontFamily: 'Poppins',
-                                        fontSize: 14.0,
-                                        fontWeight: FontWeight.w600,
-                                        color: palette.textBody,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 4.0),
-                                    Text(
-                                      '(${effective.reviews} ulasan)',
-                                      style: TextStyle(
-                                        fontFamily: 'Poppins',
-                                        fontSize: 13.0,
-                                        color: palette.textSecondary,
-                                      ),
-                                    ),
-                                  ],
-                                );
-                              },
-                            ),
-
-                            const SizedBox(height: 16.0),
-
-                            // 4. Dua Tombol Sejajar: Tambah ke keranjang & Tambah ke favorit
-                            Row(
-                              children: [
-                                // Tombol Tambah ke keranjang (lebar ≈ 213, tinggi 44)
-                                Consumer(
-                                  builder: (context, ref, child) {
-                                    final isInCart = ref
-                                        .watch(cartProvider)
-                                        .any((g) => g.recipeId == recipe.id);
-
-                                    return Expanded(
-                                      flex: 213,
-                                      child: SizedBox(
-                                        height: 44.0,
-                                        child: ElevatedButton(
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: isInCart
-                                                ? palette.accentSoft
-                                                : palette.accent,
-                                            foregroundColor: isInCart
-                                                ? palette.onAccentSoft
-                                                : palette.onAccent,
-                                            elevation: 0,
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(12.0),
-                                            ),
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 8.0,
-                                            ),
-                                          ),
-                                          onPressed: () async {
-                                            if (isInCart) {
-                                              await ref
-                                                  .read(cartProvider.notifier)
-                                                  .removeByRecipe(recipe.id);
-                                              if (!context.mounted) return;
-                                              showAppToast(
-                                                context,
-                                                'Dikeluarkan dari keranjang',
-                                              );
-                                            } else {
-                                              await ref
-                                                  .read(cartProvider.notifier)
-                                                  .addRecipe(recipe);
-                                              if (!context.mounted) return;
-                                              showAppToast(
-                                                context,
-                                                'Bahan ditambahkan ke keranjang',
-                                              );
-                                            }
-                                          },
-                                          child: FittedBox(
-                                            fit: BoxFit.scaleDown,
-                                            child: Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                if (isInCart) ...[
-                                                  Icon(
-                                                    LucideIcons.check,
-                                                    size: 16.0,
-                                                    color: palette.onAccentSoft,
-                                                  ),
-                                                  const SizedBox(width: 6.0),
-                                                ],
-                                                Text(
-                                                  isInCart
-                                                      ? 'Sudah di keranjang'
-                                                      : 'Tambah ke keranjang',
-                                                  style: TextStyle(
-                                                    fontFamily: 'Poppins',
-                                                    fontSize: 12.0,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: isInCart
-                                                        ? palette.onAccentSoft
-                                                        : palette.onAccent,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-
-                                const SizedBox(width: 14.0),
-
-                                // Tombol Tambah ke favorit (surfaceAlt di dark, actionBg di light)
-                                Expanded(
-                                  flex: 163,
-                                  child: SizedBox(
-                                    height: 44.0,
-                                    child: ElevatedButton(
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: palette.isDark
-                                            ? palette.surfaceAlt
-                                            : palette.actionBg,
-                                        foregroundColor: palette.isDark
-                                            ? palette.textStrong
-                                            : palette.onAction,
-                                        elevation: 0,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            12.0,
-                                          ),
-                                        ),
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 10.0,
-                                        ),
-                                      ),
-                                      onPressed: () => ref
-                                          .read(favoritesProvider.notifier)
-                                          .toggle(recipe.id),
-                                      child: FittedBox(
-                                        fit: BoxFit.scaleDown,
-                                        child: Text(
-                                          isFavorite
-                                              ? 'Tersimpan di favorit'
-                                              : 'Tambah ke favorit',
-                                          style: TextStyle(
-                                            fontFamily: 'Poppins',
-                                            fontSize: 12.0,
-                                            fontWeight: FontWeight.w600,
-                                            color: palette.isDark
-                                                ? palette.textStrong
-                                                : palette.onAction,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-
-                            const SizedBox(height: 20.0),
-
-                            // 5. Kartu Ringkasan (bg summaryBg, 3 kolom)
-                            Container(
-                              decoration: BoxDecoration(
-                                color: palette.summaryBg,
-                                borderRadius: BorderRadius.circular(14.0),
-                                boxShadow: AppShadows.card,
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 14.0,
-                                horizontal: 8.0,
-                              ),
-                              child: Row(
+                              // 2. Baris Judul: Nama resep + ikon calendar meal plan
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
                                 children: [
-                                  // Kolom 1: Porsi
                                   Expanded(
-                                    child: _SummaryColumn(
-                                      icon: LucideIcons.utensilsCrossed,
-                                      label: 'Porsi',
-                                      value: '${recipe.servings} Orang',
+                                    child: Text(
+                                      recipe.title,
+                                      style: TextStyle(
+                                        fontFamily: 'Poppins',
+                                        fontSize: 22.0,
+                                        fontWeight: FontWeight.w700,
+                                        color: palette.textStrong,
+                                        height: 1.25,
+                                      ),
                                     ),
                                   ),
-                                  Container(
-                                    height: 32,
-                                    width: 1,
-                                    color: palette.border,
+                                  const SizedBox(width: 12.0),
+                                  Consumer(
+                                    builder: (context, ref, child) {
+                                      final isPlanned = ref.watch(
+                                        isRecipePlannedProvider(recipe.id),
+                                      );
+                                      return Semantics(
+                                        label: isPlanned
+                                            ? 'Menu terjadwal di Meal Plan'
+                                            : 'Tambah ke Meal Plan',
+                                        button: true,
+                                        child: GestureDetector(
+                                          onTap: () => _openMealPlanSheet(
+                                            context,
+                                            ref,
+                                            recipe,
+                                          ),
+                                          child: Container(
+                                            width: 40.0,
+                                            height: 40.0,
+                                            decoration: BoxDecoration(
+                                              color: isPlanned
+                                                  ? palette.accentSoft
+                                                  : Colors.transparent,
+                                              borderRadius:
+                                                  BorderRadius.circular(10.0),
+                                            ),
+                                            alignment: Alignment.center,
+                                            child: Icon(
+                                              isPlanned
+                                                  ? LucideIcons.calendarCheck
+                                                  : LucideIcons.calendarPlus,
+                                              color: isPlanned
+                                                  ? palette.onAccentSoft
+                                                  : palette.textStrong,
+                                              size: 22.0,
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    },
                                   ),
-                                  // Kolom 2: Kalori
+                                ],
+                              ),
+
+                              // Deskripsi resep jika tersedia
+                              if (recipe.description.trim().isNotEmpty) ...[
+                                const SizedBox(height: 6.0),
+                                _ExpandableDescription(
+                                  text: recipe.description,
+                                ),
+                                const SizedBox(height: 8.0),
+                              ] else
+                                const SizedBox(height: 6.0),
+
+                              // 3. Rating: Bintang accent + nilai rating + (ulasan)
+                              Consumer(
+                                builder: (context, ref, _) {
+                                  final effective = ref.watch(
+                                    effectiveRatingProvider(recipe),
+                                  );
+                                  return Row(
+                                    children: [
+                                      Icon(
+                                        Icons.star,
+                                        color: palette.accent,
+                                        size: 18.0,
+                                      ),
+                                      const SizedBox(width: 4.0),
+                                      Text(
+                                        effective.rating.toStringAsFixed(1),
+                                        style: TextStyle(
+                                          fontFamily: 'Poppins',
+                                          fontSize: 14.0,
+                                          fontWeight: FontWeight.w600,
+                                          color: palette.textBody,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4.0),
+                                      Text(
+                                        '(${effective.reviews} ulasan)',
+                                        style: TextStyle(
+                                          fontFamily: 'Poppins',
+                                          fontSize: 13.0,
+                                          color: palette.textSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              ),
+
+                              const SizedBox(height: 16.0),
+
+                              // 4. Dua Tombol Sejajar: Tambah ke keranjang & Tambah ke favorit
+                              Row(
+                                children: [
+                                  // Tombol Tambah ke keranjang (lebar ≈ 213, tinggi 44)
+                                  Consumer(
+                                    builder: (context, ref, child) {
+                                      final isInCart = ref
+                                          .watch(cartProvider)
+                                          .any((g) => g.recipeId == recipe.id);
+
+                                      return Expanded(
+                                        flex: 213,
+                                        child: SizedBox(
+                                          height: 44.0,
+                                          child: ElevatedButton(
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: isInCart
+                                                  ? palette.accentSoft
+                                                  : palette.accent,
+                                              foregroundColor: isInCart
+                                                  ? palette.onAccentSoft
+                                                  : palette.onAccent,
+                                              elevation: 0,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(12.0),
+                                              ),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 8.0,
+                                                  ),
+                                            ),
+                                            onPressed: () async {
+                                              if (isInCart) {
+                                                await ref
+                                                    .read(cartProvider.notifier)
+                                                    .removeByRecipe(recipe.id);
+                                                if (!context.mounted) return;
+                                                showAppToast(
+                                                  context,
+                                                  'Dikeluarkan dari keranjang',
+                                                );
+                                              } else {
+                                                await ref
+                                                    .read(cartProvider.notifier)
+                                                    .addRecipe(recipe);
+                                                if (!context.mounted) return;
+                                                showAppToast(
+                                                  context,
+                                                  'Bahan ditambahkan ke keranjang',
+                                                );
+                                              }
+                                            },
+                                            child: FittedBox(
+                                              fit: BoxFit.scaleDown,
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  if (isInCart) ...[
+                                                    Icon(
+                                                      LucideIcons.check,
+                                                      size: 16.0,
+                                                      color:
+                                                          palette.onAccentSoft,
+                                                    ),
+                                                    const SizedBox(width: 6.0),
+                                                  ],
+                                                  Text(
+                                                    isInCart
+                                                        ? 'Sudah di keranjang'
+                                                        : 'Tambah ke keranjang',
+                                                    style: TextStyle(
+                                                      fontFamily: 'Poppins',
+                                                      fontSize: 12.0,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      color: isInCart
+                                                          ? palette.onAccentSoft
+                                                          : palette.onAccent,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+
+                                  const SizedBox(width: 14.0),
+
+                                  // Tombol Tambah ke favorit (surfaceAlt di dark, actionBg di light)
                                   Expanded(
-                                    child: _SummaryColumn(
-                                      icon: LucideIcons.flame,
-                                      label: 'Kalori',
-                                      value: '${recipe.kcal} kkal',
-                                    ),
-                                  ),
-                                  Container(
-                                    height: 32,
-                                    width: 1,
-                                    color: palette.border,
-                                  ),
-                                  // Kolom 3: Tingkat
-                                  Expanded(
-                                    child: _SummaryColumn(
-                                      icon: LucideIcons.gauge,
-                                      label: 'Tingkat',
-                                      value: recipe.difficulty.label,
+                                    flex: 163,
+                                    child: SizedBox(
+                                      height: 44.0,
+                                      child: ElevatedButton(
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: palette.isDark
+                                              ? palette.surfaceAlt
+                                              : palette.actionBg,
+                                          foregroundColor: palette.isDark
+                                              ? palette.textStrong
+                                              : palette.onAction,
+                                          elevation: 0,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              12.0,
+                                            ),
+                                          ),
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 10.0,
+                                          ),
+                                        ),
+                                        onPressed: () => ref
+                                            .read(favoritesProvider.notifier)
+                                            .toggle(recipe.id, recipe: recipe),
+                                        child: FittedBox(
+                                          fit: BoxFit.scaleDown,
+                                          child: Text(
+                                            isFavorite
+                                                ? 'Tersimpan di favorit'
+                                                : 'Tambah ke favorit',
+                                            style: TextStyle(
+                                              fontFamily: 'Poppins',
+                                              fontSize: 12.0,
+                                              fontWeight: FontWeight.w600,
+                                              color: palette.isDark
+                                                  ? palette.textStrong
+                                                  : palette.onAction,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ],
                               ),
-                            ),
 
-                            const SizedBox(height: 24.0),
+                              const SizedBox(height: 20.0),
 
-                            // 6. Judul "Bahan-Bahan" + Kartu Putih Besar (radius 32)
-                            Text(
-                              'Bahan-Bahan',
-                              style: TextStyle(
-                                fontFamily: 'Poppins',
-                                fontSize: 18.0,
-                                fontWeight: FontWeight.w700,
-                                color: palette.textStrong,
-                              ),
-                            ),
-
-                            const SizedBox(height: 12.0),
-
-                            Container(
-                              decoration: BoxDecoration(
-                                color: palette.surface,
-                                borderRadius: BorderRadius.circular(32.0),
-                                boxShadow: AppShadows.card,
-                              ),
-                              padding: const EdgeInsets.all(20.0),
-                              child: Column(
-                                children: recipe.ingredients
-                                    .asMap()
-                                    .entries
-                                    .map((entry) {
-                                      final index = entry.key;
-                                      final ing = entry.value;
-                                      final unitStr =
-                                          ing.unit != null &&
-                                              ing.unit!.isNotEmpty
-                                          ? ' ${ing.unit}'
-                                          : '';
-
-                                      return Column(
-                                        children: [
-                                          if (index > 0)
-                                            Padding(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    vertical: 10.0,
-                                                  ),
-                                              child: Divider(
-                                                height: 1,
-                                                color: palette.divider,
-                                              ),
-                                            ),
-                                          Row(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.center,
-                                            children: [
-                                              Container(
-                                                width: 10.0,
-                                                height: 10.0,
-                                                decoration: BoxDecoration(
-                                                  color: palette.actionBg,
-                                                  shape: BoxShape.circle,
-                                                ),
-                                              ),
-                                              const SizedBox(width: 12.0),
-                                              Expanded(
-                                                child: Text(
-                                                  ing.name,
-                                                  style: TextStyle(
-                                                    fontFamily: 'Poppins',
-                                                    fontSize: 15.0,
-                                                    fontWeight: FontWeight.w400,
-                                                    color: palette.textBody,
-                                                  ),
-                                                ),
-                                              ),
-                                              const SizedBox(width: 8.0),
-                                              Text(
-                                                '${ing.qty}$unitStr',
-                                                style: TextStyle(
-                                                  fontFamily: 'Poppins',
-                                                  fontSize: 13.0,
-                                                  fontWeight: FontWeight.w700,
-                                                  color: palette.textBody,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      );
-                                    })
-                                    .toList(),
-                              ),
-                            ),
-
-                            const SizedBox(height: 24.0),
-
-                            // 7. Baris Judul "Langkah Memasak" + Kartu Putih Besar (radius 32)
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  'Langkah Memasak',
-                                  style: TextStyle(
-                                    fontFamily: 'Poppins',
-                                    fontSize: 18.0,
-                                    fontWeight: FontWeight.w700,
-                                    color: palette.textStrong,
-                                  ),
+                              // 5. Kartu Ringkasan (bg summaryBg, 3 kolom)
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: palette.summaryBg,
+                                  borderRadius: BorderRadius.circular(14.0),
+                                  boxShadow: AppShadows.card,
                                 ),
-                                Text(
-                                  '${recipe.timeMin} menit',
-                                  style: TextStyle(
-                                    fontFamily: 'Poppins',
-                                    fontSize: 12.0,
-                                    color: palette.textSecondary,
-                                  ),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14.0,
+                                  horizontal: 8.0,
                                 ),
-                              ],
-                            ),
-
-                            const SizedBox(height: 12.0),
-
-                            Container(
-                              decoration: BoxDecoration(
-                                color: palette.surface,
-                                borderRadius: BorderRadius.circular(32.0),
-                                boxShadow: AppShadows.card,
+                                child: Row(
+                                  children: [
+                                    // Kolom 1: Porsi
+                                    Expanded(
+                                      child: _SummaryColumn(
+                                        icon: LucideIcons.utensilsCrossed,
+                                        label: 'Porsi',
+                                        value: '${recipe.servings} Orang',
+                                      ),
+                                    ),
+                                    Container(
+                                      height: 32,
+                                      width: 1,
+                                      color: palette.border,
+                                    ),
+                                    // Kolom 2: Kalori
+                                    Expanded(
+                                      child: _SummaryColumn(
+                                        icon: LucideIcons.flame,
+                                        label: 'Kalori',
+                                        value: '${recipe.kcal} kkal',
+                                      ),
+                                    ),
+                                    Container(
+                                      height: 32,
+                                      width: 1,
+                                      color: palette.border,
+                                    ),
+                                    // Kolom 3: Tingkat
+                                    Expanded(
+                                      child: _SummaryColumn(
+                                        icon: LucideIcons.gauge,
+                                        label: 'Tingkat',
+                                        value: recipe.difficulty.label,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                              padding: const EdgeInsets.all(20.0),
-                              child: Column(
-                                children: recipe.steps.asMap().entries.map((
-                                  entry,
-                                ) {
-                                  final index = entry.key;
-                                  final step = entry.value;
 
-                                  return Column(
-                                    children: [
-                                      if (index > 0)
-                                        Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                            vertical: 14.0,
-                                          ),
-                                          child: Divider(
-                                            height: 1,
-                                            color: palette.divider,
-                                          ),
-                                        ),
-                                      Row(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Container(
-                                            width: 28.0,
-                                            height: 28.0,
-                                            decoration: BoxDecoration(
-                                              color: palette.accent,
-                                              shape: BoxShape.circle,
-                                            ),
-                                            alignment: Alignment.center,
-                                            child: Text(
-                                              '${index + 1}',
-                                              style: TextStyle(
-                                                fontFamily: 'Poppins',
-                                                fontSize: 13.0,
-                                                fontWeight: FontWeight.w700,
-                                                color: palette.onAccent,
+                              const SizedBox(height: 24.0),
+
+                              // 6. Judul "Bahan-Bahan" + Kartu Putih Besar (radius 32)
+                              Text(
+                                'Bahan-Bahan',
+                                style: TextStyle(
+                                  fontFamily: 'Poppins',
+                                  fontSize: 18.0,
+                                  fontWeight: FontWeight.w700,
+                                  color: palette.textStrong,
+                                ),
+                              ),
+
+                              const SizedBox(height: 12.0),
+
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: palette.surface,
+                                  borderRadius: BorderRadius.circular(32.0),
+                                  boxShadow: AppShadows.card,
+                                ),
+                                padding: const EdgeInsets.all(20.0),
+                                child: Column(
+                                  children: formattedIngredients
+                                      .asMap()
+                                      .entries
+                                      .map((entry) {
+                                        final index = entry.key;
+                                        final ing = entry.value;
+
+                                        return Column(
+                                          children: [
+                                            if (index > 0)
+                                              Padding(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      vertical: 10.0,
+                                                    ),
+                                                child: Divider(
+                                                  height: 1,
+                                                  color: palette.divider,
+                                                ),
                                               ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 14.0),
-                                          Expanded(
-                                            child: Column(
+                                            Row(
                                               crossAxisAlignment:
                                                   CrossAxisAlignment.start,
                                               children: [
-                                                Text(
-                                                  step.title,
-                                                  style: TextStyle(
-                                                    fontFamily: 'Poppins',
-                                                    fontSize: 16.0,
-                                                    fontWeight: FontWeight.w700,
-                                                    color: palette.textStrong,
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 4.0),
-                                                Text(
-                                                  step.description,
-                                                  style: TextStyle(
-                                                    fontFamily: 'Poppins',
-                                                    fontSize: 12.0,
-                                                    fontWeight: FontWeight.w400,
-                                                    color:
-                                                        palette.textSecondary,
-                                                    height: 1.5,
-                                                  ),
-                                                ),
-                                                if (step.durationMin != null &&
-                                                    step.durationMin! > 0) ...[
-                                                  const SizedBox(height: 6.0),
-                                                  Container(
-                                                    padding:
-                                                        const EdgeInsets.symmetric(
-                                                          horizontal: 8.0,
-                                                          vertical: 3.0,
-                                                        ),
+                                                Padding(
+                                                  padding:
+                                                      const EdgeInsets.only(
+                                                        top: 5.0,
+                                                      ),
+                                                  child: Container(
+                                                    width: 8.0,
+                                                    height: 8.0,
                                                     decoration: BoxDecoration(
-                                                      color: palette.chip,
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            6.0,
-                                                          ),
+                                                      color: palette.textStrong,
+                                                      shape: BoxShape.circle,
+                                                    ),
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 12.0),
+                                                Expanded(
+                                                  child: Text(
+                                                    ing.name,
+                                                    style: TextStyle(
+                                                      fontFamily: 'Poppins',
+                                                      fontSize: 14.0,
+                                                      fontWeight:
+                                                          FontWeight.w400,
+                                                      color: palette.textBody,
+                                                    ),
+                                                  ),
+                                                ),
+                                                if (ing.qty
+                                                    .trim()
+                                                    .isNotEmpty) ...[
+                                                  const SizedBox(width: 12.0),
+                                                  ConstrainedBox(
+                                                    constraints: BoxConstraints(
+                                                      maxWidth:
+                                                          MediaQuery.sizeOf(
+                                                            context,
+                                                          ).width *
+                                                          0.35,
                                                     ),
                                                     child: Text(
-                                                      '⏱ ${step.durationMin} menit',
+                                                      ing.qty,
+                                                      textAlign:
+                                                          TextAlign.right,
+                                                      maxLines: 2,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
                                                       style: TextStyle(
                                                         fontFamily: 'Poppins',
-                                                        fontSize: 11.0,
-                                                        color: palette
-                                                            .textSecondary,
+                                                        fontSize: 13.0,
                                                         fontWeight:
-                                                            FontWeight.w500,
+                                                            FontWeight.w700,
+                                                        color:
+                                                            palette.textStrong,
                                                       ),
                                                     ),
                                                   ),
                                                 ],
                                               ],
                                             ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  );
-                                }).toList(),
+                                          ],
+                                        );
+                                      })
+                                      .toList(),
+                                ),
                               ),
-                            ),
 
-                            const SizedBox(height: 28.0),
+                              const SizedBox(height: 24.0),
 
-                            // 8. Tombol pill "Start Cooking >" (lebar 390, tinggi 52)
-                            SizedBox(
-                              width: double.infinity,
-                              height: 52.0,
-                              child: ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: palette.actionBg,
-                                  foregroundColor: palette.onAction,
-                                  elevation: 0,
-                                  shape: const RoundedRectangleBorder(
-                                    borderRadius: AppRadius.pill,
+                              // 7. Baris Judul "Langkah Memasak" + Kartu Putih Besar (radius 32)
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      'Langkah Memasak',
+                                      style: TextStyle(
+                                        fontFamily: 'Poppins',
+                                        fontSize: 18.0,
+                                        fontWeight: FontWeight.w700,
+                                        color: palette.textStrong,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8.0),
+                                  Text(
+                                    '${recipe.timeMin} menit',
+                                    style: TextStyle(
+                                      fontFamily: 'Poppins',
+                                      fontSize: 12.0,
+                                      color: palette.textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+
+                              const SizedBox(height: 12.0),
+
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: palette.surface,
+                                  borderRadius: BorderRadius.circular(32.0),
+                                  boxShadow: AppShadows.card,
+                                ),
+                                padding: const EdgeInsets.all(20.0),
+                                child: Column(
+                                  children: formattedSteps.asMap().entries.map((
+                                    entry,
+                                  ) {
+                                    final index = entry.key;
+                                    final step = entry.value;
+
+                                    return Column(
+                                      children: [
+                                        if (index > 0)
+                                          Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 14.0,
+                                            ),
+                                            child: Divider(
+                                              height: 1,
+                                              color: palette.divider,
+                                            ),
+                                          ),
+                                        Row(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Container(
+                                              width: 28.0,
+                                              height: 28.0,
+                                              decoration: BoxDecoration(
+                                                color: palette.accent,
+                                                shape: BoxShape.circle,
+                                              ),
+                                              alignment: Alignment.center,
+                                              child: Text(
+                                                '${index + 1}',
+                                                style: TextStyle(
+                                                  fontFamily: 'Poppins',
+                                                  fontSize: 13.0,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: palette.onAccent,
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 14.0),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    step.title,
+                                                    style: TextStyle(
+                                                      fontFamily: 'Poppins',
+                                                      fontSize: 16.0,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                      color: palette.textStrong,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 4.0),
+                                                  Text(
+                                                    step.description,
+                                                    style: TextStyle(
+                                                      fontFamily: 'Poppins',
+                                                      fontSize: 12.0,
+                                                      fontWeight:
+                                                          FontWeight.w400,
+                                                      color:
+                                                          palette.textSecondary,
+                                                      height: 1.5,
+                                                    ),
+                                                  ),
+                                                  if (step.durationMin !=
+                                                          null &&
+                                                      step.durationMin! >
+                                                          0) ...[
+                                                    const SizedBox(height: 6.0),
+                                                    Container(
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            horizontal: 8.0,
+                                                            vertical: 3.0,
+                                                          ),
+                                                      decoration: BoxDecoration(
+                                                        color: palette.chip,
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              6.0,
+                                                            ),
+                                                      ),
+                                                      child: Text(
+                                                        '⏱ ${step.durationMin} menit',
+                                                        style: TextStyle(
+                                                          fontFamily: 'Poppins',
+                                                          fontSize: 11.0,
+                                                          color: palette
+                                                              .textSecondary,
+                                                          fontWeight:
+                                                              FontWeight.w500,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    );
+                                  }).toList(),
+                                ),
+                              ),
+
+                              const SizedBox(height: 28.0),
+
+                              // 8. Tombol pill "Start Cooking >" (lebar 390, tinggi 52)
+                              SizedBox(
+                                width: double.infinity,
+                                height: 52.0,
+                                child: ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: palette.actionBg,
+                                    foregroundColor: palette.onAction,
+                                    elevation: 0,
+                                    shape: const RoundedRectangleBorder(
+                                      borderRadius: AppRadius.pill,
+                                    ),
+                                  ),
+                                  onPressed: () =>
+                                      context.push('/recipe/${recipe.id}/cook'),
+                                  child: Text(
+                                    'Start Cooking >',
+                                    style: TextStyle(
+                                      fontFamily: 'Poppins',
+                                      fontSize: 14.0,
+                                      fontWeight: FontWeight.w700,
+                                      color: palette.onAction,
+                                    ),
                                   ),
                                 ),
-                                onPressed: () =>
-                                    context.push('/recipe/${recipe.id}/cook'),
+                              ),
+
+                              const SizedBox(height: 14.0),
+
+                              // 9. Catatan kecil di bawah
+                              Center(
                                 child: Text(
-                                  'Start Cooking >',
+                                  'Kalori merupakan estimasi per porsi, tanpa nasi.',
                                   style: TextStyle(
                                     fontFamily: 'Poppins',
-                                    fontSize: 14.0,
-                                    fontWeight: FontWeight.w700,
-                                    color: palette.onAction,
+                                    fontSize: 11.0,
+                                    color: palette.textSecondary,
                                   ),
                                 ),
                               ),
-                            ),
 
-                            const SizedBox(height: 14.0),
-
-                            // 9. Catatan kecil di bawah
-                            Center(
-                              child: Text(
-                                'Kalori merupakan estimasi per porsi, tanpa nasi.',
-                                style: TextStyle(
-                                  fontFamily: 'Poppins',
-                                  fontSize: 11.0,
-                                  color: palette.textSecondary,
-                                ),
-                              ),
-                            ),
-
-                            const SizedBox(height: 32.0),
-                          ],
+                              const SizedBox(height: 32.0),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Bar DINAMIS lebar penuh di atas halaman (Floating Scroll Header):
-                // - Awal (unscrolled / t=0): background transparan di atas foto hero
-                // - Saat scroll ke bawah (t -> 1): background fade in ke solid (surface / navSurface) + shadow halus
-                // - Tombol Back di kiri, Share & Favorit di kanan selalu fixed di top bar
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  height: barHeight + 5.0,
-                  child: Container(
-                    key: const Key('recipe-detail-header-bar'),
-                    margin: const EdgeInsets.only(bottom: 5.0),
-                    decoration: BoxDecoration(
-                      color: fixedBarColor.withValues(alpha: t),
-                      borderRadius: BorderRadius.only(
-                        bottomLeft: Radius.circular(14.0 * t),
-                        bottomRight: Radius.circular(14.0 * t),
-                      ),
-                      boxShadow: t > 0.05
-                          ? [
-                              BoxShadow(
-                                color: palette.shadowColor.withValues(alpha: t),
-                                blurRadius: 6.0 * t,
-                                offset: Offset(0, 2.0 * t),
-                              ),
-                            ]
-                          : null,
+                      ],
                     ),
-                    padding: EdgeInsets.only(top: topInset),
-                    child: SizedBox(
-                      height: 44.0,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            // Tombol Back di kiri
-                            Semantics(
-                              label: 'Kembali',
-                              button: true,
-                              child: GestureDetector(
-                                onTap: () {
-                                  if (context.canPop()) {
-                                    context.pop();
-                                  } else {
-                                    context.go('/home');
-                                  }
-                                },
-                                child: Container(
-                                  width: 36.0,
-                                  height: 36.0,
-                                  decoration: BoxDecoration(
-                                    color: t > 0.6
-                                        ? Colors.transparent
-                                        : palette.heartButtonBg,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  alignment: Alignment.center,
-                                  child: Icon(
-                                    LucideIcons.arrowLeft,
-                                    color: t > 0.6
-                                        ? palette.textStrong
-                                        : (palette.isDark
-                                              ? palette.textStrong
-                                              : palette.actionBg),
-                                    size: 18.0,
-                                  ),
-                                ),
-                              ),
-                            ),
+                  ),
 
-                            // Tombol Aksi di kanan: Bagikan resep & Tambah ke favorit
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                // Share button
-                                Semantics(
-                                  label: 'Bagikan resep',
-                                  button: true,
-                                  child: GestureDetector(
-                                    onTap: () => _shareRecipe(context, recipe),
-                                    child: Container(
-                                      width: 36.0,
-                                      height: 36.0,
-                                      decoration: BoxDecoration(
-                                        color: t > 0.6
-                                            ? Colors.transparent
-                                            : palette.heartButtonBg,
-                                        shape: BoxShape.circle,
-                                      ),
-                                      alignment: Alignment.center,
-                                      child: Icon(
-                                        LucideIcons.share2,
-                                        color: t > 0.6
+                  // Bar DINAMIS lebar penuh di atas halaman (Floating Scroll Header sesuai konsep contoh):
+                  // - Awal (unscrolled / t=0): background transparan di atas foto hero
+                  // - Saat scroll ke bawah (t -> 1): background bertransisi mulus ke solid (surface / navSurface) + shadow halus
+                  // - Tombol Back di kiri, Share & Bookmark di kanan selalu fixed di top bar
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: barHeight,
+                    child: Container(
+                      key: const Key('recipe-detail-header-bar'),
+                      decoration: BoxDecoration(
+                        color: fixedBarColor.withValues(alpha: t),
+                        boxShadow: t > 0.05
+                            ? [
+                                BoxShadow(
+                                  color: palette.shadowColor.withValues(
+                                    alpha: 0.1 * t,
+                                  ),
+                                  blurRadius: 8.0 * t,
+                                  offset: Offset(0, 2.0 * t),
+                                ),
+                              ]
+                            : null,
+                      ),
+                      padding: EdgeInsets.only(
+                        top: rowTop,
+                        left: 20.0,
+                        right: 20.0,
+                        bottom: AppHeaderMetrics.bottomPadding,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          // Tombol Back di kiri
+                          Semantics(
+                            label: 'Kembali',
+                            button: true,
+                            child: GestureDetector(
+                              onTap: () {
+                                if (context.canPop()) {
+                                  context.pop();
+                                } else {
+                                  context.go('/home');
+                                }
+                              },
+                              child: Container(
+                                width: 36.0,
+                                height: 36.0,
+                                decoration: BoxDecoration(
+                                  color: t > 0.6
+                                      ? Colors.transparent
+                                      : palette.heartButtonBg,
+                                  shape: BoxShape.circle,
+                                ),
+                                alignment: Alignment.center,
+                                child: Icon(
+                                  LucideIcons.arrowLeft,
+                                  color: t > 0.6
+                                      ? palette.textStrong
+                                      : (palette.isDark
                                             ? palette.textStrong
-                                            : (palette.isDark
-                                                  ? palette.textStrong
-                                                  : palette.actionBg),
-                                        size: 18.0,
-                                      ),
-                                    ),
-                                  ),
+                                            : palette.actionBg),
+                                  size: 20.0,
                                 ),
-
-                                const SizedBox(width: 6.0),
-
-                                // Heart / Bookmark button
-                                Semantics(
-                                  label: isFavorite
-                                      ? 'Hapus dari favorit'
-                                      : 'Tambah ke favorit',
-                                  button: true,
-                                  child: GestureDetector(
-                                    onTap: () => ref
-                                        .read(favoritesProvider.notifier)
-                                        .toggle(recipe.id),
-                                    child: Container(
-                                      width: 36.0,
-                                      height: 36.0,
-                                      decoration: BoxDecoration(
-                                        color: t > 0.6
-                                            ? Colors.transparent
-                                            : palette.heartButtonBg,
-                                        shape: BoxShape.circle,
-                                      ),
-                                      alignment: Alignment.center,
-                                      child: Icon(
-                                        isFavorite
-                                            ? Icons.favorite
-                                            : Icons.favorite_border,
-                                        color: isFavorite
-                                            ? palette.danger
-                                            : (t > 0.6
-                                                  ? palette.textStrong
-                                                  : (palette.isDark
-                                                        ? palette.textStrong
-                                                        : palette.actionBg)),
-                                        size: 18.0,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
+                              ),
                             ),
-                          ],
-                        ),
+                          ),
+
+                          // Tombol Aksi di kanan: Bagikan resep & Bookmark/Favorit
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // Share button
+                              Semantics(
+                                label: 'Bagikan resep',
+                                button: true,
+                                child: GestureDetector(
+                                  onTap: () => _shareRecipe(context, recipe),
+                                  child: Container(
+                                    width: 36.0,
+                                    height: 36.0,
+                                    decoration: BoxDecoration(
+                                      color: t > 0.6
+                                          ? Colors.transparent
+                                          : palette.heartButtonBg,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: Icon(
+                                      LucideIcons.share2,
+                                      color: t > 0.6
+                                          ? palette.textStrong
+                                          : (palette.isDark
+                                                ? palette.textStrong
+                                                : palette.actionBg),
+                                      size: 19.0,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8.0),
+
+                              // Bookmark / Favorit button (sesuai contoh gambar)
+                              Semantics(
+                                label: isFavorite
+                                    ? 'Hapus dari favorit'
+                                    : 'Tambah ke favorit',
+                                button: true,
+                                child: GestureDetector(
+                                  onTap: () => ref
+                                      .read(favoritesProvider.notifier)
+                                      .toggle(recipe.id, recipe: recipe),
+                                  child: Container(
+                                    width: 36.0,
+                                    height: 36.0,
+                                    decoration: BoxDecoration(
+                                      color: t > 0.6
+                                          ? Colors.transparent
+                                          : palette.heartButtonBg,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: Icon(
+                                      isFavorite
+                                          ? Icons.bookmark
+                                          : Icons.bookmark_border,
+                                      color: isFavorite
+                                          ? palette.accent
+                                          : (t > 0.6
+                                                ? palette.textStrong
+                                                : (palette.isDark
+                                                      ? palette.textStrong
+                                                      : palette.actionBg)),
+                                      size: 22.0,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             );
           },
         ),

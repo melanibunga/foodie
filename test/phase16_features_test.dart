@@ -108,12 +108,8 @@ void main() {
 
         final state = container.read(locationProvider);
         expect(state.isRealMap, isTrue);
-        expect(state.status, LocationStatus.denied);
-        expect(state.message, contains('Izin lokasi'));
-        expect(
-          state.coordinates.latitude,
-          UserCoordinates.defaultKaliurang.latitude,
-        );
+        expect(state.status, LocationStatus.needsRationale);
+        expect(state.coordinates, isNull);
       },
     );
 
@@ -137,7 +133,7 @@ void main() {
         final state = container.read(locationProvider);
         expect(state.isRealMap, isTrue);
         expect(state.status, LocationStatus.granted);
-        expect(state.coordinates.latitude, -7.7650);
+        expect(state.coordinates?.latitude, -7.7650);
 
         // Can switch back to illustrated map
         notifier.useIllustratedMap();

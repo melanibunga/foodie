@@ -17,11 +17,46 @@ import '../widgets/ui/app_button.dart';
 import '../widgets/ui/skeleton.dart';
 
 /// Halaman Beranda (Home) Foodie.id sesuai PRD §5.4, §6.4 dan design/home.jpg.
-class HomePage extends ConsumerWidget {
+class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends ConsumerState<HomePage>
+    with WidgetsBindingObserver {
+  String? _lastDateKey;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      final currentDateKey = ref.read(todayDateKeyProvider);
+      if (_lastDateKey != null && _lastDateKey != currentDateKey) {
+        _lastDateKey = currentDateKey;
+        ref.invalidate(todayDateKeyProvider);
+        ref.invalidate(inspirationRecipesProvider);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final currentDateKey = ref.watch(todayDateKeyProvider);
+    _lastDateKey = currentDateKey;
+
     final palette = context.palette;
     final inspirationAsync = ref.watch(inspirationRecipesProvider);
     final popularAsync = ref.watch(popularRecipesProvider);

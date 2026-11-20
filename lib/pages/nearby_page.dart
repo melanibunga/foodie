@@ -1,7 +1,8 @@
-import 'dart:math' as math;
+import 'dart:async';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -14,26 +15,24 @@ import '../models/models.dart';
 import '../providers/location_provider.dart';
 import '../providers/places_provider.dart';
 import '../providers/ui_helper.dart';
+import '../services/location_service.dart';
 import '../services/route_service.dart';
 import '../widgets/illustrated_map.dart';
 import '../widgets/page_with_header.dart';
-import '../widgets/real_map_view.dart';
-import '../widgets/ui/app_bottom_sheet.dart';
 import '../widgets/ui/app_button.dart';
-import '../widgets/ui/empty_state.dart';
 
-enum NearbyQuickFilter { terdekat, bukaSekarang, hargaHemat }
-
-/// Halaman Nearby (/nearby) sesuai PRD §6.8, §7.2, §16 dan design/location.jpg:
-/// - AppHeader global di atas.
-/// - Baris pencarian: search bar putih ("Cari resto atau rumah makan") + tombol filter bulat chip.
-/// - Chip filter: Terdekat (default aktif), Buka sekarang, Harga hemat.
-/// - Kartu peta ilustrasi statis IllustratedMap (375x210 radius 20).
-/// - Judul "Pilihan Di Sekitarmu" + "{n} tempat" (dinamis).
-/// - Daftar kartu tempat: nomor pin, nama, cuisine & harga, jarak & waktu, status buka/tutup, tombol Rute.
-/// - Interaksi: tap kartu/pin = pilih tempat, tombol Rute = toast "Membuka rute ke {nama}".
-/// - Filter sheet (PRD §7.2): radius, kisaran harga, status.
-/// - AppBottomNav aktif Loc (ShellRoute).
+/// Halaman Nearby (/nearby) sesuai PRD §6.8, §14.12, §14.2, §14.5, §17.7:
+/// - PETA PENUH (Full-screen map) interaktif OpenStreetMap.
+/// - Alur izin lokasi on-demand (saat Nearby dibuka, bukan saat app start).
+/// - Kartu penjelasan melayang (rationale), penanganan denied, deniedForever, dan GPS off.
+/// - Akurasi tinggi & lingkaran akurasi (CircleLayer radius meter).
+/// - JANGAN PERNAH menampilkan pusat default sebagai titik pengguna (§17.7).
+/// - Banner akurasi > 100m, banner lokasi belum didapat, badge lokasi tiruan (mock).
+/// - Titik-titik tempat makan Overpass nyata (node & way, batas 80 titik, zoom >= 14).
+/// - Debounce kamera 600 ms & cache bbox 10 menit.
+/// - Search bar melayang di atas ("Cari warung makan…", debounce 400 ms, max 8 hasil).
+/// - Kartu info tempat terpilih melayang di atas BottomNav.
+/// - Tombol "Pusatkan" dan teks atribusi lisensi OSM.
 class NearbyPage extends ConsumerStatefulWidget {
   const NearbyPage({super.key});
 
@@ -41,68 +40,321 @@ class NearbyPage extends ConsumerStatefulWidget {
   ConsumerState<NearbyPage> createState() => _NearbyPageState();
 }
 
-class _NearbyPageState extends ConsumerState<NearbyPage> {
+class _NearbyPageState extends ConsumerState<NearbyPage>
+    with WidgetsBindingObserver {
+  final MapController _mapController = MapController();
   final TextEditingController _searchController = TextEditingController();
-  String _searchQuery = '';
-  NearbyQuickFilter _quickFilter = NearbyQuickFilter.terdekat;
-  String? _selectedPlaceId;
 
-  // Route State
+  // Kamera & Data Tempat
+  List<Place> _visiblePlaces = [];
+  bool _isLoadingPlaces = false;
+  bool _isZoomTooLow = false;
+  bool _hasPlacesError = false;
+  Timer? _cameraDebounceTimer;
+  CancelToken? _bboxCancelToken;
+
+  // Pencarian Tempat
+  Timer? _searchDebounceTimer;
+  CancelToken? _searchCancelToken;
+  List<Place> _searchResults = [];
+  bool _isSearching = false;
+  bool _searchHasSearched = false;
+  bool _showSearchDropdown = false;
+
+  // Tempat Terpilih & Rute
+  Place? _selectedPlace;
   RouteResult? _routeResult;
   bool _isLoadingRoute = false;
-  CancelToken? _cancelToken;
-  String? _lastRoutedPlaceId;
+  CancelToken? _routeCancelToken;
 
-  // Filter Sheet State
-  String _selectedRadius = '1 km';
-  String _selectedPriceRange = 'Semua';
-  String _selectedStatus = 'Semua';
+  // Fallback Peta
+  int _tileErrorCount = 0;
+  bool _isFallbackIllustrated = false;
 
   @override
   void initState() {
     super.initState();
-    _searchController.addListener(() {
-      setState(() {
-        _searchQuery = _searchController.text.trim().toLowerCase();
-      });
-    });
+    WidgetsBinding.instance.addObserver(this);
+    _searchController.addListener(_onSearchInputChanged);
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await ref.read(locationProvider.notifier).initLocation();
+      await ref.read(locationProvider.notifier).checkLocationStatus();
       final loc = ref.read(locationProvider);
       if (loc.message != null && mounted) {
         showAppToast(context, loc.message!);
       }
-      _triggerInitialRoute();
+
+      // Muat tempat di area awal setelah peta terinisialisasi
+      _fetchPlacesForCurrentCamera();
     });
   }
 
-  void _triggerInitialRoute() {
-    final places = _filterAndSortPlaces(ref.read(placesProvider));
-    if (places.isNotEmpty) {
-      final place = places.firstWhere(
-        (p) => p.id == _selectedPlaceId,
-        orElse: () => places.first,
-      );
-      _fetchRouteForPlace(place);
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _cameraDebounceTimer?.cancel();
+    _searchDebounceTimer?.cancel();
+    _bboxCancelToken?.cancel('Disposed');
+    _searchCancelToken?.cancel('Disposed');
+    _routeCancelToken?.cancel('Disposed');
+    _searchController.dispose();
+    _mapController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      ref.read(locationProvider.notifier).resumeStream();
+      final locStatus = ref.read(locationProvider).status;
+      if (locStatus == LocationStatus.serviceOff ||
+          locStatus == LocationStatus.deniedForever ||
+          locStatus == LocationStatus.denied) {
+        // Cek ulang otomatis saat kembali ke foreground (§17.7)
+        ref.read(locationProvider.notifier).checkLocationStatus();
+      }
+    } else if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
+      ref.read(locationProvider.notifier).pauseStream();
     }
   }
 
-  void _fetchRouteForPlace(Place place) async {
-    if (_lastRoutedPlaceId == place.id && _routeResult != null) return;
-    _lastRoutedPlaceId = place.id;
+  // ==========================================
+  // Kamera Peta & Bounding Box (Overpass POI)
+  // ==========================================
 
-    _cancelToken?.cancel('Place changed');
+  void _onPositionChanged(MapCamera camera, bool hasGesture) {
+    if (camera.zoom < 14.0) {
+      if (!_isZoomTooLow) {
+        setState(() {
+          _isZoomTooLow = true;
+        });
+      }
+      _cameraDebounceTimer?.cancel();
+      return;
+    }
+
+    if (_isZoomTooLow) {
+      setState(() {
+        _isZoomTooLow = false;
+      });
+    }
+
+    // Debounce 600 ms saat kamera berhenti bergerak
+    _cameraDebounceTimer?.cancel();
+    _cameraDebounceTimer = Timer(const Duration(milliseconds: 600), () {
+      if (mounted) {
+        _fetchPlacesForBounds(camera.visibleBounds);
+      }
+    });
+  }
+
+  void _fetchPlacesForCurrentCamera() {
+    final zoom = _mapController.camera.zoom;
+    if (zoom < 14.0) {
+      setState(() => _isZoomTooLow = true);
+      return;
+    }
+    setState(() => _isZoomTooLow = false);
+    _fetchPlacesForBounds(_mapController.camera.visibleBounds);
+  }
+
+  Future<void> _fetchPlacesForBounds(LatLngBounds bounds) async {
+    // Batalkan request bbox yang sedang berjalan
+    _bboxCancelToken?.cancel('New camera position');
     final cancelToken = CancelToken();
-    _cancelToken = cancelToken;
+    _bboxCancelToken = cancelToken;
+
+    setState(() {
+      _isLoadingPlaces = true;
+      _hasPlacesError = false;
+    });
+
+    final loc = ref.read(locationProvider).coordinates;
+    final cameraCenter = _mapController.camera.center;
+    final placeService = ref.read(placeServiceProvider);
+
+    try {
+      final places = await placeService.getPlacesInBbox(
+        minLat: bounds.south,
+        minLon: bounds.west,
+        maxLat: bounds.north,
+        maxLon: bounds.east,
+        userLat: loc?.latitude ?? cameraCenter.latitude,
+        userLng: loc?.longitude ?? cameraCenter.longitude,
+        cancelToken: cancelToken,
+      );
+
+      if (mounted && !cancelToken.isCancelled) {
+        setState(() {
+          _visiblePlaces = places;
+          _isLoadingPlaces = false;
+          _hasPlacesError = false;
+        });
+      }
+    } on DioException catch (e) {
+      if (cancelToken.isCancelled) return;
+      if (mounted) {
+        setState(() {
+          _isLoadingPlaces = false;
+          _hasPlacesError = true;
+        });
+        showAppToast(context, 'Gagal memuat tempat makan');
+      }
+      debugPrint('Overpass bbox error: ${e.message}');
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingPlaces = false;
+          _hasPlacesError = true;
+        });
+        showAppToast(context, 'Gagal memuat tempat makan');
+      }
+      debugPrint('Overpass error: $e');
+    }
+  }
+
+  // ==========================================
+  // Pencarian Tempat Berdasarkan Nama
+  // ==========================================
+
+  void _onSearchInputChanged() {
+    final query = _searchController.text.trim();
+    if (query.isEmpty) {
+      _searchDebounceTimer?.cancel();
+      _searchCancelToken?.cancel('Empty query');
+      setState(() {
+        _searchResults = [];
+        _isSearching = false;
+        _searchHasSearched = false;
+        _showSearchDropdown = false;
+      });
+      return;
+    }
+
+    setState(() {
+      _showSearchDropdown = true;
+      _isSearching = true;
+    });
+
+    // Debounce 400 ms untuk pencarian nama
+    _searchDebounceTimer?.cancel();
+    _searchDebounceTimer = Timer(const Duration(milliseconds: 400), () {
+      _executeSearchByName(query);
+    });
+  }
+
+  Future<void> _executeSearchByName(String query) async {
+    _searchCancelToken?.cancel('New query');
+    final cancelToken = CancelToken();
+    _searchCancelToken = cancelToken;
+
+    final loc = ref.read(locationProvider).coordinates;
+    final centerLat = _mapController.camera.center.latitude;
+    final centerLng = _mapController.camera.center.longitude;
+    final placeService = ref.read(placeServiceProvider);
+
+    try {
+      final results = await placeService.searchByName(
+        query: query,
+        latitude: centerLat != 0
+            ? centerLat
+            : (loc?.latitude ?? UserCoordinates.defaultKaliurang.latitude),
+        longitude: centerLng != 0
+            ? centerLng
+            : (loc?.longitude ?? UserCoordinates.defaultKaliurang.longitude),
+        radiusMeters: 5000,
+        cancelToken: cancelToken,
+      );
+
+      if (mounted && !cancelToken.isCancelled) {
+        setState(() {
+          _searchResults = results;
+          _isSearching = false;
+          _searchHasSearched = true;
+        });
+      }
+    } catch (e) {
+      if (cancelToken.isCancelled) return;
+      if (mounted) {
+        setState(() {
+          _searchResults = [];
+          _isSearching = false;
+          _searchHasSearched = true;
+        });
+      }
+      debugPrint('Search Overpass error: $e');
+    }
+  }
+
+  void _onSelectSearchedPlace(Place place) {
+    setState(() {
+      _showSearchDropdown = false;
+      _selectedPlace = place;
+      _routeResult = null;
+    });
+    FocusScope.of(context).unfocus();
+
+    // Pastikan tempat masuk ke marker visible bila belum ada
+    if (!_visiblePlaces.any((p) => p.id == place.id)) {
+      _visiblePlaces.add(place);
+    }
+
+    // Pindahkan kamera ke tempat terpilih
+    _mapController.move(LatLng(place.latitude, place.longitude), 16.0);
+  }
+
+  void _clearSearch() {
+    _searchController.clear();
+    setState(() {
+      _searchResults = [];
+      _showSearchDropdown = false;
+      _isSearching = false;
+      _searchHasSearched = false;
+    });
+  }
+
+  // ==========================================
+  // Pemilihan Tempat & Routing OSRM
+  // ==========================================
+
+  void _selectPlace(Place place) {
+    setState(() {
+      _selectedPlace = place;
+      _routeResult = null;
+    });
+  }
+
+  void _deselectPlace() {
+    setState(() {
+      _selectedPlace = null;
+      _routeResult = null;
+      _showSearchDropdown = false;
+    });
+    FocusScope.of(context).unfocus();
+  }
+
+  Future<void> _fetchRouteForPlace(Place place) async {
+    final locState = ref.read(locationProvider);
+    if (locState.coordinates == null) {
+      showAppToast(context, 'Aktifkan lokasi untuk melihat rute');
+      await ref.read(locationProvider.notifier).requestLocationPermission();
+      return;
+    }
+
+    _routeCancelToken?.cancel('New route requested');
+    final cancelToken = CancelToken();
+    _routeCancelToken = cancelToken;
 
     setState(() {
       _isLoadingRoute = true;
     });
 
-    final loc = ref.read(locationProvider).coordinates;
+    final loc = locState.coordinates!;
     final start = LatLng(loc.latitude, loc.longitude);
     final destination = LatLng(place.latitude, place.longitude);
+
+    showAppToast(context, 'Membuka rute ke ${place.name}');
 
     final routeService = ref.read(routeServiceProvider);
     final result = await routeService.getFootRoute(
@@ -120,841 +372,1191 @@ class _NearbyPageState extends ConsumerState<NearbyPage> {
       if (result.isStraightLineFallback) {
         showAppToast(context, 'Rute perkiraan');
       }
+
+      // Fit bounds kamera ke jalur rute
+      if (result.points.length >= 2) {
+        final bounds = LatLngBounds.fromPoints(result.points);
+        _mapController.fitCamera(
+          CameraFit.bounds(
+            bounds: bounds,
+            padding: const EdgeInsets.only(
+              left: 48.0,
+              right: 48.0,
+              top: 100.0,
+              bottom: AppShell.bottomNavPadding + 140.0,
+            ),
+            maxZoom: 17.0,
+          ),
+        );
+      }
     }
   }
 
-  void _onSelectPlace(String id) {
-    setState(() {
-      _selectedPlaceId = id;
-    });
-    final allPlaces = ref.read(placesProvider);
-    final place = allPlaces.firstWhere(
-      (p) => p.id == id,
-      orElse: () => allPlaces.first,
-    );
-    _fetchRouteForPlace(place);
+  Future<void> _centerToUser() async {
+    final locState = ref.read(locationProvider);
+    if (locState.coordinates != null) {
+      _mapController.move(
+        LatLng(locState.coordinates!.latitude, locState.coordinates!.longitude),
+        15.5,
+      );
+      showAppToast(context, 'Peta dipusatkan ke lokasi kamu');
+    } else {
+      showAppToast(context, 'Mencari lokasi kamu…');
+      await ref.read(locationProvider.notifier).refreshLocation();
+      if (!mounted) return;
+      final updated = ref.read(locationProvider);
+      if (updated.coordinates != null) {
+        _mapController.move(
+          LatLng(updated.coordinates!.latitude, updated.coordinates!.longitude),
+          15.5,
+        );
+        showAppToast(context, 'Peta dipusatkan ke lokasi kamu');
+      } else {
+        showAppToast(context, 'Lokasi belum didapat');
+      }
+    }
   }
 
-  void _onTapRoute(Place place) {
-    _onSelectPlace(place.id);
-    showAppToast(context, 'Membuka rute ke ${place.name}');
-  }
+  // ==========================================
+  // Build Widget
+  // ==========================================
 
   @override
-  void dispose() {
-    _cancelToken?.cancel('Disposed');
-    _searchController.dispose();
-    super.dispose();
-  }
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    final locState = ref.watch(locationProvider);
+    final userCoords = locState.coordinates;
+    final userLatLng = userCoords != null
+        ? LatLng(userCoords.latitude, userCoords.longitude)
+        : const LatLng(-7.7653, 110.3789);
+    final userPrimary = palette.isDark ? palette.accent : palette.actionBg;
 
-  List<Place> _filterAndSortPlaces(List<Place> allPlaces) {
-    var result = allPlaces.toList();
-
-    // 1. Text Search Filter
-    if (_searchQuery.isNotEmpty) {
-      result = result.where((p) {
-        return p.name.toLowerCase().contains(_searchQuery) ||
-            p.cuisine.toLowerCase().contains(_searchQuery);
-      }).toList();
-    }
-
-    // 2. Sheet Radius Filter
-    if (_selectedRadius == '500 m') {
-      result = result.where((p) => p.distanceM <= 500).toList();
-    } else if (_selectedRadius == '1 km') {
-      result = result.where((p) => p.distanceM <= 1000).toList();
-    } else if (_selectedRadius == '2 km') {
-      result = result.where((p) => p.distanceM <= 2000).toList();
-    } else if (_selectedRadius == '5 km') {
-      result = result.where((p) => p.distanceM <= 5000).toList();
-    }
-
-    // 3. Sheet Price Range Filter
-    if (_selectedPriceRange == '< Rp20 rb') {
-      result = result.where((p) => p.priceMin < 20000).toList();
-    } else if (_selectedPriceRange == 'Rp20–35 rb') {
-      result = result
-          .where((p) => p.priceMin >= 20000 && p.priceMax <= 35000)
-          .toList();
-    } else if (_selectedPriceRange == '> Rp35 rb') {
-      result = result.where((p) => p.priceMax > 35000).toList();
-    }
-
-    // 4. Sheet Status Filter
-    if (_selectedStatus == 'Buka saja') {
-      result = result.where((p) => p.open && !p.isUnknownHours).toList();
-    }
-
-    // 5. Quick Chip Filter & Sorting
-    switch (_quickFilter) {
-      case NearbyQuickFilter.terdekat:
-        result.sort((a, b) => a.distanceM.compareTo(b.distanceM));
-        break;
-      case NearbyQuickFilter.bukaSekarang:
-        result = result.where((p) => p.open && !p.isUnknownHours).toList();
-        result.sort((a, b) => a.distanceM.compareTo(b.distanceM));
-        break;
-      case NearbyQuickFilter.hargaHemat:
-        result.sort((a, b) => a.priceMin.compareTo(b.priceMin));
-        break;
-    }
-
-    return result;
-  }
-
-  void _showFilterSheet() {
-    String tempRadius = _selectedRadius;
-    String tempPrice = _selectedPriceRange;
-    String tempStatus = _selectedStatus;
-
-    showAppBottomSheet(
-      context: context,
-      builder: (sheetContext) {
-        final palette = sheetContext.palette;
-        return StatefulBuilder(
-          builder: (context, setSheetState) {
-            final bottomPadding = math.max(
-              16.0,
-              MediaQuery.of(sheetContext).viewPadding.bottom + 16.0,
-            );
-            return Padding(
-              padding: EdgeInsets.only(
-                left: 24.0,
-                right: 24.0,
-                top: 8.0,
-                bottom: bottomPadding,
+    return PageWithHeader(
+      resizeToAvoidBottomInset: false,
+      body: Stack(
+        children: [
+          // 1. Layer Peta Penuh
+          if (_isFallbackIllustrated)
+            IllustratedMap(
+              places: const [],
+              height: double.infinity,
+              onCenterTap: _centerToUser,
+              onSwitchToRealMap: () {
+                setState(() {
+                  _isFallbackIllustrated = false;
+                  _tileErrorCount = 0;
+                });
+              },
+            )
+          else
+            FlutterMap(
+              mapController: _mapController,
+              options: MapOptions(
+                initialCenter: userLatLng,
+                initialZoom: 15.0,
+                minZoom: 10.0,
+                maxZoom: 18.0,
+                onTap: (tapPosition, point) => _deselectPlace(),
+                onPositionChanged: _onPositionChanged,
+                interactionOptions: const InteractionOptions(
+                  flags:
+                      InteractiveFlag.pinchZoom |
+                      InteractiveFlag.drag |
+                      InteractiveFlag.doubleTapZoom,
+                ),
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Header Filter & Reset
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Filter',
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 20.0,
-                          fontWeight: FontWeight.w700,
-                          color: palette.textStrong,
+              children: [
+                TileLayer(
+                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  userAgentPackageName: 'id.foodie.foodie',
+                  tileBuilder: (context, tileWidget, tile) {
+                    if (palette.isDark) {
+                      return ColorFiltered(
+                        colorFilter: const ColorFilter.matrix(<double>[
+                          -0.75,
+                          0,
+                          0,
+                          0,
+                          255,
+                          0,
+                          -0.75,
+                          0,
+                          0,
+                          255,
+                          0,
+                          0,
+                          -0.75,
+                          0,
+                          255,
+                          0,
+                          0,
+                          0,
+                          1,
+                          0,
+                        ]),
+                        child: tileWidget,
+                      );
+                    }
+                    return tileWidget;
+                  },
+                  errorTileCallback: (tile, error, stackTrace) {
+                    _tileErrorCount++;
+                    if (_tileErrorCount >= 4 && !_isFallbackIllustrated) {
+                      setState(() => _isFallbackIllustrated = true);
+                      showAppToast(
+                        context,
+                        'Koneksi peta bermasalah, beralih ke peta ilustrasi',
+                      );
+                    }
+                  },
+                ),
+
+                // Layer Lingkaran Akurasi (CircleLayer) sesuai PRD §17.7
+                if (locState.status == LocationStatus.granted &&
+                    userCoords != null)
+                  CircleLayer(
+                    circles: [
+                      CircleMarker(
+                        point: userLatLng,
+                        radius: (locState.accuracyM ?? 30.0).clamp(10.0, 500.0),
+                        useRadiusInMeter: true,
+                        color: palette.accent.withValues(alpha: 0.15),
+                        borderColor: palette.accent.withValues(alpha: 0.4),
+                        borderStrokeWidth: 1.0,
+                      ),
+                    ],
+                  ),
+
+                // Layer Rute Polyline
+                if (_routeResult != null && _routeResult!.points.isNotEmpty)
+                  PolylineLayer(
+                    polylines: [
+                      Polyline(
+                        points: _routeResult!.points,
+                        strokeWidth: 4.0,
+                        color: userPrimary,
+                        pattern: _routeResult!.isStraightLineFallback
+                            ? StrokePattern.dashed(segments: const [8, 6])
+                            : const StrokePattern.solid(),
+                      ),
+                    ],
+                  ),
+
+                // Layer Marker
+                MarkerLayer(
+                  markers: [
+                    // Marker Lokasi Pengguna
+                    // PENTING: JANGAN PERNAH me-render marker pengguna bila tidak ada fix GPS nyata (§17.7)
+                    if (locState.status == LocationStatus.granted &&
+                        userCoords != null)
+                      Marker(
+                        point: userLatLng,
+                        width: 32.0,
+                        height: 32.0,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Container(
+                              width: 30.0,
+                              height: 30.0,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: userPrimary.withValues(alpha: 0.25),
+                              ),
+                            ),
+                            Container(
+                              width: 16.0,
+                              height: 16.0,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: userPrimary,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: palette.shadowColor,
+                                    blurRadius: 4.0,
+                                  ),
+                                ],
+                              ),
+                              child: Center(
+                                child: Container(
+                                  width: 6.0,
+                                  height: 6.0,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: palette.surface,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      GestureDetector(
-                        onTap: () {
-                          setSheetState(() {
-                            tempRadius = '1 km';
-                            tempPrice = 'Semua';
-                            tempStatus = 'Semua';
-                          });
-                        },
-                        child: Text(
-                          'Reset',
+
+                    // Marker Tempat Makan (Penanda Titik Lingkaran Kecil)
+                    for (final place in _visiblePlaces) ...[
+                      () {
+                        final isSelected = _selectedPlace?.id == place.id;
+                        final pinColor = isSelected
+                            ? palette.accent
+                            : (palette.isDark
+                                  ? palette.surfaceAlt
+                                  : palette.actionBg);
+
+                        return Marker(
+                          point: LatLng(place.latitude, place.longitude),
+                          width: 26.0,
+                          height: 26.0,
+                          child: GestureDetector(
+                            key: ValueKey('pin-${place.id}'),
+                            onTap: () => _selectPlace(place),
+                            behavior: HitTestBehavior.opaque,
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              width: isSelected ? 26.0 : 20.0,
+                              height: isSelected ? 26.0 : 20.0,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: pinColor,
+                                border: Border.all(
+                                  color: palette.surface,
+                                  width: isSelected ? 2.5 : 2.0,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: palette.shadowColor,
+                                    blurRadius: 4.0,
+                                    offset: const Offset(0, 1),
+                                  ),
+                                ],
+                              ),
+                              child: Center(
+                                child: Container(
+                                  width: isSelected ? 8.0 : 6.0,
+                                  height: isSelected ? 8.0 : 6.0,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: palette.surface,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }(),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+
+          // 2. Overlay: Kolom Pencarian Melayang di Atas (Pill ±44px)
+          Positioned(
+            top: 14.0,
+            left: 16.0,
+            right: 16.0,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Input Search Bar
+                Container(
+                  height: 44.0,
+                  decoration: BoxDecoration(
+                    color: palette.surface,
+                    borderRadius: BorderRadius.circular(999.0),
+                    border: Border.all(color: palette.border),
+                    boxShadow: AppShadows.card,
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 14.0),
+                  child: Row(
+                    children: [
+                      Icon(
+                        LucideIcons.search,
+                        color: palette.textSecondary,
+                        size: 18.0,
+                      ),
+                      const SizedBox(width: 8.0),
+                      Expanded(
+                        child: TextField(
+                          controller: _searchController,
                           style: TextStyle(
                             fontFamily: 'Poppins',
-                            fontSize: 14.0,
+                            fontSize: 13.0,
+                            color: palette.textBody,
+                          ),
+                          decoration: InputDecoration(
+                            hintText: 'Cari warung makan…',
+                            hintStyle: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontSize: 13.0,
+                              color: palette.textSecondary,
+                            ),
+                            border: InputBorder.none,
+                            isDense: true,
+                            contentPadding: EdgeInsets.zero,
+                          ),
+                        ),
+                      ),
+                      if (_isSearching)
+                        Icon(
+                          LucideIcons.loader,
+                          size: 16.0,
+                          color: palette.actionBg,
+                        )
+                      else if (_searchController.text.isNotEmpty)
+                        GestureDetector(
+                          onTap: _clearSearch,
+                          child: Icon(
+                            LucideIcons.x,
+                            size: 16.0,
+                            color: palette.textSecondary,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+
+                // Dropdown Hasil Pencarian Melayang
+                if (_showSearchDropdown) ...[
+                  const SizedBox(height: 6.0),
+                  Container(
+                    constraints: const BoxConstraints(maxHeight: 280.0),
+                    decoration: BoxDecoration(
+                      color: palette.surface,
+                      borderRadius: AppRadius.cardLarge,
+                      boxShadow: AppShadows.card,
+                      border: Border.all(color: palette.border),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: _isSearching
+                        ? Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 24.0),
+                            child: Center(
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    LucideIcons.loader,
+                                    size: 16.0,
+                                    color: palette.actionBg,
+                                  ),
+                                  const SizedBox(width: 10.0),
+                                  Text(
+                                    'Mencari tempat makan…',
+                                    style: TextStyle(
+                                      fontFamily: 'Poppins',
+                                      fontSize: 12.0,
+                                      color: palette.textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                        : _searchResults.isEmpty && _searchHasSearched
+                        ? Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'Tempat makan tidak ditemukan',
+                                  style: TextStyle(
+                                    fontFamily: 'Poppins',
+                                    fontSize: 13.0,
+                                    fontWeight: FontWeight.w600,
+                                    color: palette.textStrong,
+                                  ),
+                                ),
+                                const SizedBox(height: 4.0),
+                                Text(
+                                  'Coba kata kunci lain atau periksa koneksi',
+                                  style: TextStyle(
+                                    fontFamily: 'Poppins',
+                                    fontSize: 11.0,
+                                    color: palette.textSecondary,
+                                  ),
+                                ),
+                                const SizedBox(height: 10.0),
+                                AppButton(
+                                  label: 'Coba lagi',
+                                  variant: AppButtonVariant.soft,
+                                  size: AppButtonSize.sm,
+                                  onPressed: () {
+                                    _executeSearchByName(
+                                      _searchController.text.trim(),
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
+                          )
+                        : ListView.separated(
+                            shrinkWrap: true,
+                            padding: const EdgeInsets.symmetric(vertical: 4.0),
+                            itemCount: _searchResults.length,
+                            separatorBuilder: (context, index) => Divider(
+                              height: 1.0,
+                              thickness: 1.0,
+                              color: palette.border,
+                            ),
+                            itemBuilder: (context, index) {
+                              final p = _searchResults[index];
+                              return Material(
+                                color: Colors.transparent,
+                                child: ListTile(
+                                  dense: true,
+                                  title: Text(
+                                    p.name,
+                                    style: TextStyle(
+                                      fontFamily: 'Poppins',
+                                      fontSize: 13.0,
+                                      fontWeight: FontWeight.w700,
+                                      color: palette.textStrong,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  subtitle: Text(
+                                    '${p.cuisine} · ${p.distanceM} m',
+                                    style: TextStyle(
+                                      fontFamily: 'Poppins',
+                                      fontSize: 11.0,
+                                      color: palette.textSecondary,
+                                    ),
+                                  ),
+                                  trailing: Icon(
+                                    LucideIcons.chevronRight,
+                                    size: 16.0,
+                                    color: palette.textSecondary,
+                                  ),
+                                  onTap: () => _onSelectSearchedPlace(p),
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+
+          // 3. Overlay: Petunjuk Zoom < 14 / Loading Tempat
+          if (_isZoomTooLow && !_showSearchDropdown)
+            Positioned(
+              top: 68.0,
+              left: 16.0,
+              right: 16.0,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14.0,
+                    vertical: 8.0,
+                  ),
+                  decoration: BoxDecoration(
+                    color: palette.surface.withValues(alpha: 0.95),
+                    borderRadius: BorderRadius.circular(999.0),
+                    border: Border.all(color: palette.border),
+                    boxShadow: AppShadows.card,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        LucideIcons.zoomIn,
+                        size: 15.0,
+                        color: palette.actionBg,
+                      ),
+                      const SizedBox(width: 6.0),
+                      Flexible(
+                        child: Text(
+                          'Perbesar peta untuk melihat tempat makan',
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 11.0,
+                            fontWeight: FontWeight.w600,
+                            color: palette.textStrong,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            )
+          else if (_isLoadingPlaces && !_showSearchDropdown)
+            Positioned(
+              top: 68.0,
+              left: 16.0,
+              right: 16.0,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14.0,
+                    vertical: 6.0,
+                  ),
+                  decoration: BoxDecoration(
+                    color: palette.surface.withValues(alpha: 0.95),
+                    borderRadius: BorderRadius.circular(999.0),
+                    border: Border.all(color: palette.border),
+                    boxShadow: AppShadows.card,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        LucideIcons.loader,
+                        size: 12.0,
+                        color: palette.actionBg,
+                      ),
+                      const SizedBox(width: 8.0),
+                      Flexible(
+                        child: Text(
+                          'Memuat tempat makan…',
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 11.0,
+                            fontWeight: FontWeight.w500,
+                            color: palette.textStrong,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+          // 4. Overlay: Banner Error Overpass & Coba Lagi
+          if (_hasPlacesError && !_isZoomTooLow && !_showSearchDropdown)
+            Positioned(
+              top: 68.0,
+              left: 16.0,
+              right: 16.0,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12.0,
+                    vertical: 6.0,
+                  ),
+                  decoration: BoxDecoration(
+                    color: palette.danger.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(999.0),
+                    border: Border.all(color: palette.danger),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          'Gagal memuat tempat makan',
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 11.0,
                             fontWeight: FontWeight.w600,
                             color: palette.danger,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 8.0),
+                      GestureDetector(
+                        onTap: _fetchPlacesForCurrentCamera,
+                        child: Text(
+                          'Coba lagi',
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 11.0,
+                            fontWeight: FontWeight.w700,
+                            color: palette.actionBg,
+                            decoration: TextDecoration.underline,
                           ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20.0),
-
-                  // 1. Bagian Radius
-                  Text(
-                    'Radius',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 14.0,
-                      fontWeight: FontWeight.w700,
-                      color: palette.textStrong,
-                    ),
-                  ),
-                  const SizedBox(height: 8.0),
-                  Wrap(
-                    spacing: 8.0,
-                    runSpacing: 8.0,
-                    children: ['500 m', '1 km', '2 km', '5 km'].map((radius) {
-                      final isSelected = tempRadius == radius;
-                      return ChoiceChip(
-                        label: Text(radius),
-                        selected: isSelected,
-                        selectedColor: palette.actionBg,
-                        backgroundColor: palette.surface,
-                        labelStyle: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 12.0,
-                          fontWeight: FontWeight.w600,
-                          color: isSelected
-                              ? palette.onAction
-                              : palette.textBody,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(999.0),
-                          side: BorderSide(
-                            color: isSelected
-                                ? palette.actionBg
-                                : palette.border,
-                          ),
-                        ),
-                        showCheckmark: false,
-                        onSelected: (selected) {
-                          if (selected) {
-                            setSheetState(() => tempRadius = radius);
-                          }
-                        },
-                      );
-                    }).toList(),
-                  ),
-                  const SizedBox(height: 18.0),
-
-                  // 2. Bagian Kisaran Harga
-                  Text(
-                    'Kisaran harga',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 14.0,
-                      fontWeight: FontWeight.w700,
-                      color: palette.textStrong,
-                    ),
-                  ),
-                  const SizedBox(height: 8.0),
-                  Wrap(
-                    spacing: 8.0,
-                    runSpacing: 8.0,
-                    children: ['Semua', '< Rp20 rb', 'Rp20–35 rb', '> Rp35 rb']
-                        .map((price) {
-                          final isSelected = tempPrice == price;
-                          return ChoiceChip(
-                            label: Text(price),
-                            selected: isSelected,
-                            selectedColor: palette.actionBg,
-                            backgroundColor: palette.surface,
-                            labelStyle: TextStyle(
-                              fontFamily: 'Poppins',
-                              fontSize: 12.0,
-                              fontWeight: FontWeight.w600,
-                              color: isSelected
-                                  ? palette.onAction
-                                  : palette.textBody,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(999.0),
-                              side: BorderSide(
-                                color: isSelected
-                                    ? palette.actionBg
-                                    : palette.border,
-                              ),
-                            ),
-                            showCheckmark: false,
-                            onSelected: (selected) {
-                              if (selected) {
-                                setSheetState(() => tempPrice = price);
-                              }
-                            },
-                          );
-                        })
-                        .toList(),
-                  ),
-                  const SizedBox(height: 18.0),
-
-                  // 3. Bagian Status
-                  Text(
-                    'Status',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 14.0,
-                      fontWeight: FontWeight.w700,
-                      color: palette.textStrong,
-                    ),
-                  ),
-                  const SizedBox(height: 8.0),
-                  Wrap(
-                    spacing: 8.0,
-                    runSpacing: 8.0,
-                    children: ['Semua', 'Buka saja'].map((status) {
-                      final isSelected = tempStatus == status;
-                      return ChoiceChip(
-                        label: Text(status),
-                        selected: isSelected,
-                        selectedColor: palette.actionBg,
-                        backgroundColor: palette.surface,
-                        labelStyle: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 12.0,
-                          fontWeight: FontWeight.w600,
-                          color: isSelected
-                              ? palette.onAction
-                              : palette.textBody,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(999.0),
-                          side: BorderSide(
-                            color: isSelected
-                                ? palette.actionBg
-                                : palette.border,
-                          ),
-                        ),
-                        showCheckmark: false,
-                        onSelected: (selected) {
-                          if (selected) {
-                            setSheetState(() => tempStatus = status);
-                          }
-                        },
-                      );
-                    }).toList(),
-                  ),
-                  const SizedBox(height: 24.0),
-
-                  // Tombol Terapkan Lebar Penuh
-                  AppButton(
-                    label: 'Terapkan',
-                    variant: AppButtonVariant.primary,
-                    size: AppButtonSize.lg,
-                    fullWidth: true,
-                    onPressed: () {
-                      setState(() {
-                        _selectedRadius = tempRadius;
-                        _selectedPriceRange = tempPrice;
-                        _selectedStatus = tempStatus;
-                      });
-                      Navigator.pop(sheetContext);
-                    },
-                  ),
-                ],
+                ),
               ),
-            );
-          },
-        );
-      },
-    );
-  }
+            ),
 
-  void _resetAllFilters() {
-    setState(() {
-      _searchController.clear();
-      _searchQuery = '';
-      _quickFilter = NearbyQuickFilter.terdekat;
-      _selectedRadius = '1 km';
-      _selectedPriceRange = 'Semua';
-      _selectedStatus = 'Semua';
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    ref.listen<String?>(placesFallbackToastProvider, (prev, next) {
-      if (next != null && mounted) {
-        showAppToast(context, next);
-      }
-    });
-
-    final palette = context.palette;
-    final allPlaces = ref.watch(placesProvider);
-    final placesAsync = ref.watch(placesAsyncProvider);
-    final locationState = ref.watch(locationProvider);
-    final filteredPlaces = _filterAndSortPlaces(allPlaces);
-
-    // Pastikan selectedPlaceId valid
-    if (_selectedPlaceId == null ||
-        !filteredPlaces.any((p) => p.id == _selectedPlaceId)) {
-      _selectedPlaceId = filteredPlaces.isNotEmpty
-          ? filteredPlaces.first.id
-          : null;
-    }
-
-    return PageWithHeader(
-      resizeToAvoidBottomInset: false,
-      body: CustomScrollView(
-        key: const PageStorageKey<String>('nearby_scroll_view'),
-        slivers: [
-          // 1. Baris Pencarian & Tombol Filter Bulat
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: Row(
-                children: [
-                  // Search Bar Putih Pill (tinggi ≈ 46)
-                  Expanded(
-                    child: Container(
-                      height: 46.0,
-                      decoration: BoxDecoration(
-                        color: palette.field,
-                        borderRadius: BorderRadius.circular(999.0),
-                        border: Border.all(color: palette.fieldBorder),
-                        boxShadow: [
-                          BoxShadow(
-                            color: palette.shadowColor,
-                            blurRadius: 4.0,
-                            offset: const Offset(0, 1),
-                          ),
-                        ],
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 14.0),
-                      child: Row(
-                        children: [
-                          Icon(
-                            LucideIcons.search,
+          // 5. Overlay Banners Status Akurasi & Izin Lokasi (§17.7)
+          if (!_isZoomTooLow &&
+              !_isLoadingPlaces &&
+              !_hasPlacesError &&
+              !_showSearchDropdown) ...[
+            // Banner Lokasi Belum Aktif (setelah klik "Nanti saja")
+            if (locState.status != LocationStatus.granted &&
+                locState.askedInSession)
+              Positioned(
+                top: 68.0,
+                left: 16.0,
+                right: 16.0,
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14.0,
+                      vertical: 6.0,
+                    ),
+                    decoration: BoxDecoration(
+                      color: palette.surface.withValues(alpha: 0.95),
+                      borderRadius: BorderRadius.circular(999.0),
+                      border: Border.all(color: palette.border),
+                      boxShadow: AppShadows.card,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          LucideIcons.mapPinOff,
+                          size: 14.0,
+                          color: palette.textSecondary,
+                        ),
+                        const SizedBox(width: 6.0),
+                        Text(
+                          'Lokasi belum aktif · ',
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 11.0,
                             color: palette.textSecondary,
-                            size: 18.0,
                           ),
-                          const SizedBox(width: 8.0),
-                          Expanded(
-                            child: TextField(
-                              controller: _searchController,
-                              style: TextStyle(
-                                fontFamily: 'Poppins',
-                                fontSize: 13.0,
-                                color: palette.textBody,
-                              ),
-                              decoration: InputDecoration(
-                                hintText: 'Cari resto atau rumah makan',
-                                hintStyle: TextStyle(
-                                  fontFamily: 'Poppins',
-                                  fontSize: 13.0,
-                                  color: palette.textSecondary,
-                                ),
-                                border: InputBorder.none,
-                                isDense: true,
-                                contentPadding: EdgeInsets.zero,
-                              ),
+                        ),
+                        GestureDetector(
+                          key: const ValueKey('activate-location-banner-btn'),
+                          onTap: () {
+                            ref
+                                .read(locationProvider.notifier)
+                                .requestLocationPermission();
+                          },
+                          child: Text(
+                            'Aktifkan',
+                            style: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontSize: 11.0,
+                              fontWeight: FontWeight.w700,
+                              color: palette.actionBg,
+                              decoration: TextDecoration.underline,
                             ),
                           ),
-                          if (_searchQuery.isNotEmpty)
-                            GestureDetector(
-                              onTap: () {
-                                _searchController.clear();
-                              },
-                              child: Icon(
-                                LucideIcons.x,
-                                size: 16.0,
-                                color: palette.textSecondary,
-                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              )
+            // Banner Lokasi Belum Didapat
+            else if (locState.status == LocationStatus.granted &&
+                userCoords == null)
+              Positioned(
+                top: 68.0,
+                left: 16.0,
+                right: 16.0,
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14.0,
+                      vertical: 6.0,
+                    ),
+                    decoration: BoxDecoration(
+                      color: palette.surface.withValues(alpha: 0.95),
+                      borderRadius: BorderRadius.circular(999.0),
+                      border: Border.all(color: palette.border),
+                      boxShadow: AppShadows.card,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          LucideIcons.loader,
+                          size: 13.0,
+                          color: palette.actionBg,
+                        ),
+                        const SizedBox(width: 6.0),
+                        Text(
+                          'Lokasi belum didapat',
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 11.0,
+                            fontWeight: FontWeight.w600,
+                            color: palette.textStrong,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              )
+            // Banner Lokasi Kurang Akurat (> 100m)
+            else if (userCoords != null && (locState.accuracyM ?? 0.0) > 100.0)
+              Positioned(
+                top: 68.0,
+                left: 16.0,
+                right: 16.0,
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12.0,
+                      vertical: 6.0,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(999.0),
+                      border: Border.all(color: Colors.amber.shade700),
+                      boxShadow: AppShadows.card,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          LucideIcons.alertTriangle,
+                          size: 13.0,
+                          color: Colors.amber.shade800,
+                        ),
+                        const SizedBox(width: 6.0),
+                        Flexible(
+                          child: Text(
+                            'Lokasi kurang akurat - keluar ruangan atau aktifkan lokasi presisi',
+                            style: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.amber.shade900,
                             ),
-                        ],
-                      ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
+                ),
+              ),
 
-                  const SizedBox(width: 12.0),
-
-                  // Tombol Filter Bulat (chip, 46x46)
-                  Semantics(
-                    label: 'Filter pencarian tempat',
-                    button: true,
-                    child: GestureDetector(
-                      onTap: _showFilterSheet,
-                      child: Container(
-                        width: 46.0,
-                        height: 46.0,
-                        decoration: BoxDecoration(
-                          color: palette.chip,
-                          shape: BoxShape.circle,
-                        ),
-                        alignment: Alignment.center,
-                        child: Icon(
-                          LucideIcons.slidersHorizontal,
-                          size: 18.0,
-                          color: palette.textStrong,
-                        ),
-                      ),
+            // Badge Debug Lokasi Tiruan (isMocked)
+            if (userCoords != null && userCoords.isMocked)
+              Positioned(
+                top: 104.0,
+                right: 16.0,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8.0,
+                    vertical: 3.0,
+                  ),
+                  decoration: BoxDecoration(
+                    color: palette.danger.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(6.0),
+                    border: Border.all(color: palette.danger),
+                  ),
+                  child: Text(
+                    'Lokasi tiruan',
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 9.0,
+                      fontWeight: FontWeight.w700,
+                      color: palette.danger,
                     ),
                   ),
-                ],
+                ),
+              ),
+          ],
+
+          // 6. Overlay: Atribusi OpenStreetMap (Kiri Bawah)
+          Positioned(
+            left: 16.0,
+            bottom: _selectedPlace != null
+                ? AppShell.bottomNavPadding + 140.0
+                : AppShell.bottomNavPadding + 14.0,
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 6.0,
+                vertical: 2.0,
+              ),
+              decoration: BoxDecoration(
+                color: palette.surface.withValues(alpha: 0.8),
+                borderRadius: BorderRadius.circular(4.0),
+              ),
+              child: Text(
+                '© OpenStreetMap contributors',
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 8.0,
+                  fontWeight: FontWeight.w400,
+                  color: palette.textSecondary,
+                ),
               ),
             ),
           ),
 
-          const SliverToBoxAdapter(child: SizedBox(height: 14.0)),
+          // 7. Overlay: Tombol "Pusatkan" (Kanan Bawah)
+          Positioned(
+            right: 16.0,
+            bottom: _selectedPlace != null
+                ? AppShell.bottomNavPadding + 140.0
+                : AppShell.bottomNavPadding + 16.0,
+            child: Semantics(
+              label: 'Pusatkan ke lokasi saya',
+              button: true,
+              child: GestureDetector(
+                onTap: _centerToUser,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14.0,
+                    vertical: 8.0,
+                  ),
+                  decoration: BoxDecoration(
+                    color: palette.surface,
+                    borderRadius: BorderRadius.circular(999.0),
+                    border: Border.all(color: palette.border),
+                    boxShadow: AppShadows.card,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        LucideIcons.crosshair,
+                        size: 15.0,
+                        color: palette.textStrong,
+                      ),
+                      const SizedBox(width: 6.0),
+                      Text(
+                        'Pusatkan',
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 12.0,
+                          fontWeight: FontWeight.w600,
+                          color: palette.textStrong,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
 
-          // 3. Chip Filter Cepat: Terdekat, Buka sekarang, Harga hemat
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
+          // 8. Overlay: Kartu Info Tempat Terpilih (Melayang di atas BottomNav)
+          if (_selectedPlace != null)
+            Positioned(
+              left: 16.0,
+              right: 16.0,
+              bottom: AppShell.bottomNavPadding + 12.0,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: palette.surface,
+                  borderRadius: BorderRadius.circular(16.0),
+                  boxShadow: AppShadows.card,
+                  border: Border.all(color: palette.border),
+                ),
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildQuickChip(
-                      palette: palette,
-                      label: 'Terdekat',
-                      isSelected: _quickFilter == NearbyQuickFilter.terdekat,
-                      onTap: () {
-                        setState(() {
-                          _quickFilter = NearbyQuickFilter.terdekat;
-                        });
-                      },
+                    // Baris Atas: Nama Tempat & Tombol Tutup (x)
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _selectedPlace!.name,
+                                style: TextStyle(
+                                  fontFamily: 'Poppins',
+                                  fontSize: 15.0,
+                                  fontWeight: FontWeight.w700,
+                                  color: palette.textStrong,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 2.0),
+                              Text(
+                                _selectedPlace!.cuisine,
+                                style: TextStyle(
+                                  fontFamily: 'Poppins',
+                                  fontSize: 12.0,
+                                  fontWeight: FontWeight.w500,
+                                  color: palette.textSecondary,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                        GestureDetector(
+                          key: const ValueKey('close-place-card'),
+                          onTap: _deselectPlace,
+                          child: Container(
+                            width: 28.0,
+                            height: 28.0,
+                            decoration: BoxDecoration(
+                              color: palette.chip,
+                              shape: BoxShape.circle,
+                            ),
+                            alignment: Alignment.center,
+                            child: Icon(
+                              LucideIcons.x,
+                              size: 16.0,
+                              color: palette.textSecondary,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 10.0),
-                    _buildQuickChip(
-                      palette: palette,
-                      label: 'Buka sekarang',
-                      isSelected:
-                          _quickFilter == NearbyQuickFilter.bukaSekarang,
-                      onTap: () {
-                        setState(() {
-                          _quickFilter = NearbyQuickFilter.bukaSekarang;
-                        });
-                      },
+
+                    const SizedBox(height: 8.0),
+
+                    // Info Jam Buka & Jarak
+                    Row(
+                      children: [
+                        // Status Buka / Jam
+                        Text(
+                          _selectedPlace!.open
+                              ? 'Buka'
+                              : (_selectedPlace!.isUnknownHours
+                                    ? 'Jam belum tercatat'
+                                    : 'Tutup'),
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 11.0,
+                            fontWeight: FontWeight.w600,
+                            color: _selectedPlace!.open
+                                ? palette.actionBg
+                                : (_selectedPlace!.isUnknownHours
+                                      ? palette.textSecondary
+                                      : palette.danger),
+                          ),
+                        ),
+                        if (_selectedPlace!.openingHours != null &&
+                            _selectedPlace!.openingHours!.isNotEmpty) ...[
+                          Text(
+                            ' · ${_selectedPlace!.openingHours}',
+                            style: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontSize: 11.0,
+                              color: palette.textSecondary,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                        const Spacer(),
+                        // Jarak & Waktu
+                        Text(
+                          _routeResult != null &&
+                                  !_routeResult!.isStraightLineFallback
+                              ? _routeResult!.distanceAndDurationString
+                              : '${_selectedPlace!.distanceM} m · ${_selectedPlace!.walkMin} menit',
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 11.0,
+                            fontWeight: FontWeight.w500,
+                            color: palette.textSecondary,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 10.0),
-                    _buildQuickChip(
-                      palette: palette,
-                      label: 'Harga hemat',
-                      isSelected: _quickFilter == NearbyQuickFilter.hargaHemat,
-                      onTap: () {
-                        setState(() {
-                          _quickFilter = NearbyQuickFilter.hargaHemat;
-                        });
-                      },
+
+                    const SizedBox(height: 12.0),
+
+                    // Tombol Rute
+                    SizedBox(
+                      width: double.infinity,
+                      child: AppButton(
+                        label: _isLoadingRoute ? 'Memuat rute…' : 'Rute',
+                        icon: const Icon(LucideIcons.navigation, size: 16.0),
+                        variant: AppButtonVariant.primary,
+                        size: AppButtonSize.md,
+                        onPressed: _isLoadingRoute
+                            ? null
+                            : () => _fetchRouteForPlace(_selectedPlace!),
+                      ),
                     ),
                   ],
                 ),
               ),
             ),
-          ),
 
-          const SliverToBoxAdapter(child: SizedBox(height: 16.0)),
-
-          // 4. Kartu Peta (Peta Nyata vs Peta Ilustrasi dengan Fallback)
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: locationState.isRealMap
-                  ? RealMapView(
-                      places: filteredPlaces,
-                      selectedPlaceId: _selectedPlaceId,
-                      userCoordinates: locationState.coordinates,
-                      radiusLabel: 'Radius $_selectedRadius',
-                      routeResult: _routeResult,
-                      isLoadingRoute: _isLoadingRoute,
-                      onSelectPlace: _onSelectPlace,
-                      onCenterTap: () {
-                        if (filteredPlaces.isNotEmpty) {
-                          _onSelectPlace(filteredPlaces.first.id);
-                        }
-                        showAppToast(context, 'Peta dipusatkan ke lokasi kamu');
-                      },
-                      onTileError: () {
-                        ref.read(locationProvider.notifier).useIllustratedMap();
-                        showAppToast(
-                          context,
-                          'Koneksi peta bermasalah, beralih ke peta ilustrasi',
-                        );
-                      },
-                      onSwitchToIllustrated: () {
-                        ref.read(locationProvider.notifier).useIllustratedMap();
-                      },
-                    )
-                  : IllustratedMap(
-                      places: filteredPlaces,
-                      selectedPlaceId: _selectedPlaceId,
-                      radiusLabel: 'Radius $_selectedRadius',
-                      onSelectPlace: _onSelectPlace,
-                      onCenterTap: () {
-                        if (filteredPlaces.isNotEmpty) {
-                          _onSelectPlace(filteredPlaces.first.id);
-                        }
-                        showAppToast(context, 'Peta dipusatkan ke lokasi kamu');
-                      },
-                      onSwitchToRealMap: () {
-                        ref.read(locationProvider.notifier).useRealMap();
-                      },
-                    ),
-            ),
-          ),
-
-          const SliverToBoxAdapter(child: SizedBox(height: 20.0)),
-
-          // 5. Judul Section: "Pilihan Di Sekitarmu" + "{n} tempat"
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Pilihan Di Sekitarmu',
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: 18.0,
-                        fontWeight: FontWeight.w700,
-                        color: palette.textStrong,
-                      ),
-                    ),
-                  ),
-                  Text(
-                    '${filteredPlaces.length} tempat',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 11.0,
-                      fontWeight: FontWeight.w500,
-                      color: palette.textSecondary,
-                    ),
-                  ),
-                ],
+          // 9. Overlay: Kartu Penjelasan / Rationale & Status Izin (§17.7 & PRD §14.12)
+          if (!locState.askedInSession && _selectedPlace == null) ...[
+            // (a) Rationale: Belum diizinkan
+            if (locState.status == LocationStatus.needsRationale)
+              _buildFloatingPermissionCard(
+                context: context,
+                palette: palette,
+                icon: LucideIcons.mapPin,
+                title: 'Izinkan akses lokasi',
+                description: 'Foodie.id memakai lokasimu untuk menampilkan tempat makan terdekat dan rute jalan. Lokasimu tidak disimpan.',
+                primaryButtonLabel: 'Izinkan lokasi',
+                onPrimaryPressed: () {
+                  ref
+                      .read(locationProvider.notifier)
+                      .requestLocationPermission();
+                },
+                secondaryButtonLabel: 'Nanti saja',
+                onSecondaryPressed: () {
+                  ref.read(locationProvider.notifier).dismissRationale();
+                },
+              )
+            // (b) Denied: Izin ditolak biasa
+            else if (locState.status == LocationStatus.denied)
+              _buildFloatingPermissionCard(
+                context: context,
+                palette: palette,
+                icon: LucideIcons.alertCircle,
+                title: 'Izin lokasi ditolak',
+                description: 'Foodie.id memerlukan izin lokasi untuk mengukur jarak dan menunjukkan rute ke warung makan terdekat.',
+                primaryButtonLabel: 'Coba lagi',
+                onPrimaryPressed: () {
+                  ref
+                      .read(locationProvider.notifier)
+                      .requestLocationPermission();
+                },
+                secondaryButtonLabel: 'Nanti saja',
+                onSecondaryPressed: () {
+                  ref.read(locationProvider.notifier).dismissRationale();
+                },
+              )
+            // (c) DeniedForever: Izin ditolak permanen
+            else if (locState.status == LocationStatus.deniedForever)
+              _buildFloatingPermissionCard(
+                context: context,
+                palette: palette,
+                icon: LucideIcons.settings,
+                title: 'Izin lokasi dimatikan',
+                description: 'Akses lokasi dimatikan permanen di pengaturan sistem. Buka Pengaturan aplikasi untuk mengizinkannya.',
+                primaryButtonLabel: 'Buka Pengaturan',
+                onPrimaryPressed: () {
+                  ref.read(locationProvider.notifier).openAppSettings();
+                },
+                secondaryButtonLabel: 'Nanti saja',
+                onSecondaryPressed: () {
+                  ref.read(locationProvider.notifier).dismissRationale();
+                },
+              )
+            // (d) ServiceOff: GPS Mati
+            else if (locState.status == LocationStatus.serviceOff)
+              _buildFloatingPermissionCard(
+                context: context,
+                palette: palette,
+                icon: LucideIcons.mapPinOff,
+                title: 'Layanan GPS dinonaktifkan',
+                description: 'Aktifkan GPS pada perangkat Anda untuk menemukan rekomendasi warung makan di sekitarmu.',
+                primaryButtonLabel: 'Aktifkan GPS',
+                onPrimaryPressed: () {
+                  ref.read(locationProvider.notifier).openLocationSettings();
+                },
+                secondaryButtonLabel: 'Nanti saja',
+                onSecondaryPressed: () {
+                  ref.read(locationProvider.notifier).dismissRationale();
+                },
+              )
+            // (e) Reduced Accuracy (Android 12+ / iOS 14+)
+            else if (locState.isReducedAccuracy &&
+                locState.status == LocationStatus.granted)
+              _buildFloatingPermissionCard(
+                context: context,
+                palette: palette,
+                icon: LucideIcons.alertTriangle,
+                title: 'Lokasi presisi dimatikan',
+                description: 'Aplikasi hanya menerima perkiraan lokasi. Aktifkan lokasi presisi di Pengaturan untuk panduan rute yang akurat.',
+                primaryButtonLabel: 'Aktifkan lokasi presisi',
+                onPrimaryPressed: () {
+                  ref.read(locationProvider.notifier).openAppSettings();
+                },
+                secondaryButtonLabel: 'Nanti saja',
+                onSecondaryPressed: () {
+                  ref.read(locationProvider.notifier).dismissRationale();
+                },
               ),
-            ),
-          ),
-
-          const SliverToBoxAdapter(child: SizedBox(height: 12.0)),
-
-          // 6. Daftar Kartu Tempat Makan (atau EmptyState bila kosong / error)
-          if (placesAsync.hasError &&
-              (!placesAsync.hasValue || placesAsync.value!.isEmpty))
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24.0,
-                  vertical: 20.0,
-                ),
-                child: EmptyState(
-                  icon: LucideIcons.alertCircle,
-                  title: 'Gagal memuat tempat sekitar',
-                  subtitle:
-                      'Periksa koneksi internet Anda atau coba muat kembali.',
-                  action: AppButton(
-                    label: 'Coba lagi',
-                    variant: AppButtonVariant.primary,
-                    size: AppButtonSize.sm,
-                    onPressed: () {
-                      ref.invalidate(placesAsyncProvider);
-                    },
-                  ),
-                ),
-              ),
-            )
-          else if (filteredPlaces.isEmpty)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24.0,
-                  vertical: 20.0,
-                ),
-                child: EmptyState(
-                  icon: LucideIcons.mapPin,
-                  title: 'Tidak ada tempat ditemukan',
-                  subtitle: 'Coba ubah kata kunci pencarian atau reset filter untuk melihat tempat makan terdekat.',
-                  action: AppButton(
-                    label: 'Reset Filter',
-                    variant: AppButtonVariant.soft,
-                    size: AppButtonSize.sm,
-                    onPressed: _resetAllFilters,
-                  ),
-                ),
-              ),
-            )
-          else
-            SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              sliver: SliverList(
-                delegate: SliverChildBuilderDelegate((context, index) {
-                  final place = filteredPlaces[index];
-                  final isSelected = place.id == _selectedPlaceId;
-
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12.0),
-                    child: _buildPlaceCard(
-                      palette: palette,
-                      place: place,
-                      index: index + 1,
-                      isSelected: isSelected,
-                    ),
-                  );
-                }, childCount: filteredPlaces.length),
-              ),
-            ),
-
-          // 7. Padding Bawah agar tidak tertutup floating bottom nav
-          const SliverToBoxAdapter(
-            child: SizedBox(height: AppShell.bottomNavPadding),
-          ),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildQuickChip({
+  /// Helper untuk membangun kartu melayang dialog izin/status lokasi
+  Widget _buildFloatingPermissionCard({
+    required BuildContext context,
     required AppPalette palette,
-    required String label,
-    required bool isSelected,
-    required VoidCallback onTap,
+    required IconData icon,
+    required String title,
+    required String description,
+    required String primaryButtonLabel,
+    required VoidCallback onPrimaryPressed,
+    required String secondaryButtonLabel,
+    required VoidCallback onSecondaryPressed,
   }) {
-    return GestureDetector(
-      onTap: onTap,
+    return Positioned(
+      left: 16.0,
+      right: 16.0,
+      bottom: AppShell.bottomNavPadding + 16.0,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-        decoration: BoxDecoration(
-          color: isSelected ? palette.actionBg : palette.surface,
-          borderRadius: BorderRadius.circular(999.0),
-          boxShadow: isSelected
-              ? null
-              : [
-                  BoxShadow(
-                    color: palette.shadowColor,
-                    blurRadius: 3.0,
-                    offset: const Offset(0, 1),
-                  ),
-                ],
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontFamily: 'Poppins',
-            fontSize: 12.0,
-            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-            color: isSelected ? palette.onAction : palette.textBody,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPlaceCard({
-    required AppPalette palette,
-    required Place place,
-    required int index,
-    required bool isSelected,
-  }) {
-    final priceMinStr = (place.priceMin ~/ 1000).toString();
-    final priceMaxStr = (place.priceMax ~/ 1000).toString();
-
-    return GestureDetector(
-      onTap: () => _onSelectPlace(place.id),
-      child: Container(
+        padding: const EdgeInsets.all(20.0),
         decoration: BoxDecoration(
           color: palette.surface,
-          borderRadius: AppRadius.cardLarge,
+          borderRadius: BorderRadius.circular(16.0),
           boxShadow: AppShadows.card,
+          border: Border.all(color: palette.border),
         ),
-        padding: const EdgeInsets.all(14.0),
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // Lingkaran Nomor (32x32: accent bila terpilih, chip bila lain)
             Container(
-              width: 32.0,
-              height: 32.0,
+              width: 48.0,
+              height: 48.0,
               decoration: BoxDecoration(
-                color: isSelected ? palette.accent : palette.chip,
+                color: palette.accent.withValues(alpha: 0.15),
                 shape: BoxShape.circle,
               ),
-              alignment: Alignment.center,
-              child: Text(
-                '$index',
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 13.0,
-                  fontWeight: FontWeight.w700,
-                  color: isSelected ? palette.onAccent : palette.textBody,
-                ),
+              child: Icon(icon, color: palette.actionBg, size: 24.0),
+            ),
+            const SizedBox(height: 12.0),
+            Text(
+              title,
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 16.0,
+                fontWeight: FontWeight.w700,
+                color: palette.textStrong,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 6.0),
+            Text(
+              description,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 12.5,
+                height: 1.4,
+                color: palette.textBody,
               ),
             ),
-
-            const SizedBox(width: 12.0),
-
-            // Kolom Informasi Tempat
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Nama Tempat (14/700 textStrong)
-                  Text(
-                    place.name,
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 14.0,
-                      fontWeight: FontWeight.w700,
-                      color: palette.textStrong,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2.0),
-
-                  // "Cuisine · Rp..–.. rb" (11 textSecondary)
-                  Text(
-                    '${place.cuisine} · Rp$priceMinStr–$priceMaxStr rb',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 11.0,
-                      fontWeight: FontWeight.w400,
-                      color: palette.textSecondary,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2.0),
-
-                  // "Jarak · Menit" (11 textSecondary)
-                  Text(
-                    isSelected &&
-                            _routeResult != null &&
-                            !_routeResult!.isStraightLineFallback
-                        ? _routeResult!.distanceAndDurationString
-                        : '${place.distanceM} m · ${place.walkMin} menit',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 11.0,
-                      fontWeight: FontWeight.w400,
-                      color: palette.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(width: 8.0),
-
-            // Kolom Kanan: Status & Tombol Rute
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
+            const SizedBox(height: 16.0),
+            Row(
               children: [
-                // Status "Buka" (actionBg) atau "Tutup" (danger)
-                Text(
-                  place.open ? 'Buka' : 'Tutup',
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 11.0,
-                    fontWeight: FontWeight.w600,
-                    color: place.open ? palette.actionBg : palette.danger,
+                Expanded(
+                  child: AppButton(
+                    label: secondaryButtonLabel,
+                    variant: AppButtonVariant.ghost,
+                    size: AppButtonSize.md,
+                    onPressed: onSecondaryPressed,
                   ),
                 ),
-                const SizedBox(height: 6.0),
-
-                // Tombol "Rute" (terpilih = actionBg teks onAction, lain = chip teks textStrong)
-                Semantics(
-                  label: 'Rute ke ${place.name}',
-                  button: true,
-                  child: GestureDetector(
-                    onTap: () => _onTapRoute(place),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16.0,
-                        vertical: 6.0,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isSelected ? palette.actionBg : palette.chip,
-                        borderRadius: BorderRadius.circular(999.0),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        'Rute',
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 12.0,
-                          fontWeight: FontWeight.w600,
-                          color: isSelected
-                              ? palette.onAction
-                              : palette.textStrong,
-                        ),
-                      ),
-                    ),
+                const SizedBox(width: 10.0),
+                Expanded(
+                  child: AppButton(
+                    label: primaryButtonLabel,
+                    variant: AppButtonVariant.primary,
+                    size: AppButtonSize.md,
+                    onPressed: onPrimaryPressed,
                   ),
                 ),
               ],

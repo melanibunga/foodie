@@ -1,8 +1,11 @@
-/// Model tempat makan / warung sekitar (Nearby) sesuai PRD §9
+/// Model tempat makan / warung sekitar (Nearby) sesuai PRD §9, §14.12, dan §17.6
 class Place {
   final String id;
   final String name;
   final String cuisine;
+  final String type; // Amenity type: restaurant, cafe, fast_food, food_court
+  final String? openingHours;
+  final Map<String, dynamic>? tags;
   final int priceMin;
   final int priceMax;
   final int distanceM;
@@ -21,6 +24,9 @@ class Place {
     required this.id,
     required this.name,
     required this.cuisine,
+    this.type = 'restaurant',
+    this.openingHours,
+    this.tags,
     required this.priceMin,
     required this.priceMax,
     required this.distanceM,
@@ -37,6 +43,9 @@ class Place {
     String? id,
     String? name,
     String? cuisine,
+    String? type,
+    String? openingHours,
+    Map<String, dynamic>? tags,
     int? priceMin,
     int? priceMax,
     int? distanceM,
@@ -52,6 +61,9 @@ class Place {
       id: id ?? this.id,
       name: name ?? this.name,
       cuisine: cuisine ?? this.cuisine,
+      type: type ?? this.type,
+      openingHours: openingHours ?? this.openingHours,
+      tags: tags ?? this.tags,
       priceMin: priceMin ?? this.priceMin,
       priceMax: priceMax ?? this.priceMax,
       distanceM: distanceM ?? this.distanceM,
@@ -70,6 +82,9 @@ class Place {
       'id': id,
       'name': name,
       'cuisine': cuisine,
+      'type': type,
+      if (openingHours != null) 'openingHours': openingHours,
+      if (tags != null) 'tags': tags,
       'priceMin': priceMin,
       'priceMax': priceMax,
       'distanceM': distanceM,
@@ -88,6 +103,11 @@ class Place {
       id: json['id'] as String? ?? '',
       name: json['name'] as String? ?? '',
       cuisine: json['cuisine'] as String? ?? '',
+      type: json['type'] as String? ?? 'restaurant',
+      openingHours: json['openingHours'] as String?,
+      tags: json['tags'] != null
+          ? Map<String, dynamic>.from(json['tags'] as Map)
+          : null,
       priceMin: (json['priceMin'] as num?)?.toInt() ?? 0,
       priceMax: (json['priceMax'] as num?)?.toInt() ?? 0,
       distanceM: (json['distanceM'] as num?)?.toInt() ?? 0,

@@ -48,12 +48,19 @@ class SmartImage extends StatelessWidget {
     Widget imageWidget;
     final trimmedSrc = src!.trim();
 
-    if (trimmedSrc.startsWith('data:')) {
+    String finalSrc = trimmedSrc;
+    if (finalSrc.startsWith('http://') || finalSrc.startsWith('https://')) {
       try {
-        final commaIndex = trimmedSrc.indexOf(',');
+        finalSrc = Uri.encodeFull(finalSrc);
+      } catch (_) {}
+    }
+
+    if (finalSrc.startsWith('data:')) {
+      try {
+        final commaIndex = finalSrc.indexOf(',');
         final base64Data = commaIndex >= 0
-            ? trimmedSrc.substring(commaIndex + 1)
-            : trimmedSrc;
+            ? finalSrc.substring(commaIndex + 1)
+            : finalSrc;
         final bytes = base64Decode(base64Data);
         imageWidget = Image.memory(
           bytes,
@@ -68,7 +75,7 @@ class SmartImage extends StatelessWidget {
       }
     } else {
       imageWidget = Image.network(
-        trimmedSrc,
+        finalSrc,
         width: width,
         height: height,
         fit: fit,

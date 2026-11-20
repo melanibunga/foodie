@@ -9,11 +9,11 @@ import '../core/theme/app_radius.dart';
 import '../core/theme/app_text.dart';
 import '../core/utils/debouncer.dart';
 import '../core/utils/week_utils.dart';
+import '../data/regions.dart';
 import '../models/models.dart';
 import '../providers/cart_provider.dart';
 import '../providers/favorites_provider.dart';
 import '../providers/meal_plan_provider.dart';
-import '../providers/recipes_provider.dart';
 import '../providers/ui_helper.dart';
 import '../services/recipe_service.dart';
 import '../widgets/page_with_header.dart';
@@ -23,17 +23,13 @@ import '../widgets/ui/app_button.dart';
 import '../widgets/ui/app_chip.dart';
 import '../widgets/ui/empty_state.dart';
 import '../widgets/ui/skeleton.dart';
-import '../widgets/ui/smart_image.dart';
 
-class MealCategoryItem {
-  final String name;
-  final MealType meal;
-  final String? image;
-
-  const MealCategoryItem({required this.name, required this.meal, this.image});
-}
-
-/// Halaman Pencarian & Filter Resep sesuai PRD §6.5 & §7.2, §16 dan design/search.jpg.
+/// Halaman Pencarian & Filter Resep sesuai PRD §6.5 & §7.2, §17.4 (Fase G4):
+/// - Grid "Search by Region" menggantikan Search by Meal, dikelompokkan berdasarkan pulau/wilayah.
+/// - Tap kartu asal daerah memfilter resep dari daerah tersebut.
+/// - Filter Sheet hanya menampilkan filter nyata yang didukung API (Kategori, Wilayah, Bahan Utama).
+/// - Request token sequence untuk pencegahan race condition / respons lama.
+/// - Debounce 250 ms untuk pengetikan pencarian.
 class SearchPage extends ConsumerStatefulWidget {
   final String? pickDate;
 
@@ -53,20 +49,16 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   bool _hasMore = true;
   int _currentPage = 1;
   List<Recipe>? _searchResults;
+  String? _errorMessage;
 
-  MealType? _selectedMeal;
-  Difficulty? _selectedDifficulty;
-  String? _selectedTimeRange; // '< 15', '15-30', '> 30'
-  String? _selectedMainIngredient;
+  // Request sequence id untuk mencegah race condition / data usang
+  int _searchRequestId = 0;
 
-  static const List<MealCategoryItem> _categories = [
-    MealCategoryItem(name: 'Breakfast', meal: MealType.breakfast),
-    MealCategoryItem(name: 'Lunch', meal: MealType.lunch),
-    MealCategoryItem(name: 'Dinner', meal: MealType.dinner),
-    MealCategoryItem(name: 'Snack', meal: MealType.snack),
-    MealCategoryItem(name: 'Dessert', meal: MealType.dessert),
-    MealCategoryItem(name: 'Drinks', meal: MealType.drinks),
-  ];
+  // Filter nyata yang didukung API
+  RegionItem? _selectedRegion; // Dipilih dari tile kartu daerah
+  String? _selectedCategory; // Dipilih dari Filter Sheet
+  String? _selectedRegionGroup; // Dipilih dari Filter Sheet
+  String? _selectedMainIngredient; // Dipilih dari Filter Sheet
 
   @override
   void initState() {
@@ -115,17 +107,6 @@ class _SearchPageState extends ConsumerState<SearchPage> {
 
     setState(() => _isLoadingMore = true);
 
-    int? minTime;
-    int? maxTime;
-    if (_selectedTimeRange == '< 15') {
-      maxTime = 15;
-    } else if (_selectedTimeRange == '15-30') {
-      minTime = 15;
-      maxTime = 30;
-    } else if (_selectedTimeRange == '> 30') {
-      minTime = 31;
-    }
-
     final query = _searchController.text.trim();
     final nextPage = _currentPage + 1;
 
@@ -134,11 +115,10 @@ class _SearchPageState extends ConsumerState<SearchPage> {
           .read(recipeServiceProvider)
           .list(
             q: query.isEmpty ? null : query,
-            meal: _selectedMeal,
-            difficulty: _selectedDifficulty,
+            category: _selectedCategory,
+            cuisine: _selectedRegion?.name ?? _selectedRegionGroup,
             mainIngredient: _selectedMainIngredient,
-            minTimeMin: minTime,
-            maxTimeMin: maxTime,
+            page: nextPage,
           );
 
       if (!mounted) return;
@@ -166,13 +146,18 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   }
 
   bool get _hasActiveFilters =>
-      _selectedDifficulty != null ||
-      _selectedTimeRange != null ||
+      _selectedCategory != null ||
+      _selectedRegionGroup != null ||
       _selectedMainIngredient != null;
+
+  int get _activeFilterCount =>
+      (_selectedCategory != null ? 1 : 0) +
+      (_selectedRegionGroup != null ? 1 : 0) +
+      (_selectedMainIngredient != null ? 1 : 0);
 
   bool get _isSearching =>
       _searchController.text.trim().isNotEmpty ||
-      _selectedMeal != null ||
+      _selectedRegion != null ||
       _hasActiveFilters;
 
   Future<void> _executeSearch() async {
@@ -184,40 +169,45 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       setState(() {
         _isLoading = false;
         _searchResults = null;
+        _errorMessage = null;
       });
       return;
     }
 
-    setState(() => _isLoading = true);
-
-    int? minTime;
-    int? maxTime;
-    if (_selectedTimeRange == '< 15') {
-      maxTime = 15;
-    } else if (_selectedTimeRange == '15-30') {
-      minTime = 15;
-      maxTime = 30;
-    } else if (_selectedTimeRange == '> 30') {
-      minTime = 31;
-    }
+    final currentToken = ++_searchRequestId;
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
 
     final query = _searchController.text.trim();
-    final results = await ref
-        .read(recipeServiceProvider)
-        .list(
-          q: query.isEmpty ? null : query,
-          meal: _selectedMeal,
-          difficulty: _selectedDifficulty,
-          mainIngredient: _selectedMainIngredient,
-          minTimeMin: minTime,
-          maxTimeMin: maxTime,
-        );
 
-    if (!mounted) return;
-    setState(() {
-      _isLoading = false;
-      _searchResults = results;
-    });
+    try {
+      final results = await ref
+          .read(recipeServiceProvider)
+          .list(
+            q: query.isEmpty ? null : query,
+            category: _selectedCategory,
+            cuisine: _selectedRegion?.name ?? _selectedRegionGroup,
+            mainIngredient: _selectedMainIngredient,
+          );
+
+      if (!mounted || currentToken != _searchRequestId) {
+        // Mengabaikan respons usang dari request lama!
+        return;
+      }
+
+      setState(() {
+        _isLoading = false;
+        _searchResults = results;
+      });
+    } catch (e) {
+      if (!mounted || currentToken != _searchRequestId) return;
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Gagal memuat resep. Silakan periksa koneksi internet.';
+      });
+    }
   }
 
   void _onSearchChanged(String value) {
@@ -226,12 +216,12 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     });
   }
 
-  void _selectCategory(MealCategoryItem category) {
+  void _selectRegion(RegionItem region) {
     setState(() {
-      if (_selectedMeal == category.meal) {
-        _selectedMeal = null;
+      if (_selectedRegion?.id == region.id) {
+        _selectedRegion = null;
       } else {
-        _selectedMeal = category.meal;
+        _selectedRegion = region;
       }
     });
     _executeSearch();
@@ -240,18 +230,19 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   void _clearSearch() {
     _searchController.clear();
     setState(() {
-      _selectedMeal = null;
-      _selectedDifficulty = null;
-      _selectedTimeRange = null;
+      _selectedRegion = null;
+      _selectedCategory = null;
+      _selectedRegionGroup = null;
       _selectedMainIngredient = null;
       _searchResults = null;
       _isLoading = false;
+      _errorMessage = null;
     });
   }
 
   Future<void> _openFilterSheet() async {
-    Difficulty? tempDifficulty = _selectedDifficulty;
-    String? tempTimeRange = _selectedTimeRange;
+    String? tempCategory = _selectedCategory;
+    String? tempRegionGroup = _selectedRegionGroup;
     String? tempMainIngredient = _selectedMainIngredient;
 
     await showAppBottomSheet<void>(
@@ -276,7 +267,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                     children: [
                       Expanded(
                         child: Text(
-                          'Filter',
+                          'Filter Resep',
                           style: AppText.sectionTitle.copyWith(
                             color: sheetPalette.textStrong,
                           ),
@@ -285,8 +276,8 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                       GestureDetector(
                         onTap: () {
                           setSheetState(() {
-                            tempDifficulty = null;
-                            tempTimeRange = null;
+                            tempCategory = null;
+                            tempRegionGroup = null;
                             tempMainIngredient = null;
                           });
                         },
@@ -305,9 +296,9 @@ class _SearchPageState extends ConsumerState<SearchPage> {
 
                   const SizedBox(height: 20),
 
-                  // Section: Tingkat Kesulitan
+                  // Section 1: Kategori Resep (11 Kategori Nyata dari API)
                   Text(
-                    'Tingkat kesulitan',
+                    'Kategori Resep',
                     style: AppText.formLabel.copyWith(
                       color: sheetPalette.textStrong,
                     ),
@@ -316,48 +307,25 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                   Wrap(
                     spacing: 8.0,
                     runSpacing: 8.0,
-                    children: [
-                      AppChip(
-                        label: 'Mudah',
-                        selected: tempDifficulty == Difficulty.mudah,
+                    children: kApiRecipeCategories.map((cat) {
+                      final isSelected = tempCategory == cat;
+                      return AppChip(
+                        label: cat,
+                        selected: isSelected,
                         onTap: () {
                           setSheetState(() {
-                            tempDifficulty = tempDifficulty == Difficulty.mudah
-                                ? null
-                                : Difficulty.mudah;
+                            tempCategory = isSelected ? null : cat;
                           });
                         },
-                      ),
-                      AppChip(
-                        label: 'Sedang',
-                        selected: tempDifficulty == Difficulty.sedang,
-                        onTap: () {
-                          setSheetState(() {
-                            tempDifficulty = tempDifficulty == Difficulty.sedang
-                                ? null
-                                : Difficulty.sedang;
-                          });
-                        },
-                      ),
-                      AppChip(
-                        label: 'Sulit',
-                        selected: tempDifficulty == Difficulty.sulit,
-                        onTap: () {
-                          setSheetState(() {
-                            tempDifficulty = tempDifficulty == Difficulty.sulit
-                                ? null
-                                : Difficulty.sulit;
-                          });
-                        },
-                      ),
-                    ],
+                      );
+                    }).toList(),
                   ),
 
                   const SizedBox(height: 20),
 
-                  // Section: Waktu Masak
+                  // Section 2: Wilayah Asal (Grup Pulau / Mancanegara dari API)
                   Text(
-                    'Waktu masak',
+                    'Wilayah / Asal Daerah',
                     style: AppText.formLabel.copyWith(
                       color: sheetPalette.textStrong,
                     ),
@@ -366,90 +334,62 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                   Wrap(
                     spacing: 8.0,
                     runSpacing: 8.0,
-                    children: [
-                      AppChip(
-                        label: '< 15 menit',
-                        selected: tempTimeRange == '< 15',
-                        onTap: () {
-                          setSheetState(() {
-                            tempTimeRange = tempTimeRange == '< 15'
-                                ? null
-                                : '< 15';
-                          });
-                        },
-                      ),
-                      AppChip(
-                        label: '15–30 menit',
-                        selected: tempTimeRange == '15-30',
-                        onTap: () {
-                          setSheetState(() {
-                            tempTimeRange = tempTimeRange == '15-30'
-                                ? null
-                                : '15-30';
-                          });
-                        },
-                      ),
-                      AppChip(
-                        label: '> 30 menit',
-                        selected: tempTimeRange == '> 30',
-                        onTap: () {
-                          setSheetState(() {
-                            tempTimeRange = tempTimeRange == '> 30'
-                                ? null
-                                : '> 30';
-                          });
-                        },
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // Section: Bahan Utama
-                  Text(
-                    'Bahan utama',
-                    style: AppText.formLabel.copyWith(
-                      color: sheetPalette.textStrong,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 8.0,
-                    runSpacing: 8.0,
-                    children:
-                        [
-                          'Ayam',
-                          'Telur',
-                          'Sapi',
-                          'Ikan',
-                          'Sayur',
-                          'Kangkung',
-                        ].map((ing) {
-                          final isSelected = tempMainIngredient == ing;
+                    children: kRegionGroups
+                        .where((g) => g.name != 'Lainnya')
+                        .map((g) {
+                          final isSelected = tempRegionGroup == g.name;
                           return AppChip(
-                            label: ing,
+                            label: g.name,
                             selected: isSelected,
                             onTap: () {
                               setSheetState(() {
-                                tempMainIngredient = isSelected ? null : ing;
+                                tempRegionGroup = isSelected ? null : g.name;
                               });
                             },
                           );
-                        }).toList(),
+                        })
+                        .toList(),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // Section 3: Bahan Utama (Daftar Bahan Nyata dari API)
+                  Text(
+                    'Bahan Utama',
+                    style: AppText.formLabel.copyWith(
+                      color: sheetPalette.textStrong,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8.0,
+                    runSpacing: 8.0,
+                    children: kApiMainIngredients.map((ing) {
+                      final isSelected = tempMainIngredient == ing;
+                      return AppChip(
+                        label: ing,
+                        selected: isSelected,
+                        onTap: () {
+                          setSheetState(() {
+                            tempMainIngredient = isSelected ? null : ing;
+                          });
+                        },
+                      );
+                    }).toList(),
                   ),
 
                   const SizedBox(height: 28),
 
                   // Tombol Terapkan
                   AppButton(
-                    label: 'Terapkan',
+                    label: 'Terapkan Filter',
                     variant: AppButtonVariant.primary,
                     size: AppButtonSize.lg,
                     fullWidth: true,
                     onPressed: () {
                       setState(() {
-                        _selectedDifficulty = tempDifficulty;
-                        _selectedTimeRange = tempTimeRange;
+                        _selectedCategory = tempCategory;
+                        _selectedRegionGroup = tempRegionGroup;
                         _selectedMainIngredient = tempMainIngredient;
                       });
                       Navigator.of(sheetContext).pop();
@@ -514,17 +454,16 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   Widget _buildActiveFilterChips(AppPalette palette) {
     final chips = <Widget>[];
 
-    if (_selectedMeal != null) {
-      final category = _categories.firstWhere((c) => c.meal == _selectedMeal);
+    if (_selectedRegion != null) {
       chips.add(
         Padding(
           padding: const EdgeInsets.only(right: 8.0),
           child: AppChip(
-            label: category.name,
+            label: 'Daerah: ${_selectedRegion!.name}',
             selected: true,
             icon: Icon(Icons.close, size: 14, color: palette.onChipSelected),
             onTap: () {
-              setState(() => _selectedMeal = null);
+              setState(() => _selectedRegion = null);
               _executeSearch();
             },
           ),
@@ -532,19 +471,16 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       );
     }
 
-    if (_selectedDifficulty != null) {
-      final diffLabel = _selectedDifficulty == Difficulty.mudah
-          ? 'Mudah'
-          : (_selectedDifficulty == Difficulty.sedang ? 'Sedang' : 'Sulit');
+    if (_selectedCategory != null) {
       chips.add(
         Padding(
           padding: const EdgeInsets.only(right: 8.0),
           child: AppChip(
-            label: diffLabel,
+            label: 'Kategori: $_selectedCategory',
             selected: true,
             icon: Icon(Icons.close, size: 14, color: palette.onChipSelected),
             onTap: () {
-              setState(() => _selectedDifficulty = null);
+              setState(() => _selectedCategory = null);
               _executeSearch();
             },
           ),
@@ -552,20 +488,16 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       );
     }
 
-    if (_selectedTimeRange != null) {
+    if (_selectedRegionGroup != null) {
       chips.add(
         Padding(
           padding: const EdgeInsets.only(right: 8.0),
           child: AppChip(
-            label: _selectedTimeRange == '< 15'
-                ? '< 15 menit'
-                : (_selectedTimeRange == '15-30'
-                      ? '15–30 menit'
-                      : '> 30 menit'),
+            label: 'Wilayah: $_selectedRegionGroup',
             selected: true,
             icon: Icon(Icons.close, size: 14, color: palette.onChipSelected),
             onTap: () {
-              setState(() => _selectedTimeRange = null);
+              setState(() => _selectedRegionGroup = null);
               _executeSearch();
             },
           ),
@@ -578,7 +510,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
         Padding(
           padding: const EdgeInsets.only(right: 8.0),
           child: AppChip(
-            label: _selectedMainIngredient!,
+            label: 'Bahan: $_selectedMainIngredient',
             selected: true,
             icon: Icon(Icons.close, size: 14, color: palette.onChipSelected),
             onTap: () {
@@ -615,7 +547,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
           // Banner Pick Mode (bila datang dari Meal Plan)
           SliverToBoxAdapter(child: _buildPickBanner(palette)),
 
-          // 2. Baris Pencarian: Search Bar Putih Pill (tinggi ≈ 40) + Tombol Filter Bulat chip
+          // Baris Pencarian: Search Bar Putih Pill + Tombol Filter Bulat chip
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.only(
@@ -626,7 +558,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
               ),
               child: Row(
                 children: [
-                  // Search Bar Putih Pill (tinggi ≈ 40)
+                  // Search Bar Putih Pill
                   Expanded(
                     child: Container(
                       height: 40.0,
@@ -688,7 +620,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
 
                   const SizedBox(width: 10.0),
 
-                  // Tombol Filter Bulat chip (ikon slidersHorizontal)
+                  // Tombol Filter Bulat chip dengan Badge Jumlah Filter Aktif
                   Semantics(
                     label: 'Filter pencarian',
                     button: true,
@@ -717,16 +649,29 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                                   ? palette.onAccentSoft
                                   : palette.textStrong,
                             ),
-                            if (_hasActiveFilters)
+                            if (_activeFilterCount > 0)
                               Positioned(
                                 top: 2,
                                 right: 2,
                                 child: Container(
-                                  width: 6,
-                                  height: 6,
+                                  padding: const EdgeInsets.all(2.0),
                                   decoration: BoxDecoration(
                                     color: palette.danger,
                                     shape: BoxShape.circle,
+                                  ),
+                                  constraints: const BoxConstraints(
+                                    minWidth: 14,
+                                    minHeight: 14,
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    '$_activeFilterCount',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 9.0,
+                                      fontWeight: FontWeight.w700,
+                                      height: 1.0,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -743,72 +688,92 @@ class _SearchPageState extends ConsumerState<SearchPage> {
           // Chips filter yang sedang aktif
           SliverToBoxAdapter(child: _buildActiveFilterChips(palette)),
 
-          // Konten Utama: Default ("Search by Meal") atau Hasil Pencarian
+          // Konten Utama: Default ("Search by Region") atau Hasil Pencarian
           if (!_isSearching) ...[
-            // 3. Judul "Search by Meal"
+            // Judul Section Utama "Search by Region"
             const SliverToBoxAdapter(
               child: Padding(
-                padding: EdgeInsets.only(left: 24.0, right: 24.0, bottom: 14.0),
-                child: Text('Search by Meal', style: AppText.sectionTitle),
+                padding: EdgeInsets.only(
+                  left: 24.0,
+                  right: 24.0,
+                  top: 4.0,
+                  bottom: 8.0,
+                ),
+                child: Text('Search by Region', style: AppText.sectionTitle),
               ),
             ),
 
-            // 4. Grid 2 kolom tile foto kategori (tinggi ≈ 90, radius ≈ 20)
-            SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              sliver: SliverGrid(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 12.0,
-                  mainAxisSpacing: 12.0,
-                  mainAxisExtent: 90.0,
+            // Render setiap grup daerah beserta grid kartu daerahnya
+            for (final group in kRegionGroups) ...[
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.only(
+                    left: 24.0,
+                    right: 24.0,
+                    top: 16.0,
+                    bottom: 10.0,
+                  ),
+                  child: Text(
+                    group.name,
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 15.0,
+                      fontWeight: FontWeight.w700,
+                      color: palette.textStrong,
+                    ),
+                  ),
                 ),
-                delegate: SliverChildBuilderDelegate((context, index) {
-                  final cat = _categories[index];
-                  final catImage =
-                      ref.watch(mealCategoryImageProvider(cat.meal)) ??
-                      cat.image;
-                  return Semantics(
-                    label: cat.name,
-                    button: true,
-                    child: GestureDetector(
-                      onTap: () => _selectCategory(cat),
-                      child: Container(
-                        height: 90.0,
-                        decoration: BoxDecoration(
-                          borderRadius: AppRadius.cardLarge,
-                          color: palette.photo,
-                        ),
-                        clipBehavior: Clip.antiAlias,
-                        child: Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            SmartImage(
-                              src: catImage,
-                              borderRadius: AppRadius.cardLarge,
-                              fit: BoxFit.cover,
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                sliver: SliverGrid(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 12.0,
+                    mainAxisSpacing: 12.0,
+                    mainAxisExtent: 90.0,
+                  ),
+                  delegate: SliverChildBuilderDelegate((context, index) {
+                    final region = group.items[index];
+                    final isSelected = _selectedRegion?.id == region.id;
+
+                    return Semantics(
+                      label: region.name,
+                      button: true,
+                      child: GestureDetector(
+                        onTap: () => _selectRegion(region),
+                        child: Container(
+                          height: 90.0,
+                          decoration: BoxDecoration(
+                            borderRadius: AppRadius.cardLarge,
+                            color: isSelected
+                                ? palette.accentSoft
+                                : palette.photo,
+                            border: isSelected
+                                ? Border.all(color: palette.accent, width: 2)
+                                : null,
+                          ),
+                          alignment: Alignment.center,
+                          padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                          child: Text(
+                            region.name,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontSize: 14.0,
+                              fontWeight: FontWeight.w600,
+                              color: isSelected
+                                  ? palette.onAccentSoft
+                                  : palette.textStrong,
                             ),
-                            // Selama foto masih placeholder atau kosong, tampilkan nama kategori
-                            if (catImage == null || catImage.isEmpty)
-                              Center(
-                                child: Text(
-                                  cat.name,
-                                  style: TextStyle(
-                                    fontFamily: 'Poppins',
-                                    fontSize: 14.0,
-                                    fontWeight: FontWeight.w600,
-                                    color: palette.textStrong,
-                                  ),
-                                ),
-                              ),
-                          ],
+                          ),
                         ),
                       ),
-                    ),
-                  );
-                }, childCount: _categories.length),
+                    );
+                  }, childCount: group.items.length),
+                ),
               ),
-            ),
+            ],
           ] else ...[
             // Header Hasil Pencarian & Tombol Bersihkan
             SliverToBoxAdapter(
@@ -820,9 +785,13 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                 ),
                 child: Row(
                   children: [
-                    const Expanded(
+                    Expanded(
                       child: Text(
-                        'Hasil pencarian',
+                        _selectedRegion != null
+                            ? 'Hasil: ${_selectedRegion!.name}'
+                            : (_searchResults != null
+                                  ? 'Hasil pencarian (${_searchResults!.length} resep)'
+                                  : 'Hasil pencarian'),
                         style: AppText.sectionTitle,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -846,7 +815,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
               ),
             ),
 
-            // Loading / Empty / Grid Results
+            // Loading / Error / Empty / Grid Results
             if (_isLoading)
               SliverPadding(
                 padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -861,6 +830,20 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                     (context, index) =>
                         const Skeleton(borderRadius: AppRadius.card),
                     childCount: 4,
+                  ),
+                ),
+              )
+            else if (_errorMessage != null)
+              SliverToBoxAdapter(
+                child: EmptyState(
+                  icon: LucideIcons.alertCircle,
+                  title: 'Terjadi Kendala',
+                  subtitle: _errorMessage!,
+                  action: AppButton(
+                    label: 'Coba lagi',
+                    variant: AppButtonVariant.primary,
+                    size: AppButtonSize.md,
+                    onPressed: _executeSearch,
                   ),
                 ),
               )
@@ -915,7 +898,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                           }
                           final status = await ref
                               .read(mealPlanProvider.notifier)
-                              .add(widget.pickDate!, recipe.id);
+                              .add(widget.pickDate!, recipe.id, recipe: recipe);
                           if (!context.mounted) return;
                           if (status == MealPlanAddResult.added) {
                             showAppToast(
@@ -977,7 +960,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                           }
                           final status = await ref
                               .read(mealPlanProvider.notifier)
-                              .add(widget.pickDate!, recipe.id);
+                              .add(widget.pickDate!, recipe.id, recipe: recipe);
                           if (!context.mounted) return;
                           if (status == MealPlanAddResult.added) {
                             showAppToast(
@@ -1003,7 +986,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                       },
                       onToggleFav: () => ref
                           .read(favoritesProvider.notifier)
-                          .toggle(recipe.id),
+                          .toggle(recipe.id, recipe: recipe),
                       onQuickAdd: isPickMode
                           ? null
                           : () async {
@@ -1026,7 +1009,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
               ),
           ],
 
-          // Padding bawah agar konten tidak tertutup floating bottom nav (120 px) + keyboard
+          // Padding bawah agar konten tidak tertutup floating bottom nav + keyboard
           SliverToBoxAdapter(
             child: SizedBox(
               height:

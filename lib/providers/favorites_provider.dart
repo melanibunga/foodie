@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/seed_data.dart';
 import '../data/seed_helper.dart';
+import '../models/models.dart';
+import '../services/recipe_cache_service.dart';
 import 'auth_provider.dart';
 import 'storage_provider.dart';
 
@@ -42,9 +44,16 @@ class FavoritesNotifier extends Notifier<List<String>> {
 
   int get count => state.length;
 
-  Future<bool> toggle(String recipeId) async {
+  Future<bool> toggle(String recipeId, {Recipe? recipe}) async {
     final userId = ref.read(currentUserIdProvider);
     if (userId == null) return false;
+
+    if (recipe != null) {
+      try {
+        final cacheBox = ref.read(recipeCacheBoxProvider);
+        await RecipeCacheService.saveSummary(cacheBox, recipe);
+      } catch (_) {}
+    }
 
     final current = List<String>.from(state);
     final exists = current.contains(recipeId);

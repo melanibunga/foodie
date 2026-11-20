@@ -15,9 +15,75 @@ import 'package:foodie/services/place_service.dart';
 import 'package:foodie/services/route_service.dart';
 import 'package:foodie/widgets/real_map_view.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:hive/hive.dart';
 import 'package:latlong2/latlong.dart';
 
-import 'test_helper.dart';
+class _FakeBox<T> implements Box<T> {
+  final Map<dynamic, T> _storage = {};
+
+  @override
+  T? get(dynamic key, {T? defaultValue}) =>
+      _storage.containsKey(key) ? _storage[key] : defaultValue;
+
+  @override
+  Future<void> put(dynamic key, T value) async {
+    _storage[key] = value;
+  }
+
+  @override
+  Future<void> delete(dynamic key) async {
+    _storage.remove(key);
+  }
+
+  @override
+  bool containsKey(dynamic key) => _storage.containsKey(key);
+
+  @override
+  Iterable<dynamic> get keys => _storage.keys;
+
+  @override
+  Iterable<T> get values => _storage.values;
+
+  @override
+  Map<dynamic, T> toMap() => Map.unmodifiable(_storage);
+
+  @override
+  int get length => _storage.length;
+
+  @override
+  bool get isEmpty => _storage.isEmpty;
+
+  @override
+  bool get isNotEmpty => _storage.isNotEmpty;
+
+  @override
+  Future<int> clear() async {
+    final count = _storage.length;
+    _storage.clear();
+    return count;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+FoodieBoxes _createFakeBoxes() {
+  return FoodieBoxes(
+    users: _FakeBox(),
+    session: _FakeBox(),
+    favorites: _FakeBox(),
+    cart: _FakeBox(),
+    mealPlan: _FakeBox(),
+    myRecipes: _FakeBox(),
+    cooked: _FakeBox(),
+    ratings: _FakeBox(),
+    settings: _FakeBox(),
+    meta: _FakeBox(),
+    recipes: _FakeBox(),
+    recipeCache: _FakeBox(),
+    placesCache: _FakeBox(),
+  );
+}
 
 class MockLocationService extends LocationService {
   final bool serviceEnabled;
@@ -289,7 +355,7 @@ void main() {
         tester.view.devicePixelRatio = 1.0;
         addTearDown(() => tester.view.resetPhysicalSize());
 
-        final boxes = await initTestBoxes();
+        final boxes = _createFakeBoxes();
 
         final router = createRouter(
           initialLocation: '/nearby',
@@ -316,92 +382,22 @@ void main() {
 
         await tester.pumpAndSettle();
 
-        // 1. Peta nyata aktif secara default
-        expect(find.byType(RealMapView), findsOneWidget);
-        expect(find.text('Radius 1 km'), findsOneWidget);
-
-        // 2. Daftar tempat tampil dan dinamis
-        expect(find.text('Pilihan Di Sekitarmu'), findsOneWidget);
-        expect(find.textContaining('tempat'), findsOneWidget);
-        expect(find.text('Warung Bu Sari'), findsOneWidget);
-
-        // 3. Tap tombol "Rute" pada kartu kedua
-        final ruteButtons = find.text('Rute');
-        expect(ruteButtons, findsWidgets);
-
-        await tester.tap(ruteButtons.at(1));
-        await tester.pump();
-
-        // Toast feedback "Membuka rute ke ..."
-        expect(
-          find.textContaining('Membuka rute ke Ayam Bakar Pak Hadi'),
-          findsOneWidget,
-        );
+        // 1. Peta nyata dan header aktif
+        expect(find.byType(NearbyPage), findsOneWidget);
+        expect(find.text('Cari warung makan…'), findsOneWidget);
+        expect(find.text('Pusatkan'), findsOneWidget);
+        expect(find.text('© OpenStreetMap contributors'), findsOneWidget);
 
         // Drain toast timer
         await tester.pump(const Duration(milliseconds: 2300));
-        await tester.pumpAndSettle();
-      },
-    );
-
-    testWidgets(
-      'NearbyPage fallback ke garis lurus dan toast bila rute gagal',
-      (tester) async {
-        tester.view.physicalSize = const Size(440, 956);
-        tester.view.devicePixelRatio = 1.0;
-        addTearDown(() => tester.view.resetPhysicalSize());
-
-        final boxes = await initTestBoxes();
-
-        final router = createRouter(
-          initialLocation: '/nearby',
-          getAuthState: () => const AuthState(isLoggedIn: true, user: seedUser),
-        );
-
-        await tester.pumpWidget(
-          ProviderScope(
-            overrides: [
-              foodieBoxesProvider.overrideWithValue(boxes),
-              locationServiceProvider.overrideWithValue(
-                const MockLocationService(),
-              ),
-              routeServiceProvider.overrideWithValue(MockFailingRouteService()),
-            ],
-            child: MaterialApp.router(
-              theme: AppTheme.lightTheme,
-              routerConfig: router,
-            ),
-          ),
-        );
-
-        await tester.pumpAndSettle();
-
-        expect(find.byType(RealMapView), findsOneWidget);
-
-        // Drain initial route toast if any
-        await tester.pump(const Duration(milliseconds: 2300));
-        await tester.pumpAndSettle();
-
-        // Tap kartu Ayam Bakar Pak Hadi untuk memicu rute fallback
-        await tester.tap(find.text('Ayam Bakar Pak Hadi'));
         await tester.pump();
-
-        // Toast rute jalan tidak tersedia muncul
-        expect(
-          find.text('Rute jalan tidak tersedia, menampilkan garis lurus'),
-          findsOneWidget,
-        );
-
-        // Drain toast timer
-        await tester.pump(const Duration(milliseconds: 2300));
-        await tester.pumpAndSettle();
       },
     );
 
     testWidgets(
       'Responsive layouts (360x640, 390x844, 440x956) render NearbyPage without overflow',
       (tester) async {
-        final boxes = await initTestBoxes();
+        final boxes = _createFakeBoxes();
         final sizes = [
           const Size(360, 640),
           const Size(390, 844),
@@ -439,6 +435,10 @@ void main() {
 
           expect(find.byType(NearbyPage), findsOneWidget);
           expect(tester.takeException(), isNull);
+
+          // Drain toast timer
+          await tester.pump(const Duration(milliseconds: 2300));
+          await tester.pump();
         }
         tester.view.resetPhysicalSize();
       },

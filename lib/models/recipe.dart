@@ -122,12 +122,24 @@ class Recipe {
       difficulty: Difficulty.fromString(json['difficulty'] as String?),
       ingredients:
           (json['ingredients'] as List<dynamic>?)
-              ?.map((item) => Ingredient.fromJson(item as Map<String, dynamic>))
+              ?.map(
+                (item) => Ingredient.fromJson(
+                  item is Map<String, dynamic>
+                      ? item
+                      : Map<String, dynamic>.from(item as Map),
+                ),
+              )
               .toList() ??
           const [],
       steps:
           (json['steps'] as List<dynamic>?)
-              ?.map((item) => RecipeStep.fromJson(item as Map<String, dynamic>))
+              ?.map(
+                (item) => RecipeStep.fromJson(
+                  item is Map<String, dynamic>
+                      ? item
+                      : Map<String, dynamic>.from(item as Map),
+                ),
+              )
               .toList() ??
           const [],
       authorId: json['authorId'] as String?,

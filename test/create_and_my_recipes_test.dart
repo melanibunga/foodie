@@ -160,7 +160,7 @@ void main() {
         final sheetFields = find.byType(TextField);
         await tester.enterText(sheetFields.at(1), 'Beras');
         await tester.enterText(sheetFields.at(2), '500');
-        await tester.enterText(sheetFields.at(3), '12000');
+        await tester.enterText(sheetFields.at(4), '12000');
         await tester.pumpAndSettle();
 
         // Tap "+ Tambah ke Daftar"

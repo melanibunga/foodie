@@ -123,6 +123,9 @@ class AppPalette extends ThemeExtension<AppPalette> {
 
   bool get isDark => brightness == Brightness.dark;
 
+  /// Warna Sage (#717665) sesuai PRD §4 & §15.6 untuk bar atas fixed Detail Menu
+  Color get sage => const Color(0xFF717665);
+
   static const AppPalette light = AppPalette(
     brightness: Brightness.light,
     bg: Color(0xFFF5F5F0),

@@ -4,6 +4,7 @@ import '../core/utils/week_utils.dart';
 import '../data/seed_data.dart';
 import '../data/seed_helper.dart';
 import '../models/models.dart';
+import '../services/recipe_cache_service.dart';
 import 'auth_provider.dart';
 import 'storage_provider.dart';
 
@@ -72,8 +73,13 @@ class MealPlanNotifier extends Notifier<List<MealPlanEntry>> {
         .toList();
   }
 
-  /// Tambah resep ke tanggal tertentu (format YYYY-MM-DD)
-  Future<MealPlanAddResult> add(String date, String recipeId) async {
+  /// Tambah resep ke tanggal tertentu (format YYYY-MM-DD).
+  /// Menerima parameter opsional [recipe] untuk langsung menyimpan ringkasannya ke cache persist (PRD §17).
+  Future<MealPlanAddResult> add(
+    String date,
+    String recipeId, {
+    Recipe? recipe,
+  }) async {
     final userId = ref.read(currentUserIdProvider);
     if (userId == null) return MealPlanAddResult.exists;
 
@@ -88,6 +94,14 @@ class MealPlanNotifier extends Notifier<List<MealPlanEntry>> {
 
     if (has(date, recipeId)) {
       return MealPlanAddResult.exists;
+    }
+
+    // Simpan ringkasan ke cache persist Hive segera jika ada objek resep
+    if (recipe != null) {
+      try {
+        final cacheBox = ref.read(recipeCacheBoxProvider);
+        await RecipeCacheService.saveSummary(cacheBox, recipe);
+      } catch (_) {}
     }
 
     final newEntry = MealPlanEntry(

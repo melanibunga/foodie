@@ -7,6 +7,8 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 import '../app/app_shell.dart';
 import '../core/theme/app_palette.dart';
+import '../core/theme/app_radius.dart';
+import '../core/theme/app_shadows.dart';
 import '../core/utils/week_utils.dart';
 import '../models/models.dart';
 import '../providers/favorites_provider.dart';
@@ -15,6 +17,7 @@ import '../providers/recipes_provider.dart';
 import '../providers/ui_helper.dart';
 import '../widgets/page_with_header.dart';
 import '../widgets/recipe_cards.dart';
+import '../widgets/ui/skeleton.dart';
 
 /// Halaman Meal Plan (/meal-plan) sesuai PRD §6.7, §7.6, §16 dan design/meal plan.jpg:
 /// - AppHeader global di atas.
@@ -66,14 +69,15 @@ class _MealPlanPageState extends ConsumerState<MealPlanPage> {
 
   Future<void> _confirmRemoveEntry(
     MealPlanEntry entry,
-    Recipe recipe,
+    Recipe? recipe,
     String dayName,
   ) async {
+    final title = recipe?.title ?? 'menu ini';
     final confirmed = await showAppConfirmDialog(
       context,
       title: 'Hapus dari meal plan?',
       message:
-          'Apakah kamu yakin ingin menghapus "${recipe.title}" dari jadwal $dayName?',
+          'Apakah kamu yakin ingin menghapus "$title" dari jadwal $dayName?',
       confirmLabel: 'Hapus',
       cancelLabel: 'Batal',
       isDanger: true,
@@ -90,9 +94,6 @@ class _MealPlanPageState extends ConsumerState<MealPlanPage> {
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
-    final allRecipes = ref.watch(recipesProvider);
-    final favorites = ref.watch(favoritesProvider);
-    final recipeMap = {for (final r in allRecipes) r.id: r};
 
     final weekDays = WeekUtils.getWeekDays(_currentWeekStart);
     final weekLabel = WeekUtils.getWeekLabel(_currentWeekStart);
@@ -184,8 +185,6 @@ class _MealPlanPageState extends ConsumerState<MealPlanPage> {
                 dayDate: dayDate,
                 dateKey: dateKey,
                 dayName: dayName,
-                recipeMap: recipeMap,
-                favorites: favorites,
               );
             }, childCount: weekDays.length),
           ),
@@ -204,8 +203,6 @@ class _MealPlanPageState extends ConsumerState<MealPlanPage> {
     required DateTime dayDate,
     required String dateKey,
     required String dayName,
-    required Map<String, Recipe> recipeMap,
-    required List<String> favorites,
   }) {
     final palette = context.palette;
     final entries = ref.watch(mealPlanByDateProvider(dateKey));
@@ -309,22 +306,10 @@ class _MealPlanPageState extends ConsumerState<MealPlanPage> {
                 separatorBuilder: (context, idx) => const SizedBox(width: 14.0),
                 itemBuilder: (context, idx) {
                   final entry = entries[idx];
-                  final recipe = recipeMap[entry.recipeId];
-
-                  if (recipe == null) {
-                    return const SizedBox.shrink();
-                  }
-
-                  final isFav = favorites.contains(recipe.id);
-
-                  return FeaturedRecipeCard(
-                    recipe: recipe,
-                    width: 330.0,
-                    isFavorite: isFav,
-                    onToggleFav: () =>
-                        ref.read(favoritesProvider.notifier).toggle(recipe.id),
-                    onOpen: () => context.push('/recipe/${recipe.id}'),
-                    onLongPress: () =>
+                  return _MealPlanCardItem(
+                    entry: entry,
+                    dayName: dayName,
+                    onRemove: (recipe) =>
                         _confirmRemoveEntry(entry, recipe, dayName),
                   );
                 },
@@ -455,4 +440,141 @@ class _DashedBorderPainter extends CustomPainter {
   @override
   bool shouldRepaint(_DashedBorderPainter oldDelegate) =>
       color != oldDelegate.color || strokeWidth != oldDelegate.strokeWidth;
+}
+
+/// Widget kartu resep pada Meal Plan dengan pola resolusi 3-tahap (PRD §17):
+/// 1. Memori / Cache Persist Hive -> tampil instan tanpa flicker.
+/// 2. Loading jaringan -> Skeleton 330x315.
+/// 3. Gagal / Tanpa Cache -> Kartu Error 330x315 dengan "Coba lagi" & aksi hapus lewat tekan lama.
+class _MealPlanCardItem extends ConsumerWidget {
+  final MealPlanEntry entry;
+  final String dayName;
+  final void Function(Recipe? recipe) onRemove;
+
+  const _MealPlanCardItem({
+    required this.entry,
+    required this.dayName,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final palette = context.palette;
+    final favorites = ref.watch(favoritesProvider);
+
+    // 1. Cek instan di memori (seed + user recipes) dan cache persist Hive (recipeCache box)
+    final syncRecipe = resolveRecipeSync(ref, entry.recipeId);
+    if (syncRecipe != null) {
+      final isFav = favorites.contains(syncRecipe.id);
+      return FeaturedRecipeCard(
+        recipe: syncRecipe,
+        width: 330.0,
+        isFavorite: isFav,
+        onToggleFav: () => ref
+            .read(favoritesProvider.notifier)
+            .toggle(syncRecipe.id, recipe: syncRecipe),
+        onOpen: () => context.push('/recipe/${syncRecipe.id}'),
+        onLongPress: () => onRemove(syncRecipe),
+      );
+    }
+
+    // 2. Jika belum ada di memori maupun cache, resolve lewat recipeByIdProvider
+    final asyncRecipe = ref.watch(recipeByIdProvider(entry.recipeId));
+
+    return asyncRecipe.when(
+      loading: () => SizedBox(
+        width: 330.0,
+        height: 315.0,
+        child: Skeleton(
+          width: 330.0,
+          height: 315.0,
+          borderRadius: AppRadius.cardLarge,
+        ),
+      ),
+      error: (error, stack) => _buildErrorCard(context, ref, palette),
+      data: (recipe) {
+        if (recipe == null) {
+          return _buildErrorCard(context, ref, palette);
+        }
+        final isFav = favorites.contains(recipe.id);
+        return FeaturedRecipeCard(
+          recipe: recipe,
+          width: 330.0,
+          isFavorite: isFav,
+          onToggleFav: () => ref
+              .read(favoritesProvider.notifier)
+              .toggle(recipe.id, recipe: recipe),
+          onOpen: () => context.push('/recipe/${recipe.id}'),
+          onLongPress: () => onRemove(recipe),
+        );
+      },
+    );
+  }
+
+  Widget _buildErrorCard(
+    BuildContext context,
+    WidgetRef ref,
+    AppPalette palette,
+  ) {
+    return Container(
+      width: 330.0,
+      height: 315.0,
+      padding: const EdgeInsets.all(20.0),
+      decoration: BoxDecoration(
+        color: palette.surface,
+        borderRadius: AppRadius.cardLarge,
+        border: Border.all(color: palette.border),
+        boxShadow: AppShadows.card,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: AppRadius.cardLarge,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onLongPress: () => onRemove(null),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(LucideIcons.alertCircle, size: 38.0, color: palette.danger),
+              const SizedBox(height: 12.0),
+              Text(
+                'Resep tidak dapat dimuat',
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 15.0,
+                  fontWeight: FontWeight.w700,
+                  color: palette.textStrong,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 6.0),
+              Text(
+                'Periksa koneksi internet atau tekan coba lagi. Tekan lama untuk menghapus menu.',
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 12.0,
+                  color: palette.textSecondary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16.0),
+              ElevatedButton.icon(
+                onPressed: () =>
+                    ref.invalidate(recipeByIdProvider(entry.recipeId)),
+                icon: const Icon(LucideIcons.refreshCw, size: 15.0),
+                label: const Text('Coba lagi'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: palette.actionBg,
+                  foregroundColor: palette.onAction,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12.0),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
