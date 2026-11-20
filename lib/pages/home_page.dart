@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../app/app_shell.dart';
-import '../core/theme/app_colors.dart';
+import '../core/theme/app_palette.dart';
 import '../core/theme/app_radius.dart';
 import '../core/theme/app_text.dart';
 import '../providers/cart_provider.dart';
@@ -22,6 +22,7 @@ class HomePage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final palette = context.palette;
     final inspirationAsync = ref.watch(inspirationRecipesProvider);
     final popularAsync = ref.watch(popularRecipesProvider);
     final favorites = ref.watch(favoritesProvider);
@@ -76,7 +77,7 @@ class HomePage extends ConsumerWidget {
                   children: [
                     Text(
                       'Gagal memuat Daily Inspiration',
-                      style: AppText.caption.copyWith(color: AppColors.maroon),
+                      style: AppText.caption.copyWith(color: palette.danger),
                     ),
                     const SizedBox(height: 8.0),
                     AppButton(
@@ -130,9 +131,9 @@ class HomePage extends ConsumerWidget {
           ),
 
           // 4. Judul Section: Popular dengan ikon trending-up maroon
-          const SliverToBoxAdapter(
+          SliverToBoxAdapter(
             child: Padding(
-              padding: EdgeInsets.only(
+              padding: const EdgeInsets.only(
                 left: 24.0,
                 right: 24.0,
                 top: 20.0,
@@ -142,11 +143,11 @@ class HomePage extends ConsumerWidget {
                 children: [
                   Icon(
                     LucideIcons.trendingUp,
-                    color: AppColors.maroon,
+                    color: palette.danger,
                     size: 22.0,
                   ),
-                  SizedBox(width: 8.0),
-                  Text('Popular', style: AppText.sectionTitle),
+                  const SizedBox(width: 8.0),
+                  const Text('Popular', style: AppText.sectionTitle),
                 ],
               ),
             ),
@@ -181,9 +182,7 @@ class HomePage extends ConsumerWidget {
                     children: [
                       Text(
                         'Gagal memuat resep populer',
-                        style: AppText.caption.copyWith(
-                          color: AppColors.maroon,
-                        ),
+                        style: AppText.caption.copyWith(color: palette.danger),
                       ),
                       const SizedBox(height: 8.0),
                       AppButton(

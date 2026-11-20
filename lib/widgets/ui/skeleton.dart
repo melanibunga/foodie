@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_palette.dart';
 import '../../core/theme/app_radius.dart';
 
 /// Komponen Skeleton loading dengan animasi denyut halus mandiri (tanpa package shimmer)
@@ -30,7 +30,6 @@ class Skeleton extends StatefulWidget {
 class _SkeletonState extends State<Skeleton>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
-  late final Animation<Color?> _colorAnimation;
 
   @override
   void initState() {
@@ -39,11 +38,6 @@ class _SkeletonState extends State<Skeleton>
       vsync: this,
       duration: const Duration(milliseconds: 1000),
     )..repeat(reverse: true);
-
-    _colorAnimation = ColorTween(
-      begin: AppColors.photoGray,
-      end: AppColors.chipGray,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override
@@ -54,14 +48,20 @@ class _SkeletonState extends State<Skeleton>
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.palette;
+    final colorAnimation = ColorTween(
+      begin: palette.photo,
+      end: palette.chip,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+
     return AnimatedBuilder(
-      animation: _colorAnimation,
+      animation: colorAnimation,
       builder: (context, child) {
         return Container(
           width: widget.width,
           height: widget.height,
           decoration: BoxDecoration(
-            color: _colorAnimation.value,
+            color: colorAnimation.value,
             shape: widget.isCircle ? BoxShape.circle : BoxShape.rectangle,
             borderRadius: widget.isCircle
                 ? null

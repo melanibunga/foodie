@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_palette.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_text.dart';
 
-/// Input teks standar aplikasi Foodie.id sesuai PRD §5.3
+/// Input teks standar aplikasi Foodie.id sesuai PRD §5.3 dan §16
 class AppInput extends StatefulWidget {
   final String? label;
   final String? hintText;
@@ -54,6 +54,8 @@ class _AppInputState extends State<AppInput> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.palette;
+
     Widget? effectiveSuffixIcon = widget.suffixIcon;
     if (widget.isPassword) {
       effectiveSuffixIcon = IconButton(
@@ -61,7 +63,7 @@ class _AppInputState extends State<AppInput> {
           _obscureText
               ? Icons.visibility_off_outlined
               : Icons.visibility_outlined,
-          color: AppColors.sage,
+          color: palette.textSecondary,
           size: 20,
         ),
         onPressed: () {
@@ -72,24 +74,28 @@ class _AppInputState extends State<AppInput> {
       );
     }
 
+    final effectiveFillColor = widget.fillColor ?? palette.field;
+    final effectiveBorderColor = widget.errorText != null
+        ? palette.danger
+        : (palette.isDark ? palette.fieldBorder : palette.border);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
         if (widget.label != null) ...[
-          Text(widget.label!, style: AppText.formLabel),
+          Text(
+            widget.label!,
+            style: AppText.formLabel.copyWith(color: palette.textStrong),
+          ),
           const SizedBox(height: 6),
         ],
         Container(
           height: widget.maxLines > 1 ? null : 48.0,
           decoration: BoxDecoration(
-            color: widget.fillColor ?? AppColors.white,
+            color: effectiveFillColor,
             borderRadius: AppRadius.input,
-            border: Border.all(
-              color: widget.errorText != null
-                  ? AppColors.maroon
-                  : AppColors.border,
-            ),
+            border: Border.all(color: effectiveBorderColor),
           ),
           alignment: widget.maxLines > 1
               ? Alignment.topLeft
@@ -109,12 +115,12 @@ class _AppInputState extends State<AppInput> {
             onChanged: widget.onChanged,
             onSubmitted: widget.onSubmitted,
             onTapOutside: (_) => FocusManager.instance.primaryFocus?.unfocus(),
-            style: AppText.body,
+            style: AppText.body.copyWith(color: palette.textBody),
             decoration: InputDecoration(
               isDense: true,
               border: InputBorder.none,
               hintText: widget.hintText,
-              hintStyle: AppText.body.copyWith(color: AppColors.sage),
+              hintStyle: AppText.body.copyWith(color: palette.textSecondary),
               prefixIcon: widget.prefixIcon != null
                   ? Padding(
                       padding: const EdgeInsets.only(right: 8.0),
@@ -138,7 +144,7 @@ class _AppInputState extends State<AppInput> {
           const SizedBox(height: 4),
           Text(
             widget.errorText!,
-            style: AppText.caption.copyWith(color: AppColors.maroon),
+            style: AppText.caption.copyWith(color: palette.dangerText),
           ),
         ],
       ],

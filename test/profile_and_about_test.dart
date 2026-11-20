@@ -241,7 +241,7 @@ void main() {
           await tester.pump();
           await tester.pump(const Duration(milliseconds: 100));
 
-          expect(find.text('Mode gelap segera hadir'), findsOneWidget);
+          expect(find.text('Tampilan gelap sedang digunakan'), findsOneWidget);
           expect(
             container.read(currentUserProvider)?.settings.darkMode,
             isTrue,

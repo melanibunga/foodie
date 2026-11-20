@@ -2,11 +2,11 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-import '../core/theme/app_colors.dart';
+import '../core/theme/app_palette.dart';
 import '../core/theme/app_shadows.dart';
 
 /// Container utama aplikasi dengan batasan lebar 440 px (lebar basis desain).
-/// Pada layar > 440 (desktop/tablet/web), app berada di tengah dengan latar [AppColors.outerBg].
+/// Pada layar > 440 (desktop/tablet/web), app berada di tengah dengan latar [palette.outerBg].
 /// Pada layar <= 440, app memenuhi layar secara responsif.
 class AppShell extends StatelessWidget {
   final Widget child;
@@ -29,19 +29,19 @@ class AppShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final palette = context.palette;
     return LayoutBuilder(
       builder: (context, constraints) {
         if (constraints.maxWidth > maxAppWidth) {
           return Container(
-            color: isDark ? AppColors.outerBgDark : AppColors.outerBg,
+            color: palette.outerBg,
             alignment: Alignment.center,
             child: Container(
               width: maxAppWidth,
               height: double.infinity,
               clipBehavior: Clip.antiAlias,
               decoration: BoxDecoration(
-                color: isDark ? AppColors.bgDark : AppColors.bg,
+                color: palette.bg,
                 boxShadow: AppShadows.shellColumn,
               ),
               child: child,
@@ -49,7 +49,7 @@ class AppShell extends StatelessWidget {
           );
         }
 
-        return Container(color: AppColors.bg, child: child);
+        return Container(color: palette.bg, child: child);
       },
     );
   }

@@ -3,11 +3,11 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../app/app_shell.dart';
-import '../core/theme/app_colors.dart';
+import '../core/theme/app_palette.dart';
 import '../core/theme/app_radius.dart';
 import '../core/theme/app_shadows.dart';
 
-/// Halaman Tentang Aplikasi (/about) sesuai PRD §7.9:
+/// Halaman Tentang Aplikasi (/about) sesuai PRD §7.9, §16:
 /// - Logo FOODIE.ID dengan titik amber
 /// - Versi aplikasi 1.0.0
 /// - Deskripsi singkat & tagline
@@ -17,8 +17,10 @@ class AboutPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.palette;
+
     return Scaffold(
-      backgroundColor: AppColors.bg,
+      backgroundColor: palette.bg,
       body: SafeArea(
         top: false,
         child: CustomScrollView(
@@ -42,35 +44,35 @@ class AboutPage extends StatelessWidget {
                         child: Container(
                           width: 40.0,
                           height: 40.0,
-                          decoration: const BoxDecoration(
-                            color: AppColors.white,
+                          decoration: BoxDecoration(
+                            color: palette.surface,
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: AppColors.shadowShell,
+                                color: palette.shadowColor,
                                 blurRadius: 4.0,
-                                offset: Offset(0, 1),
+                                offset: const Offset(0, 1),
                               ),
                             ],
                           ),
                           alignment: Alignment.center,
-                          child: const Icon(
+                          child: Icon(
                             LucideIcons.arrowLeft,
                             size: 20.0,
-                            color: AppColors.olive,
+                            color: palette.textStrong,
                           ),
                         ),
                       ),
                     ),
                     const SizedBox(width: 16.0),
-                    const Expanded(
+                    Expanded(
                       child: Text(
                         'Tentang Aplikasi',
                         style: TextStyle(
                           fontFamily: 'Poppins',
                           fontSize: 22.0,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.olive,
+                          color: palette.textStrong,
                         ),
                       ),
                     ),
@@ -92,8 +94,8 @@ class AboutPage extends StatelessWidget {
                         horizontal: 24.0,
                         vertical: 28.0,
                       ),
-                      decoration: const BoxDecoration(
-                        color: AppColors.white,
+                      decoration: BoxDecoration(
+                        color: palette.surface,
                         borderRadius: AppRadius.cardLarge,
                         boxShadow: AppShadows.card,
                       ),
@@ -104,7 +106,7 @@ class AboutPage extends StatelessWidget {
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.baseline,
                             textBaseline: TextBaseline.alphabetic,
-                            children: const [
+                            children: [
                               Text(
                                 'FOODIE',
                                 style: TextStyle(
@@ -112,7 +114,7 @@ class AboutPage extends StatelessWidget {
                                   fontSize: 28.0,
                                   fontWeight: FontWeight.w800,
                                   letterSpacing: 1.0,
-                                  color: AppColors.olive,
+                                  color: palette.textStrong,
                                 ),
                               ),
                               Text(
@@ -121,7 +123,7 @@ class AboutPage extends StatelessWidget {
                                   fontFamily: 'Poppins',
                                   fontSize: 28.0,
                                   fontWeight: FontWeight.w800,
-                                  color: AppColors.amber,
+                                  color: palette.accent,
                                 ),
                               ),
                               Text(
@@ -131,7 +133,7 @@ class AboutPage extends StatelessWidget {
                                   fontSize: 28.0,
                                   fontWeight: FontWeight.w800,
                                   letterSpacing: 1.0,
-                                  color: AppColors.olive,
+                                  color: palette.textStrong,
                                 ),
                               ),
                             ],
@@ -145,43 +147,43 @@ class AboutPage extends StatelessWidget {
                               vertical: 4.0,
                             ),
                             decoration: BoxDecoration(
-                              color: AppColors.chipGray,
+                              color: palette.chip,
                               borderRadius: BorderRadius.circular(999.0),
                             ),
-                            child: const Text(
+                            child: Text(
                               'Versi 1.0.0',
                               style: TextStyle(
                                 fontFamily: 'Poppins',
                                 fontSize: 12.0,
                                 fontWeight: FontWeight.w600,
-                                color: AppColors.sage,
+                                color: palette.textSecondary,
                               ),
                             ),
                           ),
                           const SizedBox(height: 16.0),
 
                           // Tagline
-                          const Text(
+                          Text(
                             'Masak Lebih Mudah, Hidup Lebih Teratur.',
                             style: TextStyle(
                               fontFamily: 'Poppins',
                               fontSize: 14.0,
                               fontWeight: FontWeight.w700,
-                              color: AppColors.maroon,
+                              color: palette.danger,
                             ),
                             textAlign: TextAlign.center,
                           ),
                           const SizedBox(height: 12.0),
 
                           // Deskripsi
-                          const Text(
+                          Text(
                             'Foodie.id adalah asisten kuliner pintar yang dirancang untuk menemani keseharian memasakmu. Dari inspirasi resep Nusantara 100% Halal, perencanaan menu mingguan, hingga estimasi belanja bahan masakan yang rapi dan terorganisir.',
                             style: TextStyle(
                               fontFamily: 'Poppins',
                               fontSize: 12.0,
                               height: 1.6,
                               fontWeight: FontWeight.w400,
-                              color: AppColors.textSecondary,
+                              color: palette.textSecondary,
                             ),
                             textAlign: TextAlign.center,
                           ),
@@ -195,52 +197,56 @@ class AboutPage extends StatelessWidget {
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(20.0),
-                      decoration: const BoxDecoration(
-                        color: AppColors.white,
+                      decoration: BoxDecoration(
+                        color: palette.surface,
                         borderRadius: AppRadius.cardLarge,
                         boxShadow: AppShadows.card,
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             'Fitur Unggulan',
                             style: TextStyle(
                               fontFamily: 'Poppins',
                               fontSize: 16.0,
                               fontWeight: FontWeight.w700,
-                              color: AppColors.olive,
+                              color: palette.textStrong,
                             ),
                           ),
                           const SizedBox(height: 14.0),
 
                           _buildFeatureItem(
+                            context: context,
                             icon: LucideIcons.utensils,
-                            iconColor: AppColors.maroon,
+                            iconColor: palette.danger,
                             title: 'Inspirasi Resep Nusantara',
                             description: 'Koleksi resep khas Indonesia terpercaya dengan bahan dan takaran yang jelas.',
                           ),
-                          const Divider(color: AppColors.border, height: 24.0),
+                          Divider(color: palette.divider, height: 24.0),
 
                           _buildFeatureItem(
+                            context: context,
                             icon: LucideIcons.calendarDays,
-                            iconColor: AppColors.amber,
+                            iconColor: palette.accent,
                             title: 'Meal Plan Mingguan',
                             description: 'Jadwalkan menu harian Senin–Minggu agar tidak bingung mau masak apa.',
                           ),
-                          const Divider(color: AppColors.border, height: 24.0),
+                          Divider(color: palette.divider, height: 24.0),
 
                           _buildFeatureItem(
+                            context: context,
                             icon: LucideIcons.shoppingCart,
-                            iconColor: AppColors.olive,
+                            iconColor: palette.textStrong,
                             title: 'My Groceries (Daftar Belanja)',
                             description: 'Otomatisasi daftar belanja dari bahan resep dengan kalkulasi estimasi pengeluaran.',
                           ),
-                          const Divider(color: AppColors.border, height: 24.0),
+                          Divider(color: palette.divider, height: 24.0),
 
                           _buildFeatureItem(
+                            context: context,
                             icon: LucideIcons.mapPin,
-                            iconColor: AppColors.maroon,
+                            iconColor: palette.danger,
                             title: 'Nearby Places (Sekitarmu)',
                             description: 'Rekomendasi tempat makan dan warung kuliner terdekat dengan estimasi jarak.',
                           ),
@@ -251,13 +257,13 @@ class AboutPage extends StatelessWidget {
                     const SizedBox(height: 24.0),
 
                     // Copyright & Tagline Bawah
-                    const Text(
+                    Text(
                       '© 2026 Foodie.id • Dibuat untuk pecinta kuliner Indonesia',
                       style: TextStyle(
                         fontFamily: 'Poppins',
                         fontSize: 11.0,
                         fontWeight: FontWeight.w400,
-                        color: AppColors.sage,
+                        color: palette.textSecondary,
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -274,11 +280,13 @@ class AboutPage extends StatelessWidget {
   }
 
   Widget _buildFeatureItem({
+    required BuildContext context,
     required IconData icon,
     required Color iconColor,
     required String title,
     required String description,
   }) {
+    final palette = context.palette;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -299,21 +307,21 @@ class AboutPage extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Poppins',
                   fontSize: 13.0,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.olive,
+                  color: palette.textStrong,
                 ),
               ),
               const SizedBox(height: 2.0),
               Text(
                 description,
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Poppins',
                   fontSize: 11.0,
                   fontWeight: FontWeight.w400,
-                  color: AppColors.sage,
+                  color: palette.textSecondary,
                 ),
               ),
             ],

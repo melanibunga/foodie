@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_palette.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_text.dart';
 
@@ -10,7 +10,7 @@ enum AppBadgeVariant {
   circleAmber, // Lingkaran amber
 }
 
-/// Widget badge angka & status sesuai PRD §5.3
+/// Widget badge angka & status sesuai PRD §5.3 dan §16
 class AppBadge extends StatelessWidget {
   final String text;
   final AppBadgeVariant variant;
@@ -44,20 +44,22 @@ class AppBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.palette;
+
     switch (variant) {
       case AppBadgeVariant.squareAmber:
         return Container(
           width: 42.0,
           height: 42.0,
-          decoration: const BoxDecoration(
-            color: AppColors.amber,
-            borderRadius: BorderRadius.all(Radius.circular(12.0)),
+          decoration: BoxDecoration(
+            color: palette.accent,
+            borderRadius: const BorderRadius.all(Radius.circular(12.0)),
           ),
           alignment: Alignment.center,
           child: Text(
             text,
             style: AppText.pageTitle.copyWith(
-              color: AppColors.olive,
+              color: palette.onAccent,
               fontSize: 18.0,
               fontWeight: FontWeight.w700,
             ),
@@ -67,8 +69,8 @@ class AppBadge extends StatelessWidget {
       case AppBadgeVariant.pillOlive:
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
-          decoration: const BoxDecoration(
-            color: AppColors.olive,
+          decoration: BoxDecoration(
+            color: palette.isDark ? palette.accent : palette.navSurface,
             borderRadius: AppRadius.pill,
           ),
           child: Row(
@@ -78,7 +80,7 @@ class AppBadge extends StatelessWidget {
               Text(
                 text,
                 style: AppText.caption.copyWith(
-                  color: AppColors.white,
+                  color: palette.isDark ? palette.onAccent : palette.onAction,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -90,16 +92,17 @@ class AppBadge extends StatelessWidget {
         return Container(
           width: 24.0,
           height: 24.0,
-          decoration: const BoxDecoration(
-            color: AppColors.amber,
+          decoration: BoxDecoration(
+            color: palette.accent,
             shape: BoxShape.circle,
           ),
           alignment: Alignment.center,
           child: Text(
             text,
             style: AppText.caption.copyWith(
-              color: AppColors.olive,
+              color: palette.onAccent,
               fontWeight: FontWeight.w700,
+              fontSize: 11.0,
             ),
           ),
         );

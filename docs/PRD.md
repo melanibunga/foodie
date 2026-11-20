@@ -653,4 +653,50 @@ Semua foto sementara **abu-abu**. Sumber foto asli (API resep) menyusul di luar 
 - Telah teruji melalui pengujian unit, widget, regresi visual, matriks layout responsif (360x640 hingga 440x956 dp, inset 0–48 dp, keyboard terbuka/tertutup), serta alur ujung-ke-ujung (E2E) pada `test/phase_c6_regression_qa_test.dart`.
 - Daftar pelacakan terperinci dicatat pada `GENERAL_BUG.md`.
 
+---
+
+## 16. Sistem Tema & Dark Mode Menyeluruh (Fase E1)
+
+16.0 Prioritas: §16 menang atas §15, §14, dan spesifikasi sebelumnya terkait warna, perataan kartu belanjaan, dan sistem tema.
+
+16.1 Keselarasan Header Grup Groceries (Bug A):
+- Menggunakan widget bersama `GroceryGroupHeader` (`lib/widgets/grocery_group_header.dart`).
+- Struktur: `Row(crossAxisAlignment: CrossAxisAlignment.start)` berisi `Expanded` (judul, maks 2 baris, ellipsis) + `SizedBox(width: 12)` + tombol "Hapus menu".
+- Tombol "Hapus menu" dibuat tanpa padding horizontal liar (`padding: EdgeInsets.zero`, tap target dijaga dengan padding vertikal).
+- Tepi kanan tombol `GroceryGroupHeader` sejajar presisi dengan tepi kanan teks harga pada baris item belanjaan di bawahnya (`Rect.right` identik, toleransi < 0.5 dp).
+- Pusat vertikal tombol sejajar dengan baris pertama judul baik untuk judul 1 baris maupun judul panjang 2 baris (toleransi <= 2 dp).
+- Kartu pin "Belanjaan Kamu Nich" tetap tanpa tombol hapus grup (dihapus via swipe ke kiri per item, §15.7).
+
+16.2 Arsitektur Palet Semantik `AppPalette`:
+- Token warna tidak lagi bersifat statis monolitik, melainkan berbentuk `ThemeExtension<AppPalette>` yang terdaftar di `ThemeData.light` dan `ThemeData.dark`.
+- Seluruh widget dan halaman mengakses warna secara semantik melalui ekstensi `context.palette`.
+- Zero raw color policy: Seluruh pemakaian `AppColors.*` dan `Colors.*` (kecuali `Colors.transparent`) di luar `lib/core/theme/` telah dibersihkan secara total (0 occurrences).
+- Token semantik memisahkan peran warna berdasarkan konteks fungsional:
+  - `bg`: Latar belakang kanvas aplikasi (#F5F5F0 light / #101815 dark).
+  - `surface`: Latar kartu, dialog, sheet, input standard (#FFFFFF light / #1B2822 dark).
+  - `surfaceAlt`: Latar alternatif / tombol sekunder / avatar (#E8E8E2 light / #26362F dark).
+  - `navSurface`: Latar AppBottomNav dan bar atas fixed Detail Menu (#263C32 light / #1F2F29 dark).
+  - `outerBg`: Latar pilar samping web/tablet lebar > 440 dp (#E9E9E2 light / #0B100D dark).
+  - `textStrong`: Judul dan penekanan kuat (#263C32 light / #F5F5F0 dark).
+  - `textBody`: Teks badan konten (#1E1E1E light / #F5F5F0 dark).
+  - `textSecondary`: Label pembantu, placeholder, teks tersier (#717665 light / #9AA597 dark).
+  - `border` & `divider`: Garis batas (#E3E3DC light / #2F3F37 dark).
+  - `actionBg` & `onAction`: Tombol utama (#263C32 / on: #FFFFFF light; #F59E0B / on: #1A1200 dark).
+  - `accent` & `onAccent`: Aksen amber (#F59E0B / on: #263C32 light; #F59E0B / on: #1A1200 dark).
+  - `accentSoft`, `onAccentSoft`, `accentSoftTextAlt`: Tag dan kartu belanjaan tersemat (#F4E9CE / #3E3313 dark).
+  - `danger` (#800020 light / #D6455F dark), `dangerText` (#800020 light / #E8667C dark untuk memenuhi kontras WCAG >= 4.5:1), `dangerSoft` (#F4E6E9 light / #3A1F28 dark).
+  - `field`, `fieldBorder`, `fieldAdd`: Bidang input & form (#D6D6D6 light / #26362F dark pada form Add).
+  - `toggleOff` (#E0E0DA light / #3A4A42 dark), `photo` (#D9D9D4 light / #26362F dark), `photoIcon` (#BDBDB5 light / #3A4A42 dark).
+
+16.3 State & Persistensi Tema:
+- Dikelola oleh `themeModeProvider` (`lib/providers/theme_provider.dart`) yang mandiri dan terpisah dari siklus otentikasi user.
+- Preferensi disimpan secara persisten di `SharedPreferences` dengan key `"foodie:themeMode"` (default: `ThemeMode.light`).
+- Toggle "Mode gelap" di Halaman Profil (§6.12) tersambung langsung ke `themeModeProvider` dengan indikator status dinamis: "Tampilan gelap sedang digunakan" / "Tampilan terang sedang digunakan".
+
+16.4 Kontras Aksesibilitas WCAG 2.1:
+- Seluruh kombinasi warna lulus uji rasio kontras WCAG: teks normal >= 4.5:1, teks besar/komponen >= 3.0:1.
+- Teks bahaya/danger kecil pada mode gelap menggunakan `dangerText` (#E8667C) yang menghasilkan rasio kontras 5.3:1 terhadap `surface`, menggantikan `#D6455F` (3.9:1) khusus pada teks kecil demi memenuhi standar keterbacaan.
+- Kartu pin "Belanjaan Kamu Nich" pada dark mode menggunakan `accentSoftTextAlt` (#C8AB4A) yang memberikan rasio kontras 5.1:1 terhadap latar `accentSoft` (#3E3313).
+
+
 

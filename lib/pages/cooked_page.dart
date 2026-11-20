@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
-import '../core/theme/app_colors.dart';
+import '../core/theme/app_palette.dart';
 import '../core/theme/app_radius.dart';
 import '../core/theme/app_shadows.dart';
 import '../core/theme/app_text.dart';
@@ -166,9 +166,10 @@ class _CookedPageState extends ConsumerState<CookedPage> {
     required bool isFavorite,
     required int? userRating,
   }) {
+    final palette = context.palette;
     return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.white,
+      decoration: BoxDecoration(
+        color: palette.surface,
         borderRadius: AppRadius.card,
         boxShadow: AppShadows.card,
       ),
@@ -236,11 +237,11 @@ class _CookedPageState extends ConsumerState<CookedPage> {
                         children: [
                           Text(
                             'Dimasak ${summary.count}× · $formattedDate',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontFamily: 'Poppins',
                               fontSize: 10.0,
                               fontWeight: FontWeight.w500,
-                              color: AppColors.sage,
+                              color: palette.textSecondary,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -248,7 +249,9 @@ class _CookedPageState extends ConsumerState<CookedPage> {
                           const SizedBox(height: 2.0),
                           Text(
                             recipe.title,
-                            style: AppText.cardSmallTitle,
+                            style: AppText.cardSmallTitle.copyWith(
+                              color: palette.textStrong,
+                            ),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -261,16 +264,16 @@ class _CookedPageState extends ConsumerState<CookedPage> {
                             vertical: 2.0,
                           ),
                           decoration: BoxDecoration(
-                            color: AppColors.amberSoft,
+                            color: palette.accentSoft,
                             borderRadius: BorderRadius.circular(6.0),
                           ),
                           child: Text(
                             'Rating kamu ★$userRating',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontFamily: 'Poppins',
                               fontSize: 10.0,
                               fontWeight: FontWeight.w600,
-                              color: AppColors.olive,
+                              color: palette.onAccentSoft,
                             ),
                           ),
                         ),

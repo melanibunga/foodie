@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_palette.dart';
 import '../../core/theme/app_shadows.dart';
 
 /// Komponen list ringkas bersama untuk daftar Ingredients & Cooking Instructions pada form Add
-/// sesuai PRD §14.8, §15.5:
-/// - Judul kecil "Title (N)" (13/700 olive)
-/// - Kartu putih radius 12, border AppColors.border, bayangan AppShadows.card
+/// sesuai PRD §14.8, §15.5 dan §16:
+/// - Judul kecil "Title (N)" (13/700 textStrong)
+/// - Kartu surface radius 12, border palette.border, bayangan AppShadows.card
 /// - Menampilkan [initialLimit] item pertama (default: 3)
-/// - Bila item > 3: tombol maroon 12/600 "Lihat semua (N)" untuk expand inline, lalu "Sembunyikan"
+/// - Bila item > 3: tombol danger 12/600 "Lihat semua (N)" untuk expand inline, lalu "Sembunyikan"
 class ExpandableCardList extends StatefulWidget {
   final String title;
   final int itemCount;
@@ -34,6 +34,7 @@ class _ExpandableCardListState extends State<ExpandableCardList> {
   Widget build(BuildContext context) {
     if (widget.itemCount == 0) return const SizedBox.shrink();
 
+    final palette = context.palette;
     final isExpandedEffective =
         _isExpanded && widget.itemCount > widget.initialLimit;
     final displayedCount = isExpandedEffective
@@ -48,19 +49,19 @@ class _ExpandableCardListState extends State<ExpandableCardList> {
         const SizedBox(height: 12.0),
         Text(
           widget.title,
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: 'Poppins',
             fontSize: 13.0,
             fontWeight: FontWeight.w700,
-            color: AppColors.olive,
+            color: palette.textStrong,
           ),
         ),
         const SizedBox(height: 8.0),
         Container(
           decoration: BoxDecoration(
-            color: AppColors.white,
+            color: palette.surface,
             borderRadius: BorderRadius.circular(12.0),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: palette.border),
             boxShadow: AppShadows.card,
           ),
           padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
@@ -71,7 +72,7 @@ class _ExpandableCardListState extends State<ExpandableCardList> {
                 widget.itemBuilder(context, i),
               if (widget.itemCount > widget.initialLimit) ...[
                 const SizedBox(height: 4.0),
-                const Divider(height: 1.0, color: AppColors.border),
+                Divider(height: 1.0, color: palette.divider),
                 const SizedBox(height: 8.0),
                 Center(
                   child: GestureDetector(
@@ -84,11 +85,11 @@ class _ExpandableCardListState extends State<ExpandableCardList> {
                       isExpandedEffective
                           ? 'Sembunyikan'
                           : 'Lihat semua (${widget.itemCount})',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Poppins',
                         fontSize: 12.0,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.maroon,
+                        color: palette.danger,
                       ),
                     ),
                   ),

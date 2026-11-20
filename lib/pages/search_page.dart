@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../app/app_shell.dart';
-import '../core/theme/app_colors.dart';
+import '../core/theme/app_palette.dart';
 import '../core/theme/app_radius.dart';
 import '../core/theme/app_text.dart';
 import '../core/utils/debouncer.dart';
@@ -32,7 +32,7 @@ class MealCategoryItem {
   const MealCategoryItem({required this.name, required this.meal, this.image});
 }
 
-/// Halaman Pencarian & Filter Resep sesuai PRD §6.5 & §7.2 dan design/search.jpg.
+/// Halaman Pencarian & Filter Resep sesuai PRD §6.5 & §7.2, §16 dan design/search.jpg.
 class SearchPage extends ConsumerStatefulWidget {
   final String? pickDate;
 
@@ -180,6 +180,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       isScrollControlled: true,
       showHandle: true,
       builder: (sheetContext) {
+        final sheetPalette = sheetContext.palette;
         return StatefulBuilder(
           builder: (context, setSheetState) {
             return Padding(
@@ -194,8 +195,13 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                   // Header Filter & Reset
                   Row(
                     children: [
-                      const Expanded(
-                        child: Text('Filter', style: AppText.sectionTitle),
+                      Expanded(
+                        child: Text(
+                          'Filter',
+                          style: AppText.sectionTitle.copyWith(
+                            color: sheetPalette.textStrong,
+                          ),
+                        ),
                       ),
                       GestureDetector(
                         onTap: () {
@@ -205,11 +211,11 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                             tempMainIngredient = null;
                           });
                         },
-                        child: const Text(
+                        child: Text(
                           'Reset',
                           style: TextStyle(
                             fontFamily: 'Poppins',
-                            color: AppColors.maroon,
+                            color: sheetPalette.danger,
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
                           ),
@@ -221,7 +227,12 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                   const SizedBox(height: 20),
 
                   // Section: Tingkat Kesulitan
-                  const Text('Tingkat kesulitan', style: AppText.formLabel),
+                  Text(
+                    'Tingkat kesulitan',
+                    style: AppText.formLabel.copyWith(
+                      color: sheetPalette.textStrong,
+                    ),
+                  ),
                   const SizedBox(height: 10),
                   Wrap(
                     spacing: 8.0,
@@ -266,7 +277,12 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                   const SizedBox(height: 20),
 
                   // Section: Waktu Masak
-                  const Text('Waktu masak', style: AppText.formLabel),
+                  Text(
+                    'Waktu masak',
+                    style: AppText.formLabel.copyWith(
+                      color: sheetPalette.textStrong,
+                    ),
+                  ),
                   const SizedBox(height: 10),
                   Wrap(
                     spacing: 8.0,
@@ -311,7 +327,12 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                   const SizedBox(height: 20),
 
                   // Section: Bahan Utama
-                  const Text('Bahan utama', style: AppText.formLabel),
+                  Text(
+                    'Bahan utama',
+                    style: AppText.formLabel.copyWith(
+                      color: sheetPalette.textStrong,
+                    ),
+                  ),
                   const SizedBox(height: 10),
                   Wrap(
                     spacing: 8.0,
@@ -367,7 +388,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     );
   }
 
-  Widget _buildPickBanner() {
+  Widget _buildPickBanner(AppPalette palette) {
     if (widget.pickDate == null) return const SizedBox.shrink();
 
     final parsedDate = WeekUtils.parseDateKey(widget.pickDate!);
@@ -378,36 +399,32 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
         decoration: BoxDecoration(
-          color: AppColors.amberSoft,
+          color: palette.accentSoft,
           borderRadius: BorderRadius.circular(12.0),
-          border: Border.all(color: AppColors.amber.withValues(alpha: 0.5)),
+          border: Border.all(color: palette.accent.withValues(alpha: 0.5)),
         ),
         child: Row(
           children: [
-            const Icon(
+            Icon(
               LucideIcons.calendarDays,
-              color: AppColors.olive,
+              color: palette.onAccentSoft,
               size: 18.0,
             ),
             const SizedBox(width: 8.0),
             Expanded(
               child: Text(
                 'Pilih menu untuk $dayName',
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Poppins',
                   fontSize: 12.0,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.olive,
+                  color: palette.onAccentSoft,
                 ),
               ),
             ),
             GestureDetector(
               onTap: () => context.go('/meal-plan'),
-              child: const Icon(
-                Icons.close,
-                size: 16.0,
-                color: AppColors.olive,
-              ),
+              child: Icon(Icons.close, size: 16.0, color: palette.onAccentSoft),
             ),
           ],
         ),
@@ -415,7 +432,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     );
   }
 
-  Widget _buildActiveFilterChips() {
+  Widget _buildActiveFilterChips(AppPalette palette) {
     final chips = <Widget>[];
 
     if (_selectedMeal != null) {
@@ -426,7 +443,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
           child: AppChip(
             label: category.name,
             selected: true,
-            icon: const Icon(Icons.close, size: 14, color: AppColors.white),
+            icon: Icon(Icons.close, size: 14, color: palette.onChipSelected),
             onTap: () {
               setState(() => _selectedMeal = null);
               _executeSearch();
@@ -446,7 +463,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
           child: AppChip(
             label: diffLabel,
             selected: true,
-            icon: const Icon(Icons.close, size: 14, color: AppColors.white),
+            icon: Icon(Icons.close, size: 14, color: palette.onChipSelected),
             onTap: () {
               setState(() => _selectedDifficulty = null);
               _executeSearch();
@@ -467,7 +484,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                       ? '15–30 menit'
                       : '> 30 menit'),
             selected: true,
-            icon: const Icon(Icons.close, size: 14, color: AppColors.white),
+            icon: Icon(Icons.close, size: 14, color: palette.onChipSelected),
             onTap: () {
               setState(() => _selectedTimeRange = null);
               _executeSearch();
@@ -484,7 +501,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
           child: AppChip(
             label: _selectedMainIngredient!,
             selected: true,
-            icon: const Icon(Icons.close, size: 14, color: AppColors.white),
+            icon: Icon(Icons.close, size: 14, color: palette.onChipSelected),
             onTap: () {
               setState(() => _selectedMainIngredient = null);
               _executeSearch();
@@ -507,6 +524,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.palette;
     final favorites = ref.watch(favoritesProvider);
 
     return PageWithHeader(
@@ -515,9 +533,9 @@ class _SearchPageState extends ConsumerState<SearchPage> {
         key: const PageStorageKey<String>('search_scroll_view'),
         slivers: [
           // Banner Pick Mode (bila datang dari Meal Plan)
-          SliverToBoxAdapter(child: _buildPickBanner()),
+          SliverToBoxAdapter(child: _buildPickBanner(palette)),
 
-          // 2. Baris Pencarian: Search Bar Putih Pill (tinggi ≈ 40) + Tombol Filter Bulat chipGray
+          // 2. Baris Pencarian: Search Bar Putih Pill (tinggi ≈ 40) + Tombol Filter Bulat chip
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.only(
@@ -533,31 +551,34 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                     child: Container(
                       height: 40.0,
                       decoration: BoxDecoration(
-                        color: AppColors.white,
+                        color: palette.field,
                         borderRadius: AppRadius.pill,
-                        border: Border.all(color: AppColors.border),
+                        border: Border.all(color: palette.fieldBorder),
                       ),
                       alignment: Alignment.centerLeft,
                       padding: const EdgeInsets.symmetric(horizontal: 14.0),
                       child: Row(
                         children: [
-                          const Icon(
+                          Icon(
                             LucideIcons.search,
                             size: 18.0,
-                            color: AppColors.sage,
+                            color: palette.textSecondary,
                           ),
                           const SizedBox(width: 8.0),
                           Expanded(
                             child: TextField(
                               controller: _searchController,
-                              style: AppText.body.copyWith(fontSize: 13.0),
-                              decoration: const InputDecoration(
+                              style: AppText.body.copyWith(
+                                fontSize: 13.0,
+                                color: palette.textBody,
+                              ),
+                              decoration: InputDecoration(
                                 isDense: true,
                                 border: InputBorder.none,
                                 hintText: 'Search Recipes...',
                                 hintStyle: TextStyle(
                                   fontFamily: 'Poppins',
-                                  color: AppColors.sage,
+                                  color: palette.textSecondary,
                                   fontSize: 13.0,
                                 ),
                                 contentPadding: EdgeInsets.zero,
@@ -571,12 +592,12 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                                 _searchController.clear();
                                 _executeSearch();
                               },
-                              child: const Padding(
-                                padding: EdgeInsets.only(left: 6.0),
+                              child: Padding(
+                                padding: const EdgeInsets.only(left: 6.0),
                                 child: Icon(
                                   Icons.close,
                                   size: 16.0,
-                                  color: AppColors.sage,
+                                  color: palette.textSecondary,
                                 ),
                               ),
                             ),
@@ -587,7 +608,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
 
                   const SizedBox(width: 10.0),
 
-                  // Tombol Filter Bulat chipGray (ikon slidersHorizontal)
+                  // Tombol Filter Bulat chip (ikon slidersHorizontal)
                   Semantics(
                     label: 'Filter pencarian',
                     button: true,
@@ -598,21 +619,23 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                         height: 40.0,
                         decoration: BoxDecoration(
                           color: _hasActiveFilters
-                              ? AppColors.amberSoft
-                              : AppColors.chipGray,
+                              ? palette.accentSoft
+                              : palette.chip,
                           shape: BoxShape.circle,
                           border: _hasActiveFilters
-                              ? Border.all(color: AppColors.amber, width: 1.5)
+                              ? Border.all(color: palette.accent, width: 1.5)
                               : null,
                         ),
                         alignment: Alignment.center,
                         child: Stack(
                           alignment: Alignment.center,
                           children: [
-                            const Icon(
+                            Icon(
                               LucideIcons.slidersHorizontal,
                               size: 18.0,
-                              color: AppColors.olive,
+                              color: _hasActiveFilters
+                                  ? palette.onAccentSoft
+                                  : palette.textStrong,
                             ),
                             if (_hasActiveFilters)
                               Positioned(
@@ -621,8 +644,8 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                                 child: Container(
                                   width: 6,
                                   height: 6,
-                                  decoration: const BoxDecoration(
-                                    color: AppColors.maroon,
+                                  decoration: BoxDecoration(
+                                    color: palette.danger,
                                     shape: BoxShape.circle,
                                   ),
                                 ),
@@ -638,7 +661,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
           ),
 
           // Chips filter yang sedang aktif
-          SliverToBoxAdapter(child: _buildActiveFilterChips()),
+          SliverToBoxAdapter(child: _buildActiveFilterChips(palette)),
 
           // Konten Utama: Default ("Search by Meal") atau Hasil Pencarian
           if (!_isSearching) ...[
@@ -669,9 +692,9 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                       onTap: () => _selectCategory(cat),
                       child: Container(
                         height: 90.0,
-                        decoration: const BoxDecoration(
+                        decoration: BoxDecoration(
                           borderRadius: AppRadius.cardLarge,
-                          color: AppColors.photoGray,
+                          color: palette.photo,
                         ),
                         clipBehavior: Clip.antiAlias,
                         child: Stack(
@@ -682,17 +705,16 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                               borderRadius: AppRadius.cardLarge,
                               fit: BoxFit.cover,
                             ),
-                            // Selama foto masih placeholder abu-abu, tampilkan nama kategori (olive 600, 14)
-                            // di tengah tile sesuai PRD §6.5
+                            // Selama foto masih placeholder, tampilkan nama kategori
                             if (cat.image == null || cat.image!.isEmpty)
                               Center(
                                 child: Text(
                                   cat.name,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontFamily: 'Poppins',
                                     fontSize: 14.0,
                                     fontWeight: FontWeight.w600,
-                                    color: AppColors.olive,
+                                    color: palette.textStrong,
                                   ),
                                 ),
                               ),
@@ -726,11 +748,11 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                     const SizedBox(width: 8.0),
                     GestureDetector(
                       onTap: _clearSearch,
-                      child: const Text(
+                      child: Text(
                         'Bersihkan',
                         style: TextStyle(
                           fontFamily: 'Poppins',
-                          color: AppColors.maroon,
+                          color: palette.danger,
                           fontSize: 12.0,
                           fontWeight: FontWeight.w600,
                         ),
@@ -838,8 +860,8 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                           ),
                           decoration: BoxDecoration(
                             color: isAlreadyPlanned
-                                ? AppColors.chipGray
-                                : AppColors.olive,
+                                ? palette.chip
+                                : palette.actionBg,
                             borderRadius: BorderRadius.circular(8.0),
                           ),
                           child: Text(
@@ -849,8 +871,8 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                               fontSize: 10.0,
                               fontWeight: FontWeight.w600,
                               color: isAlreadyPlanned
-                                  ? AppColors.sage
-                                  : AppColors.white,
+                                  ? palette.textSecondary
+                                  : palette.onAction,
                             ),
                           ),
                         ),

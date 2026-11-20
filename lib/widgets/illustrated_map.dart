@@ -3,20 +3,19 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
-import '../core/theme/app_colors.dart';
+import '../core/theme/app_palette.dart';
 import '../core/theme/app_radius.dart';
 import '../core/theme/app_shadows.dart';
 import '../models/models.dart';
 
-/// Widget Peta Ilustrasi Statis (IllustratedMap) sesuai PRD §6.8 & design/location.jpg:
-/// - Ukuran: lebar fluid (lebar kartu 375–392, tinggi 210, radius 20).
-/// - Background mapBg (#E7E9DE), jalan putih, blok mapBlock (#DEE3D8).
-/// - Label jalan "Jl. Kaliurang" & "Pratinjau area" (kecil, sage).
-/// - Pill putih "Radius 1 km" di kiri atas.
-/// - Tombol pill putih "Pusatkan" di kanan bawah.
-/// - Titik pengguna (lingkaran olive + halo hijau muda) di tengah jalan.
-/// - Garis putus-putus olive dari titik pengguna ke pin terpilih.
-/// - Pin bernomor interaktif (aktif = amber, lain = olive, lingkaran 28 putih-border).
+/// Widget Peta Ilustrasi Statis (IllustratedMap) sesuai PRD §6.8, §15.5 dan §16:
+/// - Background mapBg, jalan mapRoad, blok mapBlock.
+/// - Label jalan "Jl. Kaliurang" & "Pratinjau area" (kecil, textSecondary).
+/// - Pill "Radius 1 km" di kiri atas.
+/// - Tombol pill "Pusatkan" di kanan bawah.
+/// - Titik pengguna (lingkaran + halo) di tengah jalan.
+/// - Garis putus-putus ke pin terpilih.
+/// - Pin bernomor interaktif (aktif = accent, lain = surfaceAlt/actionBg).
 class IllustratedMap extends StatelessWidget {
   final List<Place> places;
   final String? selectedPlaceId;
@@ -39,6 +38,8 @@ class IllustratedMap extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.palette;
+
     Place? selectedPlace;
     if (selectedPlaceId != null) {
       for (final p in places) {
@@ -53,8 +54,8 @@ class IllustratedMap extends StatelessWidget {
     return Container(
       width: double.infinity,
       height: height,
-      decoration: const BoxDecoration(
-        color: AppColors.mapBg,
+      decoration: BoxDecoration(
+        color: palette.mapBg,
         borderRadius: AppRadius.cardLarge,
         boxShadow: AppShadows.card,
       ),
@@ -70,7 +71,10 @@ class IllustratedMap extends StatelessWidget {
               // 1. Gambar peta ilustrasi (Jalan, blok, label jalan, titik user, rute putus-putus)
               CustomPaint(
                 size: Size(width, mapHeight),
-                painter: _IllustratedMapPainter(selectedPlace: selectedPlace),
+                painter: _IllustratedMapPainter(
+                  selectedPlace: selectedPlace,
+                  palette: palette,
+                ),
               ),
 
               // 2. Pill "Radius 1 km" di kiri atas
@@ -83,23 +87,23 @@ class IllustratedMap extends StatelessWidget {
                     vertical: 6.0,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.white,
+                    color: palette.surface,
                     borderRadius: BorderRadius.circular(999.0),
-                    boxShadow: const [
+                    boxShadow: [
                       BoxShadow(
-                        color: AppColors.shadowShell,
+                        color: palette.shadowColor,
                         blurRadius: 4.0,
-                        offset: Offset(0, 1),
+                        offset: const Offset(0, 1),
                       ),
                     ],
                   ),
                   child: Text(
                     radiusLabel,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Poppins',
                       fontSize: 11.0,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.textBody,
+                      color: palette.textBody,
                     ),
                   ),
                 ),
@@ -121,32 +125,32 @@ class IllustratedMap extends StatelessWidget {
                           vertical: 5.0,
                         ),
                         decoration: BoxDecoration(
-                          color: AppColors.white,
+                          color: palette.surface,
                           borderRadius: BorderRadius.circular(999.0),
-                          boxShadow: const [
+                          boxShadow: [
                             BoxShadow(
-                              color: AppColors.shadowShell,
+                              color: palette.shadowColor,
                               blurRadius: 4.0,
-                              offset: Offset(0, 1),
+                              offset: const Offset(0, 1),
                             ),
                           ],
                         ),
-                        child: const Row(
+                        child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
                               LucideIcons.mapPin,
                               size: 13.0,
-                              color: AppColors.olive,
+                              color: palette.textStrong,
                             ),
-                            SizedBox(width: 4.0),
+                            const SizedBox(width: 4.0),
                             Text(
                               'Peta Nyata',
                               style: TextStyle(
                                 fontFamily: 'Poppins',
                                 fontSize: 11.0,
                                 fontWeight: FontWeight.w600,
-                                color: AppColors.olive,
+                                color: palette.textStrong,
                               ),
                             ),
                           ],
@@ -171,23 +175,23 @@ class IllustratedMap extends StatelessWidget {
                         vertical: 6.0,
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.white,
+                        color: palette.surface,
                         borderRadius: BorderRadius.circular(999.0),
-                        boxShadow: const [
+                        boxShadow: [
                           BoxShadow(
-                            color: AppColors.shadowShell,
+                            color: palette.shadowColor,
                             blurRadius: 4.0,
-                            offset: Offset(0, 1),
+                            offset: const Offset(0, 1),
                           ),
                         ],
                       ),
-                      child: const Text(
+                      child: Text(
                         'Pusatkan',
                         style: TextStyle(
                           fontFamily: 'Poppins',
                           fontSize: 12.0,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.olive,
+                          color: palette.textStrong,
                         ),
                       ),
                     ),
@@ -198,11 +202,13 @@ class IllustratedMap extends StatelessWidget {
               // 4. Pin bernomor interaktif pada posisi (x, y)
               for (int i = 0; i < places.length; i++) ...[
                 _buildPin(
+                  context: context,
                   place: places[i],
                   index: i + 1,
                   isSelected: places[i].id == selectedPlace?.id,
                   mapWidth: width,
                   mapHeight: mapHeight,
+                  palette: palette,
                 ),
               ],
             ],
@@ -213,15 +219,24 @@ class IllustratedMap extends StatelessWidget {
   }
 
   Widget _buildPin({
+    required BuildContext context,
     required Place place,
     required int index,
     required bool isSelected,
     required double mapWidth,
     required double mapHeight,
+    required AppPalette palette,
   }) {
     // Koordinat pin berbasis persentase (0–100)
     final pinX = (place.x / 100.0) * mapWidth;
     final pinY = (place.y / 100.0) * mapHeight;
+
+    final pinBg = isSelected
+        ? palette.accent
+        : (palette.isDark ? palette.surfaceAlt : palette.actionBg);
+    final pinFg = isSelected
+        ? palette.onAccent
+        : (palette.isDark ? palette.textStrong : palette.onAction);
 
     return Positioned(
       left: pinX - 14.0,
@@ -236,14 +251,14 @@ class IllustratedMap extends StatelessWidget {
             width: 28.0,
             height: 28.0,
             decoration: BoxDecoration(
-              color: isSelected ? AppColors.amber : AppColors.olive,
+              color: pinBg,
               shape: BoxShape.circle,
-              border: Border.all(color: AppColors.white, width: 2.0),
-              boxShadow: const [
+              border: Border.all(color: palette.surface, width: 2.0),
+              boxShadow: [
                 BoxShadow(
-                  color: AppColors.shadowShell,
+                  color: palette.shadowColor,
                   blurRadius: 4.0,
-                  offset: Offset(0, 2),
+                  offset: const Offset(0, 2),
                 ),
               ],
             ),
@@ -254,7 +269,7 @@ class IllustratedMap extends StatelessWidget {
                 fontFamily: 'Poppins',
                 fontSize: 12.0,
                 fontWeight: FontWeight.w700,
-                color: isSelected ? AppColors.textBody : AppColors.white,
+                color: pinFg,
               ),
             ),
           ),
@@ -267,8 +282,9 @@ class IllustratedMap extends StatelessWidget {
 /// CustomPainter untuk menggambar peta ilustrasi, jalan, blok, dan rute putus-putus
 class _IllustratedMapPainter extends CustomPainter {
   final Place? selectedPlace;
+  final AppPalette palette;
 
-  _IllustratedMapPainter({required this.selectedPlace});
+  _IllustratedMapPainter({required this.selectedPlace, required this.palette});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -276,11 +292,11 @@ class _IllustratedMapPainter extends CustomPainter {
     final h = size.height;
 
     // 1. Background map
-    final bgPaint = Paint()..color = AppColors.mapBg;
+    final bgPaint = Paint()..color = palette.mapBg;
     canvas.drawRect(Rect.fromLTWH(0, 0, w, h), bgPaint);
 
-    // 2. Blok-blok bangunan (mapBlock: #DEE3D8)
-    final blockPaint = Paint()..color = AppColors.mapBlock;
+    // 2. Blok-blok bangunan
+    final blockPaint = Paint()..color = palette.mapBlock;
     const blockRadius = Radius.circular(14.0);
 
     // Baris Atas (3 blok)
@@ -329,8 +345,8 @@ class _IllustratedMapPainter extends CustomPainter {
       blockPaint,
     );
 
-    // 3. Jalan-jalan putih (#FFFFFF)
-    final roadPaint = Paint()..color = AppColors.white;
+    // 3. Jalan-jalan
+    final roadPaint = Paint()..color = palette.mapRoad;
 
     // Jalan Horizontal Utama (tengah)
     canvas.drawRect(Rect.fromLTWH(0, h * 0.37, w, h * 0.07), roadPaint);
@@ -341,30 +357,28 @@ class _IllustratedMapPainter extends CustomPainter {
     // Jalan Vertikal 2 (kanan)
     canvas.drawRect(Rect.fromLTWH(w * 0.645, 0, w * 0.035, h), roadPaint);
 
-    // 4. Label teks jalan & area (sage 10)
+    // 4. Label teks jalan & area
     final textPainter = TextPainter(textDirection: TextDirection.ltr);
 
-    // "Jl. Kaliurang" di atas jalan horizontal kiri
-    textPainter.text = const TextSpan(
+    textPainter.text = TextSpan(
       text: 'Jl. Kaliurang',
       style: TextStyle(
         fontFamily: 'Poppins',
         fontSize: 10.0,
         fontWeight: FontWeight.w500,
-        color: AppColors.sage,
+        color: palette.textSecondary,
       ),
     );
     textPainter.layout();
     textPainter.paint(canvas, Offset(w * 0.09, h * 0.395));
 
-    // "Pratinjau area" di bagian bawah blok kiri
-    textPainter.text = const TextSpan(
+    textPainter.text = TextSpan(
       text: 'Pratinjau area',
       style: TextStyle(
         fontFamily: 'Poppins',
         fontSize: 10.0,
         fontWeight: FontWeight.w500,
-        color: AppColors.sage,
+        color: palette.textSecondary,
       ),
     );
     textPainter.layout();
@@ -374,19 +388,19 @@ class _IllustratedMapPainter extends CustomPainter {
     final userX = w * 0.505;
     final userY = h * 0.465;
 
-    // Halo hijau muda / soft olive
+    final userPrimary = palette.isDark ? palette.accent : palette.actionBg;
+
     final haloPaint = Paint()
-      ..color = AppColors.olive.withValues(alpha: 0.18)
+      ..color = userPrimary.withValues(alpha: 0.2)
       ..style = PaintingStyle.fill;
     canvas.drawCircle(Offset(userX, userY), 16.0, haloPaint);
 
-    // Titik pusat olive
     final userDotPaint = Paint()
-      ..color = AppColors.olive
+      ..color = userPrimary
       ..style = PaintingStyle.fill;
     canvas.drawCircle(Offset(userX, userY), 6.0, userDotPaint);
 
-    // 6. Garis putus-putus olive ke pin terpilih
+    // 6. Garis putus-putus ke pin terpilih
     if (selectedPlace != null) {
       final targetX = (selectedPlace!.x / 100.0) * w;
       final targetY = (selectedPlace!.y / 100.0) * h;
@@ -397,6 +411,7 @@ class _IllustratedMapPainter extends CustomPainter {
         end: Offset(targetX, targetY),
         w: w,
         h: h,
+        color: userPrimary,
       );
     }
   }
@@ -407,28 +422,23 @@ class _IllustratedMapPainter extends CustomPainter {
     required Offset end,
     required double w,
     required double h,
+    required Color color,
   }) {
     final routePaint = Paint()
-      ..color = AppColors.olive
+      ..color = color
       ..strokeWidth = 2.5
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
 
-    // Rute jalan ortogonal (mengikuti grid jalan kota sesuai location.jpg)
     final path = Path();
     path.moveTo(start.dx, start.dy);
 
-    // Tentukan jalan vertikal terdekat (jalan 1 di ~0.355w atau jalan 2 di ~0.66w)
     final streetX = (end.dx < w * 0.55) ? w * 0.358 : w * 0.662;
 
-    // 1. Ke jalan vertikal
     path.lineTo(streetX, start.dy);
-    // 2. Sepanjang jalan vertikal ke level pin
     path.lineTo(streetX, end.dy);
-    // 3. Ke target pin
     path.lineTo(end.dx, end.dy);
 
-    // Ubah garis menjadi putus-putus
     const dashLength = 5.0;
     const gapLength = 4.0;
 
@@ -450,6 +460,7 @@ class _IllustratedMapPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_IllustratedMapPainter oldDelegate) {
-    return oldDelegate.selectedPlace?.id != selectedPlace?.id;
+    return oldDelegate.selectedPlace?.id != selectedPlace?.id ||
+        oldDelegate.palette != palette;
   }
 }

@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_palette.dart';
 import '../../core/theme/app_text.dart';
 
-/// Placeholder gambar warna abu-abu (#D9D9D4) sesuai PRD §10.
+/// Placeholder gambar warna abu-abu sesuai PRD §10 dan §16.
 /// Mewarisi ukuran dan radius dari wadahnya.
-/// Ikon garpu-sendok (#BDBDB5) di tengah HANYA ditampilkan jika area >= 64 px.
-/// Memiliki varian avatar bulat yang menampilkan inisial nama (olive, 600).
+/// Ikon garpu-sendok di tengah HANYA ditampilkan jika area >= 64 px.
+/// Memiliki varian avatar bulat yang menampilkan inisial nama.
 class ImagePlaceholder extends StatelessWidget {
   final BorderRadius? borderRadius;
   final bool isCircle;
@@ -40,6 +40,8 @@ class ImagePlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.palette;
+
     Widget content(double w, double h) {
       if (initials != null && initials!.isNotEmpty) {
         final fontSize = (w * 0.4).clamp(12.0, 32.0);
@@ -50,7 +52,7 @@ class ImagePlaceholder extends StatelessWidget {
               fontFamily: AppText.fontFamily,
               fontSize: fontSize,
               fontWeight: FontWeight.w600,
-              color: AppColors.olive,
+              color: palette.textStrong,
             ),
           ),
         );
@@ -63,7 +65,7 @@ class ImagePlaceholder extends StatelessWidget {
         return Center(
           child: Icon(
             Icons.restaurant,
-            color: AppColors.photoGrayIcon,
+            color: palette.photoIcon,
             size: iconSize,
           ),
         );
@@ -73,7 +75,7 @@ class ImagePlaceholder extends StatelessWidget {
     }
 
     final decoration = BoxDecoration(
-      color: AppColors.photoGray,
+      color: palette.photo,
       shape: isCircle ? BoxShape.circle : BoxShape.rectangle,
       borderRadius: isCircle ? null : borderRadius,
     );

@@ -55,13 +55,30 @@ flutter test
 
 ---
 
-## 🌙 Fitur Tema Gelap (Dark Mode) & Peta Nyata (Fase 16)
+## 🌙 Fitur Tema Gelap (Dark Mode Menyeluruh) & Keselarasan Belanjaan (Fase E1)
 
-### 1. Tema Gelap Berbasis Desain Organik (PRD §4):
-- **Palet Dark Olive-Charcoal:** Menggunakan warna dasar `appBgDark` (`#121611`), `surfaceDark` (`#1B2218`), dan aksen adaptif `oliveDark` (`#5E7A46`), `amber` (`#F59E0B`), dan `maroonDark` (`#A33B39`).
-- **Aktivasi:** Pengguna dapat mengaktifkan toggle **Mode gelap** di halaman **Profil Saya** (`/profile`). State tersimpan persisten di `SharedPreferences` dan diobservasi langsung oleh `FoodieApp` (`ThemeMode.dark`).
+### 1. Arsitektur Palet Semantik `AppPalette` (PRD §16):
+- **ThemeExtension Berbasis Peran:** Seluruh token warna diakses melalui `context.palette` (`ThemeExtension<AppPalette>`) yang terdaftar di `ThemeData.light` dan `ThemeData.dark`.
+- **Zero Raw Color Policy:** Seluruh pemakaian `AppColors.*` dan `Colors.*` (kecuali `Colors.transparent`) di luar `lib/core/theme/` telah dibersihkan secara total (0 occurrences).
+- **Nilai Palet Dark Mode Presisi:**
+  - `bg`: `#101815` · `surface`: `#1B2822` · `surfaceAlt`: `#26362F` · `navSurface`: `#1F2F29` · `divider/border`: `#2F3F37`
+  - `textStrong` & `textBody`: `#F5F5F0` · `textSecondary`: `#9AA597`
+  - `actionBg` & `accent`: `#F59E0B` · `onAction` & `onAccent`: `#1A1200`
+  - `danger`: `#D6455F` · `dangerText`: `#E8667C` (kontras WCAG >= 4.5:1 terhadap surface/bg)
+  - `accentSoft`: `#3E3313` · `onAccentSoft`: `#F8B84A` · `accentSoftTextAlt`: `#C8AB4A`
+  - `field`: `#101815` · `fieldBorder`: `0x999AA597` · `fieldAdd`: `#26362F`
+  - `toggleOff`: `#3A4A42` · `photo`: `#26362F` · `photoIcon`: `#3A4A42` · `outerBg`: `#0B100D`
+- **State & Persistensi Tema:** Dikelola oleh `themeModeProvider` yang mandiri dan terpisah dari siklus otentikasi user, tersimpan di `SharedPreferences` (`"foodie:themeMode"`).
+- **Toggle Mode Gelap Profil:** Tersambung langsung ke `themeModeProvider` dengan indikator status dinamis: *"Tampilan gelap sedang digunakan"* / *"Tampilan terang sedang digunakan"*.
 
-### 2. Peta Nyata (OpenStreetMap / CartoDB) + Geolocator + Rute OSRM (PRD §14.12):
+### 2. Keselarasan Header Grup Groceries (Bug A, PRD §16.1):
+- Widget bersama `GroceryGroupHeader` (`lib/widgets/grocery_group_header.dart`) menyelaraskan posisi tombol "Hapus menu" pada semua kartu grup menu.
+- Tepi kanan tombol sejajar presisi dengan tepi kanan teks harga (`Rect.right` identik, toleransi < 0.5 dp).
+- Pusat vertikal tombol sejajar baris pertama judul baik pada judul 1 baris maupun judul 2 baris (toleransi <= 2 dp).
+
+---
+
+## 🗺️ Peta Nyata (OpenStreetMap / CartoDB) + Geolocator + Rute OSRM (PRD §14.12)
 - **Peta Nyata Interaktif:** Dibangun menggunakan `flutter_map` dan `latlong2` dengan layer polyline rute jalan kaki nyata via service OSRM (`router.project-osrm.org`). Atribusi wajib `"© OpenStreetMap contributors"` selalu ditampilkan.
 - **Catatan Dev / Demo Tile & Routing:** Server publik tile OpenStreetMap (`tile.openstreetmap.org`) dan server publik OSRM digunakan murni untuk keperluan pengujian dan demo v1. Untuk deployment produksi bervolume tinggi, disarankan menggunakan dedicated map provider / routing API (seperti Mapbox, Google Maps Platform, Stadia Maps, atau self-hosted OSRM/Valhalla instance) sesuai kebijakan OSM Tile Usage Policy.
 - **Izin Lokasi Perangkat:**

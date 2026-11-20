@@ -16,29 +16,25 @@ class CartNotifier extends Notifier<List<CartGroup>> {
 
   @override
   List<CartGroup> build() {
-    _loadFromStorage();
-    return seedCartGroups;
+    return _loadFromStorage();
   }
 
-  void _loadFromStorage() {
+  List<CartGroup> _loadFromStorage() {
     try {
       final prefs = ref.read(sharedPreferencesProvider);
       final jsonStr = prefs.getString(prefKey);
       if (jsonStr != null && jsonStr.isNotEmpty) {
         final decoded = jsonDecode(jsonStr) as List<dynamic>;
         final baseTime = DateTime(2026, 1, 1);
-        state = decoded.asMap().entries.map((entry) {
+        return decoded.asMap().entries.map((entry) {
           final idx = entry.key;
           final map = entry.value as Map<String, dynamic>;
           final fallbackTime = baseTime.add(Duration(minutes: idx));
           return CartGroup.fromJson(map, fallbackTime);
         }).toList();
-      } else {
-        state = seedCartGroups;
       }
-    } catch (_) {
-      state = seedCartGroups;
-    }
+    } catch (_) {}
+    return seedCartGroups;
   }
 
   Future<void> _saveToStorage() async {

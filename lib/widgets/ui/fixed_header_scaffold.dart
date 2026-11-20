@@ -3,16 +3,16 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../app/app_shell.dart';
-import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_palette.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_text.dart';
 import 'app_badge.dart';
 import 'sticky_bottom_bar.dart';
 
 /// Struktur layout bersama untuk halaman dengan header fixed non-dashboard
-/// (Favorites, Cooked / Riwayat Masak, My Recipes) sesuai PRD §15.3:
+/// (Favorites, Cooked / Riwayat Masak, My Recipes) sesuai PRD §15.3 dan §16:
 /// - Area atas (judul + badge + sub-judul + search bar) berada di LUAR scroll sehingga FIXED.
-/// - Background solid `AppColors.bg` agar konten yang bergulir di bawahnya tidak tembus.
+/// - Background solid `palette.bg` agar konten yang bergulir di bawahnya tidak tembus.
 /// - Konten di bawahnya (chip filter, grid resep, empty state) ikut scroll di dalam [Expanded].
 /// - Tombol sticky "Kembali Ke Beranda" tetap diposisikan di bawah dengan [StickyBottomBar]
 ///   dan Scaffold(resizeToAvoidBottomInset: false) agar tidak bergerak saat keyboard terbuka.
@@ -74,10 +74,8 @@ class _FixedHeaderScaffoldState extends State<FixedHeaderScaffold> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bg =
-        widget.backgroundColor ??
-        (isDark ? AppColors.surfaceDark : AppColors.bg);
+    final palette = context.palette;
+    final bg = widget.backgroundColor ?? palette.bg;
     final topInset = AppShell.topChrome(context);
 
     return Scaffold(
@@ -108,15 +106,20 @@ class _FixedHeaderScaffoldState extends State<FixedHeaderScaffold> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(widget.title, style: AppText.pageTitle),
+                              Text(
+                                widget.title,
+                                style: AppText.pageTitle.copyWith(
+                                  color: palette.textStrong,
+                                ),
+                              ),
                               const SizedBox(height: 2.0),
                               Text(
                                 widget.subtitle,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontFamily: 'Poppins',
                                   fontSize: 13.0,
                                   fontWeight: FontWeight.w400,
-                                  color: AppColors.sage,
+                                  color: palette.textSecondary,
                                   height: 18.0 / 13.0,
                                 ),
                               ),
@@ -130,38 +133,38 @@ class _FixedHeaderScaffoldState extends State<FixedHeaderScaffold> {
 
                     const SizedBox(height: 12.0),
 
-                    // Search Bar Putih Radius ≈ 14
+                    // Search Bar Radius ≈ 14
                     Container(
                       height: 44.0,
                       decoration: BoxDecoration(
-                        color: AppColors.white,
+                        color: palette.surface,
                         borderRadius: BorderRadius.circular(14.0),
-                        border: Border.all(color: AppColors.border),
+                        border: Border.all(color: palette.border),
                       ),
                       padding: const EdgeInsets.symmetric(horizontal: 14.0),
                       child: Row(
                         children: [
-                          const Icon(
+                          Icon(
                             LucideIcons.search,
                             size: 18.0,
-                            color: AppColors.sage,
+                            color: palette.textSecondary,
                           ),
                           const SizedBox(width: 10.0),
                           Expanded(
                             child: TextField(
                               controller: widget.searchController,
                               onChanged: widget.onSearchChanged,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontFamily: 'Poppins',
                                 fontSize: 13.0,
-                                color: AppColors.textBody,
+                                color: palette.textBody,
                               ),
                               decoration: InputDecoration(
                                 hintText: widget.searchHint,
-                                hintStyle: const TextStyle(
+                                hintStyle: TextStyle(
                                   fontFamily: 'Poppins',
                                   fontSize: 13.0,
-                                  color: AppColors.sage,
+                                  color: palette.textSecondary,
                                 ),
                                 border: InputBorder.none,
                                 isDense: true,
@@ -176,10 +179,10 @@ class _FixedHeaderScaffoldState extends State<FixedHeaderScaffold> {
                                 widget.onSearchChanged('');
                                 widget.onSearchClear?.call();
                               },
-                              child: const Icon(
+                              child: Icon(
                                 LucideIcons.x,
                                 size: 16.0,
-                                color: AppColors.sage,
+                                color: palette.textSecondary,
                               ),
                             ),
                         ],
@@ -201,22 +204,22 @@ class _FixedHeaderScaffoldState extends State<FixedHeaderScaffold> {
               height: 48.0,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.olive,
-                  foregroundColor: AppColors.white,
+                  backgroundColor: palette.actionBg,
+                  foregroundColor: palette.onAction,
                   elevation: 6.0,
-                  shadowColor: AppColors.olive.withValues(alpha: 0.35),
+                  shadowColor: palette.shadowColor,
                   shape: const RoundedRectangleBorder(
                     borderRadius: AppRadius.pill,
                   ),
                 ),
                 onPressed: widget.onBackToHome ?? () => context.go('/home'),
-                child: const Text(
+                child: Text(
                   'Kembali Ke Beranda',
                   style: TextStyle(
                     fontFamily: 'Poppins',
                     fontSize: 14.0,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.white,
+                    color: palette.onAction,
                   ),
                 ),
               ),

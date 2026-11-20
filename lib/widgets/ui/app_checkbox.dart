@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_palette.dart';
 import '../../core/theme/app_radius.dart';
 
 enum AppCheckboxType {
@@ -8,7 +8,7 @@ enum AppCheckboxType {
   circle, // 28 px, bulat
 }
 
-/// Checkbox kustom Foodie.id sesuai PRD §5.3
+/// Checkbox kustom Foodie.id sesuai PRD §5.3 dan §16
 class AppCheckbox extends StatelessWidget {
   final bool value;
   final ValueChanged<bool>? onChanged;
@@ -36,9 +36,15 @@ class AppCheckbox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.palette;
     final isCircle = type == AppCheckboxType.circle;
     final size = isCircle ? 28.0 : 22.0;
     final iconSize = isCircle ? 18.0 : 16.0;
+
+    final checkedBg = palette.isDark ? palette.accent : palette.actionBg;
+    final uncheckedBg = palette.isDark ? palette.field : palette.surface;
+    final checkColor = palette.isDark ? palette.onAccent : palette.onAction;
+    final borderColor = value ? checkedBg : palette.border;
 
     return Semantics(
       checked: value,
@@ -48,17 +54,14 @@ class AppCheckbox extends StatelessWidget {
           width: size,
           height: size,
           decoration: BoxDecoration(
-            color: value ? AppColors.olive : AppColors.white,
+            color: value ? checkedBg : uncheckedBg,
             shape: isCircle ? BoxShape.circle : BoxShape.rectangle,
             borderRadius: isCircle ? null : AppRadius.checkbox,
-            border: Border.all(
-              color: value ? AppColors.olive : AppColors.border,
-              width: 1.5,
-            ),
+            border: Border.all(color: borderColor, width: 1.5),
           ),
           alignment: Alignment.center,
           child: value
-              ? Icon(Icons.check, size: iconSize, color: AppColors.white)
+              ? Icon(Icons.check, size: iconSize, color: checkColor)
               : null,
         ),
       ),

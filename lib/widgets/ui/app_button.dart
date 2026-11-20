@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_palette.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_text.dart';
 
@@ -20,7 +20,7 @@ enum AppButtonSize {
   sm, // height 36/40, radius 10
 }
 
-/// Widget tombol standar Foodie.id sesuai PRD §5.3
+/// Widget tombol standar Foodie.id sesuai PRD §5.3 dan §16
 class AppButton extends StatelessWidget {
   final String label;
   final VoidCallback? onPressed;
@@ -43,40 +43,41 @@ class AppButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.palette;
     Color bgColor;
     Color textColor;
     BorderSide? borderSide;
 
     switch (variant) {
       case AppButtonVariant.primary:
-        bgColor = AppColors.olive;
-        textColor = AppColors.white;
+        bgColor = palette.actionBg;
+        textColor = palette.onAction;
         break;
       case AppButtonVariant.accent:
-        bgColor = AppColors.amber;
-        textColor = AppColors.olive;
+        bgColor = palette.accent;
+        textColor = palette.onAccent;
         break;
       case AppButtonVariant.danger:
-        bgColor = AppColors.maroon;
-        textColor = AppColors.white;
+        bgColor = palette.danger;
+        textColor = palette.onAction;
         break;
       case AppButtonVariant.outlineDanger:
         bgColor = Colors.transparent;
-        textColor = AppColors.maroon;
-        borderSide = const BorderSide(color: AppColors.maroon, width: 1.5);
+        textColor = palette.danger;
+        borderSide = BorderSide(color: palette.danger, width: 1.5);
         break;
       case AppButtonVariant.outline:
         bgColor = Colors.transparent;
-        textColor = AppColors.olive;
-        borderSide = const BorderSide(color: AppColors.olive, width: 1.5);
+        textColor = palette.textStrong;
+        borderSide = BorderSide(color: palette.border, width: 1.5);
         break;
       case AppButtonVariant.soft:
-        bgColor = AppColors.chipGray;
-        textColor = AppColors.textBody;
+        bgColor = palette.surfaceAlt;
+        textColor = palette.textBody;
         break;
       case AppButtonVariant.ghost:
         bgColor = Colors.transparent;
-        textColor = AppColors.olive;
+        textColor = palette.textStrong;
         break;
     }
 

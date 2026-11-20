@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_palette.dart';
 import '../app_header.dart';
 
 /// Struktur layout bersama untuk halaman dengan header fixed (Home, Search, Add, Meal Plan, Nearby)
@@ -24,9 +24,7 @@ class PageWithHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bg =
-        backgroundColor ?? (isDark ? AppColors.surfaceDark : AppColors.bg);
+    final bg = backgroundColor ?? context.palette.bg;
 
     return Scaffold(
       resizeToAvoidBottomInset: resizeToAvoidBottomInset,

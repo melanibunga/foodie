@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
-import '../core/theme/app_colors.dart';
+import '../core/theme/app_palette.dart';
 import '../core/theme/app_radius.dart';
 import '../core/theme/app_shadows.dart';
 import '../core/theme/app_text.dart';
@@ -33,10 +33,12 @@ class FeaturedRecipeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.palette;
+
     return Container(
       width: width,
-      decoration: const BoxDecoration(
-        color: AppColors.white,
+      decoration: BoxDecoration(
+        color: palette.surface,
         borderRadius: AppRadius.cardLarge,
         boxShadow: AppShadows.card,
       ),
@@ -93,14 +95,18 @@ class FeaturedRecipeCard extends StatelessWidget {
                   children: [
                     Text(
                       recipe.title,
-                      style: AppText.cardHeroTitle,
+                      style: AppText.cardHeroTitle.copyWith(
+                        color: palette.textStrong,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
                     Text(
                       recipe.description,
-                      style: AppText.caption.copyWith(color: AppColors.sage),
+                      style: AppText.caption.copyWith(
+                        color: palette.textSecondary,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -118,16 +124,16 @@ class FeaturedRecipeCard extends StatelessWidget {
                               return Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(
+                                  Icon(
                                     Icons.star,
-                                    color: AppColors.amber,
+                                    color: palette.accent,
                                     size: 15,
                                   ),
                                   const SizedBox(width: 4),
                                   Text(
                                     effective.rating.toStringAsFixed(1),
                                     style: AppText.caption.copyWith(
-                                      color: AppColors.textBody,
+                                      color: palette.textBody,
                                       fontWeight: FontWeight.w700,
                                     ),
                                   ),
@@ -136,7 +142,7 @@ class FeaturedRecipeCard extends StatelessWidget {
                                     child: Text(
                                       '(${effective.reviews} ulasan)',
                                       style: AppText.captionSmall.copyWith(
-                                        color: AppColors.sage,
+                                        color: palette.textSecondary,
                                       ),
                                       overflow: TextOverflow.ellipsis,
                                     ),
@@ -149,15 +155,15 @@ class FeaturedRecipeCard extends StatelessWidget {
 
                         const SizedBox(width: 8),
 
-                        // Tombol "Lihat Resep →" (122 × 40, maroon)
+                        // Tombol "Lihat Resep →" (122 × 40, danger)
                         GestureDetector(
                           onTap: onOpen,
                           child: Container(
                             width: 122.0,
                             height: 40.0,
-                            decoration: const BoxDecoration(
-                              color: AppColors.maroon,
-                              borderRadius: BorderRadius.all(
+                            decoration: BoxDecoration(
+                              color: palette.danger,
+                              borderRadius: const BorderRadius.all(
                                 Radius.circular(10.0),
                               ),
                             ),
@@ -165,7 +171,7 @@ class FeaturedRecipeCard extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(
                               horizontal: 6.0,
                             ),
-                            child: const FittedBox(
+                            child: FittedBox(
                               fit: BoxFit.scaleDown,
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
@@ -177,14 +183,14 @@ class FeaturedRecipeCard extends StatelessWidget {
                                       fontFamily: AppText.fontFamily,
                                       fontSize: 12.0,
                                       fontWeight: FontWeight.w600,
-                                      color: AppColors.white,
+                                      color: palette.onDanger,
                                     ),
                                   ),
-                                  SizedBox(width: 4),
+                                  const SizedBox(width: 4),
                                   Icon(
                                     Icons.arrow_forward,
                                     size: 14,
-                                    color: AppColors.white,
+                                    color: palette.onDanger,
                                   ),
                                 ],
                               ),
@@ -226,11 +232,12 @@ class GridRecipeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.palette;
     final captionText = '${recipe.category} • ${recipe.cuisine}';
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: palette.surface,
         borderRadius: AppRadius.card,
         boxShadow: AppShadows.card,
       ),
@@ -296,7 +303,7 @@ class GridRecipeCard extends StatelessWidget {
                     Text(
                       captionText,
                       style: AppText.captionSmall.copyWith(
-                        color: AppColors.sage,
+                        color: palette.textSecondary,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -308,7 +315,9 @@ class GridRecipeCard extends StatelessWidget {
                         Expanded(
                           child: Text(
                             recipe.title,
-                            style: AppText.cardSmallTitle,
+                            style: AppText.cardSmallTitle.copyWith(
+                              color: palette.textStrong,
+                            ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -322,9 +331,9 @@ class GridRecipeCard extends StatelessWidget {
                             label: 'Tambah bahan ke keranjang',
                             button: true,
                             child: IconButton(
-                              icon: const Icon(
+                              icon: Icon(
                                 LucideIcons.plusCircle,
-                                color: AppColors.maroon,
+                                color: palette.danger,
                                 size: 20.0,
                               ),
                               tooltip: 'Tambah bahan ke keranjang',
@@ -368,11 +377,12 @@ class FavoriteRecipeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.palette;
     final captionText = '${recipe.category} • ${recipe.cuisine}';
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: palette.surface,
         borderRadius: AppRadius.card,
         boxShadow: AppShadows.card,
       ),
@@ -426,7 +436,7 @@ class FavoriteRecipeCard extends StatelessWidget {
                     Text(
                       captionText,
                       style: AppText.captionSmall.copyWith(
-                        color: AppColors.sage,
+                        color: palette.textSecondary,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -438,7 +448,9 @@ class FavoriteRecipeCard extends StatelessWidget {
                         Expanded(
                           child: Text(
                             recipe.title,
-                            style: AppText.cardSmallTitle,
+                            style: AppText.cardSmallTitle.copyWith(
+                              color: palette.textStrong,
+                            ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -446,9 +458,9 @@ class FavoriteRecipeCard extends StatelessWidget {
                         if (onRemove != null) ...[
                           const SizedBox(width: 4),
                           IconButton(
-                            icon: const Icon(
+                            icon: Icon(
                               LucideIcons.trash2,
-                              color: AppColors.maroon,
+                              color: palette.danger,
                               size: 18.0,
                             ),
                             tooltip: 'Hapus resep',

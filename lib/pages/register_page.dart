@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../app/app_shell.dart';
-import '../core/theme/app_colors.dart';
+import '../core/theme/app_palette.dart';
 import '../core/theme/app_radius.dart';
 import '../core/theme/app_shadows.dart';
 import '../core/theme/app_text.dart';
@@ -118,9 +118,10 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   @override
   Widget build(BuildContext context) {
     final topPadding = AppShell.topChrome(context);
+    final palette = context.palette;
 
     return Scaffold(
-      backgroundColor: AppColors.bg,
+      backgroundColor: palette.bg,
       body: SafeArea(
         top: false,
         bottom: true,
@@ -141,10 +142,10 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                     label: 'Kembali',
                     button: true,
                     child: IconButton(
-                      icon: const Icon(
+                      icon: Icon(
                         LucideIcons.arrowLeft,
                         size: 24,
-                        color: AppColors.textTitle,
+                        color: palette.textStrong,
                       ),
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(
@@ -161,13 +162,13 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  const Text(
+                  Text(
                     'Register',
                     style: TextStyle(
                       fontFamily: 'Poppins',
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
-                      color: AppColors.textTitle,
+                      color: palette.textStrong,
                     ),
                   ),
                 ],
@@ -182,14 +183,14 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                   vertical: 4,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.amberSoft,
+                  color: palette.accentSoft,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Text(
+                child: Text(
                   'MASAK LEBIH MUDAH',
                   style: TextStyle(
                     fontFamily: 'Poppins',
-                    color: AppColors.olive,
+                    color: palette.onAccentSoft,
                     fontSize: 9,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0.5,
@@ -200,13 +201,13 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
               const SizedBox(height: 12),
 
               // H1: "Resep baru, / cerita baru."
-              const Text(
+              Text(
                 'Resep baru,\ncerita baru.',
                 style: TextStyle(
                   fontFamily: 'Poppins',
                   fontSize: 32,
                   fontWeight: FontWeight.w800,
-                  color: AppColors.olive,
+                  color: palette.textStrong,
                   height: 1.2,
                 ),
               ),
@@ -214,13 +215,13 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
               const SizedBox(height: 8),
 
               // Sub-judul
-              const Text(
+              Text(
                 'Buat akun untuk mulai masak versimu.',
                 style: TextStyle(
                   fontFamily: 'Poppins',
                   fontSize: 13,
                   fontWeight: FontWeight.w400,
-                  color: AppColors.sage,
+                  color: palette.textSecondary,
                 ),
               ),
 
@@ -228,8 +229,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
 
               // Kartu putih form
               Container(
-                decoration: const BoxDecoration(
-                  color: AppColors.white,
+                decoration: BoxDecoration(
+                  color: palette.surface,
                   borderRadius: AppRadius.cardLarge,
                   boxShadow: AppShadows.card,
                 ),
@@ -242,10 +243,10 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                       label: 'Nama lengkap',
                       hintText: 'Masukkan nama lengkap',
                       controller: _nameController,
-                      prefixIcon: const Icon(
+                      prefixIcon: Icon(
                         LucideIcons.user,
                         size: 20,
-                        color: AppColors.sage,
+                        color: palette.textSecondary,
                       ),
                       errorText: _nameError,
                       onChanged: (_) {
@@ -263,10 +264,10 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                       hintText: 'Masukkan email kamu',
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
-                      prefixIcon: const Icon(
+                      prefixIcon: Icon(
                         LucideIcons.mail,
                         size: 20,
-                        color: AppColors.sage,
+                        color: palette.textSecondary,
                       ),
                       errorText: _emailError,
                       onChanged: (_) {
@@ -284,10 +285,10 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                       hintText: 'Minimal 8 karakter',
                       controller: _passwordController,
                       isPassword: true,
-                      prefixIcon: const Icon(
+                      prefixIcon: Icon(
                         LucideIcons.lock,
                         size: 20,
-                        color: AppColors.sage,
+                        color: palette.textSecondary,
                       ),
                       errorText: _passwordError,
                       onChanged: (_) {
@@ -305,10 +306,10 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                       hintText: 'Ulangi kata sandi',
                       controller: _confirmPasswordController,
                       isPassword: true,
-                      prefixIcon: const Icon(
+                      prefixIcon: Icon(
                         LucideIcons.lock,
                         size: 20,
-                        color: AppColors.sage,
+                        color: palette.textSecondary,
                       ),
                       errorText: _confirmPasswordError,
                       onChanged: (_) {
@@ -336,27 +337,27 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                         const SizedBox(width: 10),
                         Expanded(
                           child: RichText(
-                            text: const TextSpan(
+                            text: TextSpan(
                               style: TextStyle(
                                 fontFamily: 'Poppins',
                                 fontSize: 11,
-                                color: AppColors.textBody,
+                                color: palette.textBody,
                                 height: 1.4,
                               ),
                               children: [
-                                TextSpan(text: 'Aku menyetujui '),
+                                const TextSpan(text: 'Aku menyetujui '),
                                 TextSpan(
                                   text: 'Syarat & Ketentuan',
                                   style: TextStyle(
-                                    color: AppColors.maroon,
+                                    color: palette.danger,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
-                                TextSpan(text: ' dan '),
+                                const TextSpan(text: ' dan '),
                                 TextSpan(
                                   text: 'Kebijakan Privasi.',
                                   style: TextStyle(
-                                    color: AppColors.maroon,
+                                    color: palette.danger,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
@@ -371,9 +372,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                       const SizedBox(height: 6),
                       Text(
                         _termsError!,
-                        style: AppText.caption.copyWith(
-                          color: AppColors.maroon,
-                        ),
+                        style: AppText.caption.copyWith(color: palette.danger),
                       ),
                     ],
 
@@ -399,13 +398,13 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text(
+                    Text(
                       'Sudah punya akun? ',
                       style: TextStyle(
                         fontFamily: 'Poppins',
                         fontSize: 12,
                         fontWeight: FontWeight.w400,
-                        color: AppColors.textBody,
+                        color: palette.textBody,
                       ),
                     ),
                     GestureDetector(
@@ -416,13 +415,13 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                           context.go('/login');
                         }
                       },
-                      child: const Text(
+                      child: Text(
                         'Masuk',
                         style: TextStyle(
                           fontFamily: 'Poppins',
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.maroon,
+                          color: palette.danger,
                         ),
                       ),
                     ),
@@ -437,7 +436,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                 child: Text(
                   'Ide masak sehari-hari, dalam satu tempat.',
                   style: AppText.caption.copyWith(
-                    color: AppColors.sage,
+                    color: palette.textSecondary,
                     fontSize: 11,
                   ),
                 ),

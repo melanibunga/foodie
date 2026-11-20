@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../core/theme/app_colors.dart';
+import '../core/theme/app_palette.dart';
 import '../core/theme/app_text.dart';
 import '../pages/about_page.dart';
 import '../pages/cook_page.dart';
@@ -93,9 +93,10 @@ GoRouter createRouter({
       // /add kembali ke dalam shell (dengan bottom nav aktif) sesuai PRD §15.5
       ShellRoute(
         builder: (context, state, child) {
+          final palette = context.palette;
           return Scaffold(
             resizeToAvoidBottomInset: false,
-            backgroundColor: AppColors.bg,
+            backgroundColor: palette.bg,
             body: Stack(
               children: [
                 Positioned.fill(child: child),
@@ -191,49 +192,53 @@ GoRouter createRouter({
     ],
 
     // 404 Error handler
-    errorBuilder: (context, state) => Scaffold(
-      backgroundColor: AppColors.bg,
-      appBar: AppBar(
-        title: const Text('404 Not Found', style: AppText.pageTitle),
-      ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                Icons.error_outline,
-                size: 48,
-                color: AppColors.maroon,
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Halaman tidak ditemukan',
-                style: AppText.sectionTitle,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                state.uri.toString(),
-                style: AppText.caption.copyWith(color: AppColors.sage),
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.olive,
-                  foregroundColor: AppColors.white,
-                ),
-                onPressed: () => context.go('/home'),
-                child: const Text(
-                  'Kembali ke Beranda',
-                  style: AppText.buttonMd,
-                ),
-              ),
-            ],
+    errorBuilder: (context, state) {
+      final palette = context.palette;
+      return Scaffold(
+        backgroundColor: palette.bg,
+        appBar: AppBar(
+          title: Text(
+            '404 Not Found',
+            style: AppText.pageTitle.copyWith(color: palette.textStrong),
           ),
         ),
-      ),
-    ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.error_outline, size: 48, color: palette.danger),
+                const SizedBox(height: 16),
+                Text(
+                  'Halaman tidak ditemukan',
+                  style: AppText.sectionTitle.copyWith(
+                    color: palette.textStrong,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  state.uri.toString(),
+                  style: AppText.caption.copyWith(color: palette.textSecondary),
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: palette.actionBg,
+                    foregroundColor: palette.onAction,
+                  ),
+                  onPressed: () => context.go('/home'),
+                  child: const Text(
+                    'Kembali ke Beranda',
+                    style: AppText.buttonMd,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    },
   );
 }
 

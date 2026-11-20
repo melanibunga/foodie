@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_palette.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_text.dart';
 
-/// Chip filter & kategori resep sesuai PRD §5.3
+/// Chip filter & kategori resep sesuai PRD §5.3 dan §16
 class AppChip extends StatelessWidget {
   final String label;
   final bool selected;
@@ -21,11 +21,12 @@ class AppChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bgColor = selected ? AppColors.olive : AppColors.white;
-    final textColor = selected ? AppColors.white : AppColors.olive;
+    final palette = context.palette;
+    final bgColor = selected ? palette.chipSelected : palette.chip;
+    final textColor = selected ? palette.onChipSelected : palette.textStrong;
     final border = selected
-        ? Border.all(color: AppColors.olive)
-        : Border.all(color: AppColors.border);
+        ? Border.all(color: palette.chipSelected)
+        : Border.all(color: palette.border);
 
     return Material(
       color: Colors.transparent,

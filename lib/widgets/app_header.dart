@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
-import '../core/theme/app_colors.dart';
+import '../core/theme/app_palette.dart';
 import '../core/theme/app_radius.dart';
 import '../core/theme/app_text.dart';
 import '../providers/auth_provider.dart';
@@ -29,12 +29,12 @@ String greetingFor(DateTime time) {
   }
 }
 
-/// Header global Foodie.id (Home, Search, Add, Meal Plan, Nearby) sesuai PRD §5.1, §14.3, §14.4, §15.2.
-/// - Kiri: Foto profil bulat ≈ 48 (inisial olive di atas photoGray). Tap -> /profile
-/// - Tengah (kanan avatar): Greeting 2 baris (sapaan waktu 11/400 sage + nama depan 15/700 olive)
+/// Header global Foodie.id (Home, Search, Add, Meal Plan, Nearby) sesuai PRD §5.1, §14.3, §14.4, §15.2, §16.
+/// - Kiri: Foto profil bulat ≈ 48. Tap -> /profile
+/// - Tengah (kanan avatar): Greeting 2 baris (sapaan waktu textSecondary + nama depan textStrong)
 /// - Kanan:
-///   - Pill Favorit: bg olive, ikon heart terisi putih + angka putih, 59 × 38. Tap -> /favorites
-///   - Keranjang: ikon cart olive + angka olive (tanpa bg). Tap -> /groceries
+///   - Pill Favorit: bg actionBg (light) / accent (dark), ikon heart + angka onAction/onAccent. Tap -> /favorites
+///   - Keranjang: ikon cart + angka (tanpa bg). Tap -> /groceries
 class AppHeader extends ConsumerWidget {
   final bool includeTopPadding;
   final Color? backgroundColor;
@@ -49,13 +49,12 @@ class AppHeader extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final palette = context.palette;
     final user = ref.watch(currentUserProvider);
     final favCount = ref.watch(favoriteCountProvider);
     final cartCount = ref.watch(cartCountProvider);
 
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bg =
-        backgroundColor ?? (isDark ? AppColors.surfaceDark : AppColors.bg);
+    final bg = backgroundColor ?? palette.bg;
 
     final initials = user?.name.isNotEmpty == true
         ? user!.name
@@ -79,6 +78,10 @@ class AppHeader extends ConsumerWidget {
         ? (topInset > 0 ? (topInset + 16.0) : 45.0)
         : 0.0;
     final now = currentTime ?? DateTime.now();
+
+    final pillBg = palette.isDark ? palette.accent : palette.actionBg;
+    final pillFg = palette.isDark ? palette.onAccent : palette.onAction;
+    final cartFg = palette.isDark ? palette.textStrong : palette.actionBg;
 
     return Container(
       color: bg,
@@ -117,11 +120,11 @@ class AppHeader extends ConsumerWidget {
               children: [
                 Text(
                   greetingFor(now),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Poppins',
                     fontSize: 11.0,
                     fontWeight: FontWeight.w400,
-                    color: AppColors.sage,
+                    color: palette.textSecondary,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -129,11 +132,11 @@ class AppHeader extends ConsumerWidget {
                 const SizedBox(height: 1.0),
                 Text(
                   firstName,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Poppins',
                     fontSize: 15.0,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.olive,
+                    color: palette.textStrong,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -149,7 +152,7 @@ class AppHeader extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Pill Favorit (59 × 38, radius pill, bg olive, ikon heart terisi putih)
+              // Pill Favorit (59 × 38, radius pill)
               Semantics(
                 label: 'Favorit',
                 button: true,
@@ -158,24 +161,20 @@ class AppHeader extends ConsumerWidget {
                   child: Container(
                     width: 59.0,
                     height: 38.0,
-                    decoration: const BoxDecoration(
-                      color: AppColors.olive,
+                    decoration: BoxDecoration(
+                      color: pillBg,
                       borderRadius: AppRadius.pill,
                     ),
                     alignment: Alignment.center,
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(
-                          Icons.favorite,
-                          color: AppColors.white,
-                          size: 16.0,
-                        ),
+                        Icon(Icons.favorite, color: pillFg, size: 16.0),
                         const SizedBox(width: 4),
                         Text(
                           favCount.toString(),
                           style: AppText.caption.copyWith(
-                            color: AppColors.white,
+                            color: pillFg,
                             fontWeight: FontWeight.w600,
                             fontSize: 12.0,
                           ),
@@ -188,7 +187,7 @@ class AppHeader extends ConsumerWidget {
 
               const SizedBox(width: 14),
 
-              // Keranjang (ikon shoppingCart olive + angka olive)
+              // Keranjang (ikon shoppingCart + angka)
               Semantics(
                 label: 'Keranjang Belanja ($cartCount item)',
                 button: true,
@@ -202,16 +201,16 @@ class AppHeader extends ConsumerWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(
+                        Icon(
                           LucideIcons.shoppingCart,
-                          color: AppColors.olive,
+                          color: cartFg,
                           size: 20.0,
                         ),
                         const SizedBox(width: 4),
                         Text(
                           cartCount.toString(),
                           style: AppText.caption.copyWith(
-                            color: AppColors.olive,
+                            color: cartFg,
                             fontWeight: FontWeight.w600,
                             fontSize: 12.0,
                           ),

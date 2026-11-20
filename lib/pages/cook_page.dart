@@ -7,7 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
-import '../core/theme/app_colors.dart';
+import '../core/theme/app_palette.dart';
 import '../core/theme/app_shadows.dart';
 import '../core/theme/app_text.dart';
 import '../models/models.dart';
@@ -18,16 +18,16 @@ import '../providers/recipes_provider.dart';
 import '../providers/ui_helper.dart';
 import '../widgets/ui/app_button.dart';
 
-/// Halaman Mode Memasak (Start Cooking) sesuai PRD §7.1:
+/// Halaman Mode Memasak (Start Cooking) sesuai PRD §7.1, §16:
 /// - Layar penuh, tanpa AppBottomNav dan AppHeader.
-/// - Top bar tutup (x) + "Langkah N dari M" + progress bar segmen amber.
+/// - Top bar tutup (x) + "Langkah N dari M" + progress bar segmen accent.
 /// - Konten besar dalam PageView (swipe kiri-kanan):
-///   - Lingkaran amber bernomor (64x64, teks olive tua 28/700).
-///   - Judul langkah (24/700 olive).
-///   - Deskripsi langkah (16/400 olive/body, line height 26).
+///   - Lingkaran accent bernomor (64x64, teks onAccent 28/700).
+///   - Judul langkah (24/700 textStrong).
+///   - Deskripsi langkah (16/400 textBody, line height 26).
 ///   - Chip timer dengan countdown (Timer.periodic) jika durationMin ada.
-/// - Tombol navigasi bawah: "Sebelumnya" (outline), "Berikutnya" (olive), "Selesai" (amber di langkah terakhir).
-/// - Layar selesai: ikon centang amber, "Selamat, masakanmu siap! 🎉", tombol "Kembali ke Beranda",
+/// - Tombol navigasi bawah: "Sebelumnya" (outline), "Berikutnya" (primary), "Selesai" (accent di langkah terakhir).
+/// - Layar selesai: ikon centang accent, "Selamat, masakanmu siap! 🎉", tombol "Kembali ke Beranda",
 ///   dan counter user.cooked +1 (sekali per sesi).
 /// - Layar dijaga tetap menyala dengan wakelock_plus selama halaman aktif.
 class CookPage extends ConsumerStatefulWidget {
@@ -164,10 +164,11 @@ class _CookPageState extends ConsumerState<CookPage> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.palette;
     final recipeAsync = ref.watch(recipeDetailProvider(widget.recipeId));
 
     return Scaffold(
-      backgroundColor: AppColors.bg,
+      backgroundColor: palette.bg,
       body: recipeAsync.when(
         data: (recipe) {
           if (recipe == null) {
@@ -178,24 +179,27 @@ class _CookPageState extends ConsumerState<CookPage> {
           }
           return _buildCookingContent(context, recipe);
         },
-        loading: () => const Center(
-          child: CircularProgressIndicator(color: AppColors.olive),
-        ),
+        loading: () =>
+            Center(child: CircularProgressIndicator(color: palette.actionBg)),
         error: (err, stack) => _buildError(context),
       ),
     );
   }
 
   Widget _buildNotFound(BuildContext context) {
+    final palette = context.palette;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(LucideIcons.chefHat, size: 64.0, color: AppColors.sage),
+            Icon(LucideIcons.chefHat, size: 64.0, color: palette.textSecondary),
             const SizedBox(height: 16.0),
-            Text('Resep tidak ditemukan', style: AppText.sectionTitle),
+            Text(
+              'Resep tidak ditemukan',
+              style: AppText.sectionTitle.copyWith(color: palette.textStrong),
+            ),
             const SizedBox(height: 24.0),
             AppButton(
               label: 'Kembali',
@@ -209,19 +213,19 @@ class _CookPageState extends ConsumerState<CookPage> {
   }
 
   Widget _buildError(BuildContext context) {
+    final palette = context.palette;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
-              LucideIcons.alertTriangle,
-              size: 48.0,
-              color: AppColors.maroon,
-            ),
+            Icon(LucideIcons.alertTriangle, size: 48.0, color: palette.danger),
             const SizedBox(height: 16.0),
-            Text('Gagal memuat resep', style: AppText.sectionTitle),
+            Text(
+              'Gagal memuat resep',
+              style: AppText.sectionTitle.copyWith(color: palette.textStrong),
+            ),
             const SizedBox(height: 24.0),
             AppButton(
               label: 'Coba lagi',
@@ -236,6 +240,7 @@ class _CookPageState extends ConsumerState<CookPage> {
   }
 
   Widget _buildCookingContent(BuildContext context, Recipe recipe) {
+    final palette = context.palette;
     final steps = recipe.steps;
     final totalSteps = steps.isNotEmpty ? steps.length : 1;
     final topPadding = math.max(MediaQuery.paddingOf(context).top, 24.0);
@@ -266,15 +271,15 @@ class _CookPageState extends ConsumerState<CookPage> {
                         width: 40.0,
                         height: 40.0,
                         decoration: BoxDecoration(
-                          color: AppColors.white,
+                          color: palette.surface,
                           shape: BoxShape.circle,
-                          border: Border.all(color: AppColors.border),
+                          border: Border.all(color: palette.border),
                         ),
                         alignment: Alignment.center,
-                        child: const Icon(
+                        child: Icon(
                           LucideIcons.x,
                           size: 20.0,
-                          color: AppColors.olive,
+                          color: palette.textStrong,
                         ),
                       ),
                     ),
@@ -283,11 +288,11 @@ class _CookPageState extends ConsumerState<CookPage> {
                   // Teks "Langkah N dari M"
                   Text(
                     'Langkah ${_currentIndex + 1} dari $totalSteps',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Poppins',
                       fontSize: 14.0,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.sage,
+                      color: palette.textSecondary,
                     ),
                   ),
 
@@ -298,7 +303,7 @@ class _CookPageState extends ConsumerState<CookPage> {
 
               const SizedBox(height: 12.0),
 
-              // Progress bar segmen amber
+              // Progress bar segmen accent
               Row(
                 children: List.generate(totalSteps, (i) {
                   final isFilled = i <= _currentIndex;
@@ -309,7 +314,7 @@ class _CookPageState extends ConsumerState<CookPage> {
                       ),
                       height: 4.0,
                       decoration: BoxDecoration(
-                        color: isFilled ? AppColors.amber : AppColors.chipGray,
+                        color: isFilled ? palette.accent : palette.chip,
                         borderRadius: BorderRadius.circular(2.0),
                       ),
                     ),
@@ -398,6 +403,7 @@ class _CookPageState extends ConsumerState<CookPage> {
   }
 
   Widget _buildStepPage(BuildContext context, int index, RecipeStep step) {
+    final palette = context.palette;
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 25.0, vertical: 20.0),
       child: Column(
@@ -405,37 +411,37 @@ class _CookPageState extends ConsumerState<CookPage> {
         children: [
           const SizedBox(height: 20.0),
 
-          // Lingkaran amber besar (64) berisi nomor langkah
+          // Lingkaran accent besar (64) berisi nomor langkah
           Container(
             width: 64.0,
             height: 64.0,
-            decoration: const BoxDecoration(
-              color: AppColors.amber,
+            decoration: BoxDecoration(
+              color: palette.accent,
               shape: BoxShape.circle,
             ),
             alignment: Alignment.center,
             child: Text(
               '${index + 1}',
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Poppins',
                 fontSize: 28.0,
                 fontWeight: FontWeight.w700,
-                color: AppColors.olive,
+                color: palette.onAccent,
               ),
             ),
           ),
 
           const SizedBox(height: 24.0),
 
-          // Judul langkah (24/700 olive)
+          // Judul langkah (24/700 textStrong)
           Text(
             step.title,
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Poppins',
               fontSize: 24.0,
               fontWeight: FontWeight.w700,
-              color: AppColors.olive,
+              color: palette.textStrong,
             ),
           ),
 
@@ -445,11 +451,11 @@ class _CookPageState extends ConsumerState<CookPage> {
           Text(
             step.description,
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Poppins',
               fontSize: 16.0,
               fontWeight: FontWeight.w400,
-              color: AppColors.textBody,
+              color: palette.textBody,
               height: 26.0 / 16.0,
             ),
           ),
@@ -457,7 +463,7 @@ class _CookPageState extends ConsumerState<CookPage> {
           // Chip timer bila step.durationMin ada
           if (step.durationMin != null && step.durationMin! > 0) ...[
             const SizedBox(height: 28.0),
-            _buildTimerChip(index, step.durationMin!),
+            _buildTimerChip(context, index, step.durationMin!),
           ],
 
           const SizedBox(height: 32.0),
@@ -466,7 +472,12 @@ class _CookPageState extends ConsumerState<CookPage> {
     );
   }
 
-  Widget _buildTimerChip(int stepIndex, int totalMinutes) {
+  Widget _buildTimerChip(
+    BuildContext context,
+    int stepIndex,
+    int totalMinutes,
+  ) {
+    final palette = context.palette;
     final remainingSeconds =
         _stepRemainingSeconds[stepIndex] ?? (totalMinutes * 60);
     final isRunning = _stepTimerRunning[stepIndex] ?? false;
@@ -479,24 +490,24 @@ class _CookPageState extends ConsumerState<CookPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
       decoration: BoxDecoration(
-        color: AppColors.summaryBg,
+        color: palette.summaryBg,
         borderRadius: BorderRadius.circular(20.0),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: palette.border),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(LucideIcons.timer, size: 18.0, color: AppColors.olive),
+          Icon(LucideIcons.timer, size: 18.0, color: palette.textStrong),
           const SizedBox(width: 8.0),
           Text(
             isRunning || remainingSeconds < (totalMinutes * 60)
                 ? '⏱ $formattedTime'
                 : '⏱ $totalMinutes menit',
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Poppins',
               fontSize: 14.0,
               fontWeight: FontWeight.w600,
-              color: AppColors.olive,
+              color: palette.textStrong,
             ),
           ),
           const SizedBox(width: 14.0),
@@ -509,16 +520,16 @@ class _CookPageState extends ConsumerState<CookPage> {
                   vertical: 5.0,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.olive,
+                  color: palette.actionBg,
                   borderRadius: BorderRadius.circular(8.0),
                 ),
-                child: const Text(
+                child: Text(
                   'Ulangi',
                   style: TextStyle(
                     fontFamily: 'Poppins',
                     fontSize: 12.0,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.white,
+                    color: palette.onAction,
                   ),
                 ),
               ),
@@ -532,16 +543,16 @@ class _CookPageState extends ConsumerState<CookPage> {
                   vertical: 5.0,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.maroon,
+                  color: palette.danger,
                   borderRadius: BorderRadius.circular(8.0),
                 ),
-                child: const Text(
+                child: Text(
                   'Jeda',
                   style: TextStyle(
                     fontFamily: 'Poppins',
                     fontSize: 12.0,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.white,
+                    color: palette.onDanger,
                   ),
                 ),
               ),
@@ -555,16 +566,16 @@ class _CookPageState extends ConsumerState<CookPage> {
                   vertical: 5.0,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.amber,
+                  color: palette.accent,
                   borderRadius: BorderRadius.circular(8.0),
                 ),
-                child: const Text(
+                child: Text(
                   'Mulai',
                   style: TextStyle(
                     fontFamily: 'Poppins',
                     fontSize: 12.0,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.olive,
+                    color: palette.onAccent,
                   ),
                 ),
               ),
@@ -576,6 +587,7 @@ class _CookPageState extends ConsumerState<CookPage> {
   }
 
   Widget _buildCompletionScreen(BuildContext context, Recipe recipe) {
+    final palette = context.palette;
     final bottomPadding = math.max(MediaQuery.paddingOf(context).bottom, 24.0);
 
     return SafeArea(
@@ -590,33 +602,33 @@ class _CookPageState extends ConsumerState<CookPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Ikon centang amber
+              // Ikon centang accent
               Container(
                 width: 80.0,
                 height: 80.0,
-                decoration: const BoxDecoration(
-                  color: AppColors.amber,
+                decoration: BoxDecoration(
+                  color: palette.accent,
                   shape: BoxShape.circle,
                 ),
                 alignment: Alignment.center,
-                child: const Icon(
+                child: Icon(
                   LucideIcons.check,
                   size: 42.0,
-                  color: AppColors.olive,
+                  color: palette.onAccent,
                 ),
               ),
 
               const SizedBox(height: 20.0),
 
               // Judul selesai
-              const Text(
+              Text(
                 'Selamat, masakanmu siap! 🎉',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontFamily: 'Poppins',
                   fontSize: 22.0,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.olive,
+                  color: palette.textStrong,
                 ),
               ),
 
@@ -626,11 +638,11 @@ class _CookPageState extends ConsumerState<CookPage> {
               Text(
                 'Kamu baru saja menyelesaikan resep ${recipe.title}. Selamat menikmati hasil masakanmu!',
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Poppins',
                   fontSize: 13.0,
                   fontWeight: FontWeight.w400,
-                  color: AppColors.sage,
+                  color: palette.textSecondary,
                   height: 1.4,
                 ),
               ),
@@ -645,10 +657,10 @@ class _CookPageState extends ConsumerState<CookPage> {
                   vertical: 16.0,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.white,
+                  color: palette.surface,
                   borderRadius: BorderRadius.circular(16.0),
                   boxShadow: AppShadows.card,
-                  border: Border.all(color: AppColors.border),
+                  border: Border.all(color: palette.border),
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -656,11 +668,11 @@ class _CookPageState extends ConsumerState<CookPage> {
                     Text(
                       'Beri rating untuk ${recipe.title}',
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Poppins',
                         fontSize: 13.0,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.olive,
+                        color: palette.textStrong,
                       ),
                     ),
                     const SizedBox(height: 10.0),
@@ -690,8 +702,8 @@ class _CookPageState extends ConsumerState<CookPage> {
                               child: Icon(
                                 isFilled ? Icons.star : Icons.star_border,
                                 color: isFilled
-                                    ? AppColors.amber
-                                    : AppColors.sage,
+                                    ? palette.accent
+                                    : palette.textSecondary,
                                 size: 32.0,
                               ),
                             ),
@@ -709,15 +721,15 @@ class _CookPageState extends ConsumerState<CookPage> {
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: _ratingSubmitted
-                              ? AppColors.chipGray
+                              ? palette.chip
                               : (_selectedRating > 0
-                                    ? AppColors.olive
-                                    : AppColors.chipGray),
+                                    ? palette.actionBg
+                                    : palette.chip),
                           foregroundColor: _ratingSubmitted
-                              ? AppColors.sage
+                              ? palette.textSecondary
                               : (_selectedRating > 0
-                                    ? AppColors.white
-                                    : AppColors.sage),
+                                    ? palette.onAction
+                                    : palette.textSecondary),
                           elevation: 0,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10.0),
@@ -757,13 +769,13 @@ class _CookPageState extends ConsumerState<CookPage> {
                         onTap: () => context.go('/home'),
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 8.0),
-                          child: const Text(
+                          child: Text(
                             'Lewati',
                             style: TextStyle(
                               fontFamily: 'Poppins',
                               fontSize: 13.0,
                               fontWeight: FontWeight.w500,
-                              color: AppColors.sage,
+                              color: palette.textSecondary,
                             ),
                           ),
                         ),

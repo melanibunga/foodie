@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../app/app_shell.dart';
-import '../core/theme/app_colors.dart';
+import '../core/theme/app_palette.dart';
 import '../core/theme/app_radius.dart';
 import '../core/theme/app_shadows.dart';
 import '../core/theme/app_text.dart';
@@ -86,9 +86,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   @override
   Widget build(BuildContext context) {
     final topPadding = AppShell.topChrome(context);
+    final palette = context.palette;
 
     return Scaffold(
-      backgroundColor: AppColors.bg,
+      backgroundColor: palette.bg,
       body: SafeArea(
         top: false,
         bottom: true,
@@ -109,10 +110,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     label: 'Kembali',
                     button: true,
                     child: IconButton(
-                      icon: const Icon(
+                      icon: Icon(
                         LucideIcons.arrowLeft,
                         size: 24,
-                        color: AppColors.textTitle,
+                        color: palette.textStrong,
                       ),
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(
@@ -129,13 +130,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  const Text(
+                  Text(
                     'Login',
                     style: TextStyle(
                       fontFamily: 'Poppins',
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
-                      color: AppColors.textTitle,
+                      color: palette.textStrong,
                     ),
                   ),
                 ],
@@ -150,14 +151,14 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   vertical: 4,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.amberSoft,
+                  color: palette.accentSoft,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Text(
+                child: Text(
                   'MASAK LEBIH MUDAH',
                   style: TextStyle(
                     fontFamily: 'Poppins',
-                    color: AppColors.olive,
+                    color: palette.onAccentSoft,
                     fontSize: 9,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0.5,
@@ -168,13 +169,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               const SizedBox(height: 12),
 
               // H1 2 baris: "Selamat / datang kembali."
-              const Text(
+              Text(
                 'Selamat\ndatang kembali.',
                 style: TextStyle(
                   fontFamily: 'Poppins',
                   fontSize: 32,
                   fontWeight: FontWeight.w800,
-                  color: AppColors.olive,
+                  color: palette.textStrong,
                   height: 1.2,
                 ),
               ),
@@ -182,13 +183,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               const SizedBox(height: 8),
 
               // Sub-judul
-              const Text(
+              Text(
                 'Masuk dan lanjutkan cerita dapurmu.',
                 style: TextStyle(
                   fontFamily: 'Poppins',
                   fontSize: 13,
                   fontWeight: FontWeight.w400,
-                  color: AppColors.sage,
+                  color: palette.textSecondary,
                 ),
               ),
 
@@ -196,8 +197,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
               // Kartu putih form
               Container(
-                decoration: const BoxDecoration(
-                  color: AppColors.white,
+                decoration: BoxDecoration(
+                  color: palette.surface,
                   borderRadius: AppRadius.cardLarge,
                   boxShadow: AppShadows.card,
                 ),
@@ -211,10 +212,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       hintText: 'Masukkan email kamu',
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
-                      prefixIcon: const Icon(
+                      prefixIcon: Icon(
                         LucideIcons.mail,
                         size: 20,
-                        color: AppColors.sage,
+                        color: palette.textSecondary,
                       ),
                       errorText: _emailError,
                       onChanged: (_) {
@@ -232,10 +233,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       hintText: 'Masukkan kata sandi',
                       controller: _passwordController,
                       isPassword: true,
-                      prefixIcon: const Icon(
+                      prefixIcon: Icon(
                         LucideIcons.lock,
                         size: 20,
-                        color: AppColors.sage,
+                        color: palette.textSecondary,
                       ),
                       errorText: _passwordError,
                       onChanged: (_) {
@@ -249,33 +250,44 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
                     // Baris: "Ingat saya" & "Lupa kata sandi?"
                     Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        AppCheckbox(
-                          value: _rememberMe,
-                          onChanged: (val) {
-                            setState(() => _rememberMe = val);
-                          },
-                        ),
-                        const SizedBox(width: 8),
-                        const Text(
-                          'Ingat saya',
-                          style: TextStyle(
-                            fontFamily: 'Poppins',
-                            fontSize: 12,
-                            fontWeight: FontWeight.w400,
-                            color: AppColors.textBody,
+                        Flexible(
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              AppCheckbox(
+                                value: _rememberMe,
+                                onChanged: (val) {
+                                  setState(() => _rememberMe = val);
+                                },
+                              ),
+                              const SizedBox(width: 8),
+                              Flexible(
+                                child: Text(
+                                  'Ingat saya',
+                                  style: TextStyle(
+                                    fontFamily: 'Poppins',
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w400,
+                                    color: palette.textBody,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        const Spacer(),
+                        const SizedBox(width: 8),
                         GestureDetector(
                           onTap: () => context.push('/forgot'),
-                          child: const Text(
+                          child: Text(
                             'Lupa kata sandi?',
                             style: TextStyle(
                               fontFamily: 'Poppins',
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
-                              color: AppColors.maroon,
+                              color: palette.danger,
                             ),
                           ),
                         ),
@@ -304,24 +316,24 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text(
+                    Text(
                       'Belum punya akun? ',
                       style: TextStyle(
                         fontFamily: 'Poppins',
                         fontSize: 12,
                         fontWeight: FontWeight.w400,
-                        color: AppColors.textBody,
+                        color: palette.textBody,
                       ),
                     ),
                     GestureDetector(
                       onTap: () => context.push('/register'),
-                      child: const Text(
+                      child: Text(
                         'Daftar',
                         style: TextStyle(
                           fontFamily: 'Poppins',
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.maroon,
+                          color: palette.danger,
                         ),
                       ),
                     ),
@@ -336,7 +348,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 child: Text(
                   'Ide masak sehari-hari, dalam satu tempat.',
                   style: AppText.caption.copyWith(
-                    color: AppColors.sage,
+                    color: palette.textSecondary,
                     fontSize: 11,
                   ),
                 ),

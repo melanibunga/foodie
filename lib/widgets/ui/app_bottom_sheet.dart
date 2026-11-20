@@ -3,7 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../app/app_shell.dart';
-import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_palette.dart';
 import '../../core/theme/app_radius.dart';
 
 /// Helper fungsi untuk membaca inset keyboard langsung dari [View] (PRD §15.4)
@@ -32,7 +32,7 @@ double systemBottomInset(BuildContext context) {
   }
 }
 
-/// Helper menampilkan Bottom Sheet standar Foodie.id sesuai PRD §5.3, §7.2–§7.4, §14.2, §15.4
+/// Helper menampilkan Bottom Sheet standar Foodie.id sesuai PRD §5.3, §7.2–§7.4, §14.2, §15.4, §16
 Future<T?> showAppBottomSheet<T>({
   required BuildContext context,
   required Widget Function(BuildContext) builder,
@@ -52,10 +52,10 @@ Future<T?> showAppBottomSheet<T>({
     isScrollControlled: isScrollControlled,
     useRootNavigator: useRootNavigator,
     backgroundColor: Colors.transparent,
-    barrierColor: AppColors.dialogBarrier,
+    barrierColor: context.palette.dialogBarrier,
     elevation: 0,
     builder: (sheetContext) {
-      final isDark = Theme.of(sheetContext).brightness == Brightness.dark;
+      final palette = sheetContext.palette;
       final mediaQuery = MediaQuery.of(sheetContext);
       final screenHeight = mediaQuery.size.height;
       final topChrome = AppShell.topChrome(sheetContext);
@@ -85,7 +85,7 @@ Future<T?> showAppBottomSheet<T>({
             child: Container(
               key: const Key('app_bottom_sheet_container'),
               decoration: BoxDecoration(
-                color: isDark ? AppColors.surfaceDark : AppColors.white,
+                color: palette.surface,
                 borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(24.0),
                 ),
@@ -106,9 +106,7 @@ Future<T?> showAppBottomSheet<T>({
                             width: 40.0,
                             height: 4.0,
                             decoration: BoxDecoration(
-                              color: isDark
-                                  ? AppColors.borderDark
-                                  : AppColors.chipGray,
+                              color: palette.divider,
                               borderRadius: AppRadius.pill,
                             ),
                           ),

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_palette.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_text.dart';
 
-/// Gradien gelap di bagian bawah foto agar teks putih terbaca jelas di atas abu-abu (PRD §10)
+/// Gradien gelap di bagian bawah foto agar teks putih terbaca jelas di atas abu-abu (PRD §10 dan §16)
 class PhotoDarkGradient extends StatelessWidget {
   const PhotoDarkGradient({super.key});
 
@@ -18,7 +18,7 @@ class PhotoDarkGradient extends StatelessWidget {
           stops: [0.5, 1.0],
           colors: [
             Colors.transparent,
-            AppColors.photoGradient, // black @ 35%
+            Color(0x59000000), // black @ 35%
           ],
         ),
       ),
@@ -26,7 +26,7 @@ class PhotoDarkGradient extends StatelessWidget {
   }
 }
 
-/// Tombol hati favorit di pojok kanan atas kartu resep (PRD §5.4)
+/// Tombol hati favorit di pojok kanan atas kartu resep (PRD §5.4 dan §16)
 class HeartButton extends StatelessWidget {
   final bool isFavorite;
   final VoidCallback onToggle;
@@ -41,6 +41,12 @@ class HeartButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.palette;
+    final bgColor = palette.heartButtonBg;
+    final iconColor = isFavorite
+        ? palette.danger
+        : (palette.isDark ? palette.textStrong : palette.actionBg);
+
     return Semantics(
       label: isFavorite ? 'Hapus dari favorit' : 'Tambah ke favorit',
       button: true,
@@ -49,13 +55,13 @@ class HeartButton extends StatelessWidget {
         child: Container(
           width: size,
           height: size,
-          decoration: const BoxDecoration(
-            color: AppColors.overlayWhite80, // Putih semi-transparan (80%)
+          decoration: BoxDecoration(
+            color: bgColor,
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: AppColors.shadowSubtle,
-                offset: Offset(0, 1),
+                color: palette.shadowColor,
+                offset: const Offset(0, 1),
                 blurRadius: 4,
               ),
             ],
@@ -63,7 +69,7 @@ class HeartButton extends StatelessWidget {
           alignment: Alignment.center,
           child: Icon(
             isFavorite ? Icons.favorite : Icons.favorite_border,
-            color: isFavorite ? AppColors.maroon : AppColors.olive,
+            color: iconColor,
             size: size * 0.56,
           ),
         ),
@@ -72,7 +78,7 @@ class HeartButton extends StatelessWidget {
   }
 }
 
-/// Chip rating bintang amber + angka rating putih di pojok kiri bawah kartu resep (PRD §5.4 B)
+/// Chip rating bintang amber + angka rating putih di pojok kiri bawah kartu resep (PRD §5.4 B dan §16)
 class RatingChip extends StatelessWidget {
   final double rating;
 
@@ -80,21 +86,23 @@ class RatingChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.palette;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-      decoration: const BoxDecoration(
-        color: AppColors.overlayDark60, // Pill gelap semi-transparan (60%)
+      decoration: BoxDecoration(
+        color: palette.overlayScrim,
         borderRadius: AppRadius.pill,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.star, color: AppColors.amber, size: 12),
+          Icon(Icons.star, color: palette.accent, size: 12),
           const SizedBox(width: 4),
           Text(
             rating.toStringAsFixed(1),
             style: AppText.caption.copyWith(
-              color: AppColors.white,
+              color: palette.onOverlay,
               fontWeight: FontWeight.w600,
               fontSize: 10.0,
             ),
@@ -105,7 +113,7 @@ class RatingChip extends StatelessWidget {
   }
 }
 
-/// Chip waktu masak di pojok kiri bawah foto kartu featured (PRD §5.4 A)
+/// Chip waktu masak di pojok kiri bawah foto kartu featured (PRD §5.4 A dan §16)
 class TimeChip extends StatelessWidget {
   final int timeMin;
 
@@ -113,25 +121,23 @@ class TimeChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.palette;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-      decoration: const BoxDecoration(
-        color: AppColors.overlayDark60,
+      decoration: BoxDecoration(
+        color: palette.overlayScrim,
         borderRadius: AppRadius.pill,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(
-            Icons.access_time_filled,
-            color: AppColors.maroon,
-            size: 13,
-          ),
+          Icon(Icons.access_time_filled, color: palette.danger, size: 13),
           const SizedBox(width: 4),
           Text(
             '$timeMin Menit',
             style: AppText.caption.copyWith(
-              color: AppColors.white,
+              color: palette.onOverlay,
               fontWeight: FontWeight.w700,
               fontSize: 11.0,
             ),

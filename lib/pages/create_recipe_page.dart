@@ -7,7 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
-import '../core/theme/app_colors.dart';
+import '../core/theme/app_palette.dart';
 import '../core/theme/app_radius.dart';
 import '../core/theme/app_shadows.dart';
 import '../core/theme/app_text.dart';
@@ -24,13 +24,13 @@ import '../widgets/ui/sticky_bottom_bar.dart';
 /// Halaman Create Recipe (/add) sesuai PRD §6.6, §7.3, §7.4, §7.5, §10 dan design/add.jpg:
 /// - AppHeader global di atas.
 /// - Baris judul: "<  Create Recipe" (kembali ke /home).
-/// - "Recipe Title" + input abu fieldGray (#D6D6D6).
+/// - "Recipe Title" + input abu fieldAdd (#D6D6D6).
 /// - Dua kolom:
 ///   - Kiri: "Add Cover Image" (image_picker, max 1MB, simpan data URI JPEG).
 ///   - Kanan: "Ingredients" (kotak abu lingkaran sage +; tap -> sheet bahan).
 /// - "Serving Size": chip dropdown (ikon users + angka + chevron).
 /// - "Cooking Instructions": kotak abu (tap -> sheet langkah).
-/// - Tombol olive pill "DONE" (uppercase, 362x55) sticky di bawah.
+/// - Tombol actionBg pill "DONE" (uppercase, 362x55) sticky di bawah.
 /// - Validasi: judul, >=1 bahan, >=1 langkah (pesan error di bawah field).
 /// - Submit -> simpan ke recipesProvider -> dialog sukses -> /my-recipes.
 class CreateRecipePage extends ConsumerStatefulWidget {
@@ -91,6 +91,7 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
   }
 
   void _openServingSizePicker() {
+    final palette = context.palette;
     showAppBottomSheet(
       context: context,
       builder: (sheetContext) {
@@ -100,7 +101,10 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Pilih Jumlah Porsi', style: AppText.sectionTitle),
+              Text(
+                'Pilih Jumlah Porsi',
+                style: AppText.sectionTitle.copyWith(color: palette.textStrong),
+              ),
               const SizedBox(height: 16.0),
               Wrap(
                 spacing: 10.0,
@@ -120,9 +124,7 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                       width: 52.0,
                       height: 44.0,
                       decoration: BoxDecoration(
-                        color: isSelected
-                            ? AppColors.olive
-                            : AppColors.chipGray,
+                        color: isSelected ? palette.actionBg : palette.chip,
                         borderRadius: BorderRadius.circular(10.0),
                       ),
                       alignment: Alignment.center,
@@ -132,7 +134,9 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                           fontFamily: 'Poppins',
                           fontSize: 14.0,
                           fontWeight: FontWeight.w700,
-                          color: isSelected ? AppColors.white : AppColors.olive,
+                          color: isSelected
+                              ? palette.onAction
+                              : palette.textStrong,
                         ),
                       ),
                     ),
@@ -148,6 +152,7 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
   }
 
   void _openIngredientsSheet() {
+    final palette = context.palette;
     FocusScope.of(context).unfocus();
     _titleFocusNode.unfocus();
     final tempIngredients = List<Ingredient>.from(_ingredients);
@@ -189,9 +194,14 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Tambah Bahan', style: AppText.sectionTitle),
+                      Text(
+                        'Tambah Bahan',
+                        style: AppText.sectionTitle.copyWith(
+                          color: palette.textStrong,
+                        ),
+                      ),
                       IconButton(
-                        icon: const Icon(LucideIcons.x, color: AppColors.olive),
+                        icon: Icon(LucideIcons.x, color: palette.textStrong),
                         onPressed: () => Navigator.of(sheetContext).pop(),
                       ),
                     ],
@@ -199,12 +209,17 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                   const SizedBox(height: 12.0),
 
                   // Input Nama Bahan
-                  const Text('Nama Bahan', style: AppText.formLabel),
+                  Text(
+                    'Nama Bahan',
+                    style: AppText.formLabel.copyWith(
+                      color: palette.textStrong,
+                    ),
+                  ),
                   const SizedBox(height: 6.0),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14.0),
                     decoration: BoxDecoration(
-                      color: AppColors.chipGray,
+                      color: palette.chip,
                       borderRadius: BorderRadius.circular(10.0),
                     ),
                     child: TextField(
@@ -213,9 +228,14 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                         vertical: 32.0,
                         horizontal: 20.0,
                       ),
-                      style: AppText.body,
-                      decoration: const InputDecoration(
+                      style: AppText.body.copyWith(color: palette.textBody),
+                      decoration: InputDecoration(
                         hintText: 'Mis. Bawang merah',
+                        hintStyle: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 13.0,
+                          color: palette.textSecondary,
+                        ),
                         border: InputBorder.none,
                         isDense: true,
                       ),
@@ -231,14 +251,19 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('Jumlah', style: AppText.formLabel),
+                            Text(
+                              'Jumlah',
+                              style: AppText.formLabel.copyWith(
+                                color: palette.textStrong,
+                              ),
+                            ),
                             const SizedBox(height: 6.0),
                             Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 14.0,
                               ),
                               decoration: BoxDecoration(
-                                color: AppColors.chipGray,
+                                color: palette.chip,
                                 borderRadius: BorderRadius.circular(10.0),
                               ),
                               child: TextField(
@@ -247,9 +272,16 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                                   vertical: 32.0,
                                   horizontal: 20.0,
                                 ),
-                                style: AppText.body,
-                                decoration: const InputDecoration(
+                                style: AppText.body.copyWith(
+                                  color: palette.textBody,
+                                ),
+                                decoration: InputDecoration(
                                   hintText: 'Mis. 4',
+                                  hintStyle: TextStyle(
+                                    fontFamily: 'Poppins',
+                                    fontSize: 13.0,
+                                    color: palette.textSecondary,
+                                  ),
                                   border: InputBorder.none,
                                   isDense: true,
                                 ),
@@ -264,24 +296,35 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('Satuan', style: AppText.formLabel),
+                            Text(
+                              'Satuan',
+                              style: AppText.formLabel.copyWith(
+                                color: palette.textStrong,
+                              ),
+                            ),
                             const SizedBox(height: 6.0),
                             Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 12.0,
                               ),
                               decoration: BoxDecoration(
-                                color: AppColors.chipGray,
+                                color: palette.chip,
                                 borderRadius: BorderRadius.circular(10.0),
                               ),
                               child: DropdownButtonHideUnderline(
                                 child: DropdownButton<String>(
                                   value: selectedUnit,
+                                  dropdownColor: palette.surface,
                                   isExpanded: true,
                                   items: units.map((u) {
                                     return DropdownMenuItem(
                                       value: u,
-                                      child: Text(u, style: AppText.body),
+                                      child: Text(
+                                        u,
+                                        style: AppText.body.copyWith(
+                                          color: palette.textBody,
+                                        ),
+                                      ),
                                     );
                                   }).toList(),
                                   onChanged: (val) {
@@ -300,15 +343,17 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                   const SizedBox(height: 12.0),
 
                   // Input Estimasi Harga
-                  const Text(
+                  Text(
                     'Estimasi Harga (Rp, opsional)',
-                    style: AppText.formLabel,
+                    style: AppText.formLabel.copyWith(
+                      color: palette.textStrong,
+                    ),
                   ),
                   const SizedBox(height: 6.0),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14.0),
                     decoration: BoxDecoration(
-                      color: AppColors.chipGray,
+                      color: palette.chip,
                       borderRadius: BorderRadius.circular(10.0),
                     ),
                     child: TextField(
@@ -319,9 +364,14 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                         vertical: 32.0,
                         horizontal: 20.0,
                       ),
-                      style: AppText.body,
-                      decoration: const InputDecoration(
+                      style: AppText.body.copyWith(color: palette.textBody),
+                      decoration: InputDecoration(
                         hintText: '0',
+                        hintStyle: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 13.0,
+                          color: palette.textSecondary,
+                        ),
                         border: InputBorder.none,
                         isDense: true,
                       ),
@@ -335,8 +385,8 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                     height: 44.0,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.amber,
-                        foregroundColor: AppColors.olive,
+                        backgroundColor: palette.accent,
+                        foregroundColor: palette.onAccent,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10.0),
@@ -364,13 +414,13 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                           priceController.clear();
                         });
                       },
-                      child: const Text(
+                      child: Text(
                         '+ Tambah ke Daftar',
                         style: TextStyle(
                           fontFamily: 'Poppins',
                           fontSize: 13.0,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.olive,
+                          color: palette.onAccent,
                         ),
                       ),
                     ),
@@ -380,7 +430,12 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
 
                   // Daftar bahan yang sudah ditambahkan
                   if (tempIngredients.isNotEmpty) ...[
-                    const Text('Bahan Terdaftar:', style: AppText.formLabel),
+                    Text(
+                      'Bahan Terdaftar:',
+                      style: AppText.formLabel.copyWith(
+                        color: palette.textStrong,
+                      ),
+                    ),
                     const SizedBox(height: 8.0),
                     ...tempIngredients.asMap().entries.map((entry) {
                       final idx = entry.key;
@@ -393,20 +448,20 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                           vertical: 8.0,
                         ),
                         decoration: BoxDecoration(
-                          color: AppColors.white,
+                          color: palette.surface,
                           borderRadius: BorderRadius.circular(8.0),
-                          border: Border.all(color: AppColors.border),
+                          border: Border.all(color: palette.border),
                         ),
                         child: Row(
                           children: [
                             Expanded(
                               child: Text(
                                 '${ing.name} (${ing.qty} ${ing.unit ?? ''})',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontFamily: 'Poppins',
                                   fontSize: 13.0,
                                   fontWeight: FontWeight.w600,
-                                  color: AppColors.olive,
+                                  color: palette.textStrong,
                                 ),
                               ),
                             ),
@@ -416,10 +471,10 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                                   tempIngredients.removeAt(idx);
                                 });
                               },
-                              child: const Icon(
+                              child: Icon(
                                 LucideIcons.trash2,
                                 size: 16.0,
-                                color: AppColors.maroon,
+                                color: palette.danger,
                               ),
                             ),
                           ],
@@ -463,6 +518,7 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
   }
 
   void _openCookingInstructionsSheet() {
+    final palette = context.palette;
     FocusScope.of(context).unfocus();
     _titleFocusNode.unfocus();
     final tempSteps = List<RecipeStep>.from(_steps);
@@ -485,9 +541,14 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Langkah Memasak', style: AppText.sectionTitle),
+                      Text(
+                        'Langkah Memasak',
+                        style: AppText.sectionTitle.copyWith(
+                          color: palette.textStrong,
+                        ),
+                      ),
                       IconButton(
-                        icon: const Icon(LucideIcons.x, color: AppColors.olive),
+                        icon: Icon(LucideIcons.x, color: palette.textStrong),
                         onPressed: () => Navigator.of(sheetContext).pop(),
                       ),
                     ],
@@ -496,15 +557,15 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
 
                   // Daftar langkah
                   if (tempSteps.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 16.0),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 16.0),
                       child: Center(
                         child: Text(
                           'Belum ada langkah. Tekan "+ Tambah Langkah" di bawah.',
                           style: TextStyle(
                             fontFamily: 'Poppins',
                             fontSize: 12.0,
-                            color: AppColors.sage,
+                            color: palette.textSecondary,
                           ),
                         ),
                       ),
@@ -518,9 +579,9 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                         margin: const EdgeInsets.only(bottom: 12.0),
                         padding: const EdgeInsets.all(12.0),
                         decoration: BoxDecoration(
-                          color: AppColors.white,
+                          color: palette.surface,
                           borderRadius: BorderRadius.circular(12.0),
-                          border: Border.all(color: AppColors.border),
+                          border: Border.all(color: palette.border),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -530,18 +591,18 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                                 Container(
                                   width: 24.0,
                                   height: 24.0,
-                                  decoration: const BoxDecoration(
-                                    color: AppColors.amber,
+                                  decoration: BoxDecoration(
+                                    color: palette.accent,
                                     shape: BoxShape.circle,
                                   ),
                                   alignment: Alignment.center,
                                   child: Text(
                                     '${idx + 1}',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontFamily: 'Poppins',
                                       fontSize: 12.0,
                                       fontWeight: FontWeight.w700,
-                                      color: AppColors.olive,
+                                      color: palette.onAccent,
                                     ),
                                   ),
                                 ),
@@ -551,11 +612,11 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                                     step.title.isNotEmpty
                                         ? step.title
                                         : 'Langkah ${idx + 1}',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontFamily: 'Poppins',
                                       fontSize: 13.0,
                                       fontWeight: FontWeight.w700,
-                                      color: AppColors.olive,
+                                      color: palette.textStrong,
                                     ),
                                   ),
                                 ),
@@ -565,10 +626,10 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                                       tempSteps.removeAt(idx);
                                     });
                                   },
-                                  child: const Icon(
+                                  child: Icon(
                                     LucideIcons.trash2,
                                     size: 16.0,
-                                    color: AppColors.maroon,
+                                    color: palette.danger,
                                   ),
                                 ),
                               ],
@@ -576,10 +637,10 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                             const SizedBox(height: 6.0),
                             Text(
                               step.description,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontFamily: 'Poppins',
                                 fontSize: 12.0,
-                                color: AppColors.sage,
+                                color: palette.textSecondary,
                               ),
                             ),
                             if (step.durationMin != null &&
@@ -587,11 +648,11 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                               const SizedBox(height: 4.0),
                               Text(
                                 '⏱ ${step.durationMin} menit',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontFamily: 'Poppins',
                                   fontSize: 11.0,
                                   fontWeight: FontWeight.w600,
-                                  color: AppColors.amber,
+                                  color: palette.accent,
                                 ),
                               ),
                             ],
@@ -603,8 +664,8 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                   // Tombol Tambah Langkah
                   OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.olive,
-                      side: const BorderSide(color: AppColors.olive),
+                      foregroundColor: palette.actionBg,
+                      side: BorderSide(color: palette.actionBg),
                       minimumSize: const Size(double.infinity, 44.0),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10.0),
@@ -667,6 +728,7 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
     BuildContext context,
     ValueChanged<RecipeStep> onAdded,
   ) {
+    final palette = context.palette;
     final titleCtrl = TextEditingController();
     final descCtrl = TextEditingController();
     final durationCtrl = TextEditingController();
@@ -674,7 +736,7 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
 
     showDialog<void>(
       context: context,
-      barrierColor: AppColors.dialogBarrier,
+      barrierColor: palette.dialogBarrier,
       builder: (dlgContext) {
         return StatefulBuilder(
           builder: (dialogCtx, setDlgState) {
@@ -682,7 +744,7 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
               shape: const RoundedRectangleBorder(
                 borderRadius: AppRadius.cardLarge,
               ),
-              backgroundColor: AppColors.white,
+              backgroundColor: palette.surface,
               child: Padding(
                 padding: const EdgeInsets.all(20.0),
                 child: SingleChildScrollView(
@@ -690,16 +752,26 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Detail Langkah', style: AppText.sectionTitle),
+                      Text(
+                        'Detail Langkah',
+                        style: AppText.sectionTitle.copyWith(
+                          color: palette.textStrong,
+                        ),
+                      ),
                       const SizedBox(height: 12.0),
                       Row(
-                        children: const [
-                          Text('Judul Langkah', style: AppText.formLabel),
-                          SizedBox(width: 4.0),
+                        children: [
+                          Text(
+                            'Judul Langkah',
+                            style: AppText.formLabel.copyWith(
+                              color: palette.textStrong,
+                            ),
+                          ),
+                          const SizedBox(width: 4.0),
                           Text(
                             '*',
                             style: TextStyle(
-                              color: AppColors.maroon,
+                              color: palette.danger,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -709,25 +781,30 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12.0),
                         decoration: BoxDecoration(
-                          color: AppColors.chipGray,
+                          color: palette.chip,
                           borderRadius: BorderRadius.circular(8.0),
                           border: Border.all(
                             color: titleError != null
-                                ? AppColors.maroon
+                                ? palette.danger
                                 : Colors.transparent,
                             width: 1.0,
                           ),
                         ),
                         child: TextField(
                           controller: titleCtrl,
-                          style: AppText.body,
+                          style: AppText.body.copyWith(color: palette.textBody),
                           onChanged: (_) {
                             if (titleError != null) {
                               setDlgState(() => titleError = null);
                             }
                           },
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             hintText: 'Mis. Tumis Bawang',
+                            hintStyle: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontSize: 13.0,
+                              color: palette.textSecondary,
+                            ),
                             border: InputBorder.none,
                             isDense: true,
                           ),
@@ -737,16 +814,21 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                         const SizedBox(height: 4.0),
                         Text(
                           titleError!,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: 'Poppins',
                             fontSize: 11.0,
-                            color: AppColors.maroon,
+                            color: palette.danger,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                       ],
                       const SizedBox(height: 12.0),
-                      const Text('Deskripsi', style: AppText.formLabel),
+                      Text(
+                        'Deskripsi',
+                        style: AppText.formLabel.copyWith(
+                          color: palette.textStrong,
+                        ),
+                      ),
                       const SizedBox(height: 4.0),
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -754,30 +836,37 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                           vertical: 8.0,
                         ),
                         decoration: BoxDecoration(
-                          color: AppColors.chipGray,
+                          color: palette.chip,
                           borderRadius: BorderRadius.circular(8.0),
                         ),
                         child: TextField(
                           controller: descCtrl,
                           maxLines: 3,
-                          style: AppText.body,
-                          decoration: const InputDecoration(
+                          style: AppText.body.copyWith(color: palette.textBody),
+                          decoration: InputDecoration(
                             hintText: 'Tuliskan detail langkah...',
+                            hintStyle: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontSize: 13.0,
+                              color: palette.textSecondary,
+                            ),
                             border: InputBorder.none,
                             isDense: true,
                           ),
                         ),
                       ),
                       const SizedBox(height: 12.0),
-                      const Text(
+                      Text(
                         'Durasi Menit (Opsional)',
-                        style: AppText.formLabel,
+                        style: AppText.formLabel.copyWith(
+                          color: palette.textStrong,
+                        ),
                       ),
                       const SizedBox(height: 4.0),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12.0),
                         decoration: BoxDecoration(
-                          color: AppColors.chipGray,
+                          color: palette.chip,
                           borderRadius: BorderRadius.circular(8.0),
                         ),
                         child: TextField(
@@ -786,9 +875,14 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                           inputFormatters: [
                             FilteringTextInputFormatter.digitsOnly,
                           ],
-                          style: AppText.body,
-                          decoration: const InputDecoration(
+                          style: AppText.body.copyWith(color: palette.textBody),
+                          decoration: InputDecoration(
                             hintText: '0',
+                            hintStyle: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontSize: 13.0,
+                              color: palette.textSecondary,
+                            ),
                             border: InputBorder.none,
                             isDense: true,
                           ),
@@ -800,16 +894,16 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                         children: [
                           TextButton(
                             onPressed: () => Navigator.of(dialogCtx).pop(),
-                            child: const Text(
+                            child: Text(
                               'Batal',
-                              style: TextStyle(color: AppColors.sage),
+                              style: TextStyle(color: palette.textSecondary),
                             ),
                           ),
                           const SizedBox(width: 8.0),
                           ElevatedButton(
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.olive,
-                              foregroundColor: AppColors.white,
+                              backgroundColor: palette.actionBg,
+                              foregroundColor: palette.onAction,
                             ),
                             onPressed: () {
                               final title = titleCtrl.text.trim();
@@ -907,6 +1001,7 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
 
   Widget _buildInlineIngredientsList() {
     if (_ingredients.isEmpty) return const SizedBox.shrink();
+    final palette = context.palette;
 
     return ExpandableCardList(
       title: 'Ingredients (${_ingredients.length})',
@@ -923,11 +1018,11 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
               Expanded(
                 child: Text(
                   ing.name,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Poppins',
                     fontSize: 13.0,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.olive,
+                    color: palette.textStrong,
                   ),
                 ),
               ),
@@ -935,15 +1030,15 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
               // Takaran/satuan rata kanan
               Text(
                 '${ing.qty} ${ing.unit ?? ''}'.trim(),
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Poppins',
                   fontSize: 13.0,
                   fontWeight: FontWeight.w500,
-                  color: AppColors.sage,
+                  color: palette.textSecondary,
                 ),
               ),
               const SizedBox(width: 12.0),
-              // Tombol hapus (trash maroon, aria/Semantics)
+              // Tombol hapus (trash danger, aria/Semantics)
               Semantics(
                 label: 'Hapus ${ing.name}',
                 button: true,
@@ -959,10 +1054,10 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                   child: Container(
                     padding: const EdgeInsets.all(4.0),
                     alignment: Alignment.center,
-                    child: const Icon(
+                    child: Icon(
                       LucideIcons.trash2,
                       size: 16.0,
-                      color: AppColors.maroon,
+                      color: palette.danger,
                     ),
                   ),
                 ),
@@ -976,6 +1071,7 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
 
   Widget _buildInlineStepsList() {
     if (_steps.isEmpty) return const SizedBox.shrink();
+    final palette = context.palette;
 
     return ExpandableCardList(
       title: 'Cooking Instructions (${_steps.length})',
@@ -989,28 +1085,28 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Lingkaran amber 28 bernomor (angka olive tua)
+              // Lingkaran aksen 28 bernomor
               Container(
                 width: 28.0,
                 height: 28.0,
-                decoration: const BoxDecoration(
-                  color: AppColors.amber,
+                decoration: BoxDecoration(
+                  color: palette.accent,
                   shape: BoxShape.circle,
                 ),
                 alignment: Alignment.center,
                 child: Text(
                   '${index + 1}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Poppins',
                     fontSize: 12.0,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.olive,
+                    color: palette.onAccent,
                   ),
                 ),
               ),
               const SizedBox(width: 10.0),
 
-              // Judul langkah (14/600 olive) + deskripsi 1 baris (11 sage, ellipsis; durasi bila ada)
+              // Judul langkah + deskripsi
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1020,11 +1116,11 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                       step.title.isNotEmpty
                           ? step.title
                           : 'Langkah ${index + 1}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Poppins',
                         fontSize: 14.0,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.olive,
+                        color: palette.textStrong,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -1034,11 +1130,11 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                       step.durationMin != null && step.durationMin! > 0
                           ? '${step.description} • ⏱ ${step.durationMin} mnt'
                           : step.description,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Poppins',
                         fontSize: 11.0,
                         fontWeight: FontWeight.w400,
-                        color: AppColors.sage,
+                        color: palette.textSecondary,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -1048,7 +1144,7 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
               ),
               const SizedBox(width: 8.0),
 
-              // Tombol hapus (trash maroon, Semantics)
+              // Tombol hapus
               Semantics(
                 label: 'Hapus langkah ${index + 1}',
                 button: true,
@@ -1064,10 +1160,10 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                   child: Container(
                     padding: const EdgeInsets.all(4.0),
                     alignment: Alignment.center,
-                    child: const Icon(
+                    child: Icon(
                       LucideIcons.trash2,
                       size: 16.0,
-                      color: AppColors.maroon,
+                      color: palette.danger,
                     ),
                   ),
                 ),
@@ -1081,6 +1177,8 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.palette;
+
     return PageWithHeader(
       resizeToAvoidBottomInset: false,
       body: CustomScrollView(
@@ -1111,22 +1209,22 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                         width: 36.0,
                         height: 36.0,
                         alignment: Alignment.centerLeft,
-                        child: const Icon(
+                        child: Icon(
                           LucideIcons.chevronLeft,
                           size: 24.0,
-                          color: AppColors.olive,
+                          color: palette.textStrong,
                         ),
                       ),
                     ),
                   ),
                   const SizedBox(width: 4.0),
-                  const Text(
+                  Text(
                     'Create Recipe',
                     style: TextStyle(
                       fontFamily: 'Poppins',
                       fontSize: 20.0,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.olive,
+                      color: palette.textStrong,
                     ),
                   ),
                 ],
@@ -1142,13 +1240,13 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // "Recipe Title"
-                  const Text(
+                  Text(
                     'Recipe Title',
                     style: TextStyle(
                       fontFamily: 'Poppins',
                       fontSize: 14.0,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.olive,
+                      color: palette.textStrong,
                     ),
                   ),
                   const SizedBox(height: 8.0),
@@ -1156,7 +1254,7 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                     height: 48.0,
                     padding: const EdgeInsets.symmetric(horizontal: 14.0),
                     decoration: BoxDecoration(
-                      color: AppColors.fieldGray, // #D6D6D6 persis desain
+                      color: palette.fieldAdd,
                       borderRadius: BorderRadius.circular(10.0),
                       boxShadow: AppShadows.card,
                     ),
@@ -1166,17 +1264,17 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                       focusNode: _titleFocusNode,
                       onTapOutside: (_) =>
                           FocusManager.instance.primaryFocus?.unfocus(),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Poppins',
                         fontSize: 14.0,
-                        color: AppColors.textBody,
+                        color: palette.textBody,
                       ),
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         hintText: 'Type your recipe name here',
                         hintStyle: TextStyle(
                           fontFamily: 'Poppins',
                           fontSize: 13.0,
-                          color: AppColors.sage,
+                          color: palette.textSecondary,
                         ),
                         border: InputBorder.none,
                         isDense: true,
@@ -1193,10 +1291,10 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                     const SizedBox(height: 4.0),
                     Text(
                       _titleError!,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Poppins',
                         fontSize: 11.0,
-                        color: AppColors.maroon,
+                        color: palette.danger,
                       ),
                     ),
                   ],
@@ -1212,13 +1310,13 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
+                            Text(
                               'Add Cover Image',
                               style: TextStyle(
                                 fontFamily: 'Poppins',
                                 fontSize: 14.0,
                                 fontWeight: FontWeight.w700,
-                                color: AppColors.olive,
+                                color: palette.textStrong,
                               ),
                             ),
                             const SizedBox(height: 8.0),
@@ -1227,7 +1325,7 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                               child: Container(
                                 height: 104.0,
                                 decoration: BoxDecoration(
-                                  color: AppColors.fieldGray,
+                                  color: palette.fieldAdd,
                                   borderRadius: BorderRadius.circular(10.0),
                                   boxShadow: AppShadows.card,
                                 ),
@@ -1248,36 +1346,36 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                                               padding: const EdgeInsets.all(
                                                 4.0,
                                               ),
-                                              decoration: const BoxDecoration(
-                                                color: AppColors.olive,
+                                              decoration: BoxDecoration(
+                                                color: palette.actionBg,
                                                 shape: BoxShape.circle,
                                               ),
-                                              child: const Icon(
+                                              child: Icon(
                                                 LucideIcons.edit2,
                                                 size: 12.0,
-                                                color: AppColors.white,
+                                                color: palette.onAction,
                                               ),
                                             ),
                                           ),
                                         ],
                                       )
-                                    : const Column(
+                                    : Column(
                                         mainAxisAlignment:
                                             MainAxisAlignment.center,
                                         children: [
                                           Icon(
                                             LucideIcons.camera,
                                             size: 26.0,
-                                            color: AppColors.sage,
+                                            color: palette.textSecondary,
                                           ),
-                                          SizedBox(height: 6.0),
+                                          const SizedBox(height: 6.0),
                                           Text(
                                             'Add Cover Image',
                                             style: TextStyle(
                                               fontFamily: 'Poppins',
                                               fontSize: 11.0,
                                               fontWeight: FontWeight.w600,
-                                              color: AppColors.olive,
+                                              color: palette.textStrong,
                                             ),
                                           ),
                                         ],
@@ -1295,13 +1393,13 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
+                            Text(
                               'Ingredients',
                               style: TextStyle(
                                 fontFamily: 'Poppins',
                                 fontSize: 14.0,
                                 fontWeight: FontWeight.w700,
-                                color: AppColors.olive,
+                                color: palette.textStrong,
                               ),
                             ),
                             const SizedBox(height: 8.0),
@@ -1310,7 +1408,7 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                               child: Container(
                                 height: 104.0,
                                 decoration: BoxDecoration(
-                                  color: AppColors.fieldGray,
+                                  color: palette.fieldAdd,
                                   borderRadius: BorderRadius.circular(10.0),
                                   boxShadow: AppShadows.card,
                                 ),
@@ -1326,43 +1424,44 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                                           Container(
                                             width: 32.0,
                                             height: 32.0,
-                                            decoration: const BoxDecoration(
-                                              color: AppColors.olive,
+                                            decoration: BoxDecoration(
+                                              color: palette.actionBg,
                                               shape: BoxShape.circle,
                                             ),
                                             alignment: Alignment.center,
-                                            child: const Icon(
+                                            child: Icon(
                                               LucideIcons.check,
                                               size: 18.0,
-                                              color: AppColors.white,
+                                              color: palette.onAction,
                                             ),
                                           ),
                                           const SizedBox(height: 6.0),
                                           Text(
                                             '${_ingredients.length} ingredients',
-                                            style: const TextStyle(
+                                            style: TextStyle(
                                               fontFamily: 'Poppins',
                                               fontSize: 12.0,
                                               fontWeight: FontWeight.w700,
-                                              color: AppColors.olive,
+                                              color: palette.textStrong,
                                             ),
                                           ),
                                         ],
                                       )
-                                    : const Column(
+                                    : Column(
                                         mainAxisAlignment:
                                             MainAxisAlignment.center,
                                         children: [
                                           CircleAvatar(
                                             radius: 14.0,
-                                            backgroundColor: AppColors.sage,
+                                            backgroundColor:
+                                                palette.textSecondary,
                                             child: Icon(
                                               LucideIcons.plus,
                                               size: 16.0,
-                                              color: AppColors.white,
+                                              color: palette.onAction,
                                             ),
                                           ),
-                                          SizedBox(height: 6.0),
+                                          const SizedBox(height: 6.0),
                                           Text(
                                             'Add ingredients to recipe',
                                             textAlign: TextAlign.center,
@@ -1370,7 +1469,7 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                                               fontFamily: 'Poppins',
                                               fontSize: 11.0,
                                               fontWeight: FontWeight.w600,
-                                              color: AppColors.olive,
+                                              color: palette.textStrong,
                                             ),
                                           ),
                                         ],
@@ -1381,10 +1480,10 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                               const SizedBox(height: 4.0),
                               Text(
                                 _ingredientsError!,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontFamily: 'Poppins',
                                   fontSize: 11.0,
-                                  color: AppColors.maroon,
+                                  color: palette.danger,
                                 ),
                               ),
                             ],
@@ -1403,13 +1502,13 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                   const SizedBox(height: 18.0),
 
                   // "Serving Size"
-                  const Text(
+                  Text(
                     'Serving Size',
                     style: TextStyle(
                       fontFamily: 'Poppins',
                       fontSize: 14.0,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.olive,
+                      color: palette.textStrong,
                     ),
                   ),
                   const SizedBox(height: 8.0),
@@ -1419,32 +1518,32 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                       height: 44.0,
                       padding: const EdgeInsets.symmetric(horizontal: 14.0),
                       decoration: BoxDecoration(
-                        color: AppColors.fieldGray,
+                        color: palette.fieldAdd,
                         borderRadius: BorderRadius.circular(10.0),
                         boxShadow: AppShadows.card,
                       ),
                       child: Row(
                         children: [
-                          const Icon(
+                          Icon(
                             LucideIcons.users,
                             size: 18.0,
-                            color: AppColors.olive,
+                            color: palette.textStrong,
                           ),
                           const SizedBox(width: 8.0),
                           Text(
                             '$_servingSize Porsi',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontFamily: 'Poppins',
                               fontSize: 13.0,
                               fontWeight: FontWeight.w600,
-                              color: AppColors.olive,
+                              color: palette.textStrong,
                             ),
                           ),
                           const Spacer(),
-                          const Icon(
+                          Icon(
                             LucideIcons.chevronDown,
                             size: 16.0,
-                            color: AppColors.olive,
+                            color: palette.textStrong,
                           ),
                         ],
                       ),
@@ -1454,13 +1553,13 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                   const SizedBox(height: 18.0),
 
                   // "Cooking Instructions"
-                  const Text(
+                  Text(
                     'Cooking Instructions',
                     style: TextStyle(
                       fontFamily: 'Poppins',
                       fontSize: 14.0,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.olive,
+                      color: palette.textStrong,
                     ),
                   ),
                   const SizedBox(height: 8.0),
@@ -1473,7 +1572,7 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                         vertical: 12.0,
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.fieldGray,
+                        color: palette.fieldAdd,
                         borderRadius: BorderRadius.circular(10.0),
                         boxShadow: AppShadows.card,
                       ),
@@ -1484,41 +1583,41 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                                 Container(
                                   width: 28.0,
                                   height: 28.0,
-                                  decoration: const BoxDecoration(
-                                    color: AppColors.olive,
+                                  decoration: BoxDecoration(
+                                    color: palette.actionBg,
                                     shape: BoxShape.circle,
                                   ),
                                   alignment: Alignment.center,
-                                  child: const Icon(
+                                  child: Icon(
                                     LucideIcons.check,
                                     size: 16.0,
-                                    color: AppColors.white,
+                                    color: palette.onAction,
                                   ),
                                 ),
                                 const SizedBox(width: 10.0),
                                 Text(
                                   '${_steps.length} steps configured',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontFamily: 'Poppins',
                                     fontSize: 13.0,
                                     fontWeight: FontWeight.w600,
-                                    color: AppColors.olive,
+                                    color: palette.textStrong,
                                   ),
                                 ),
                                 const Spacer(),
-                                const Icon(
+                                Icon(
                                   LucideIcons.edit2,
                                   size: 16.0,
-                                  color: AppColors.olive,
+                                  color: palette.textStrong,
                                 ),
                               ],
                             )
-                          : const Text(
+                          : Text(
                               'Add one or multiple steps',
                               style: TextStyle(
                                 fontFamily: 'Poppins',
                                 fontSize: 13.0,
-                                color: AppColors.sage,
+                                color: palette.textSecondary,
                               ),
                             ),
                     ),
@@ -1527,10 +1626,10 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                     const SizedBox(height: 4.0),
                     Text(
                       _stepsError!,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Poppins',
                         fontSize: 11.0,
-                        color: AppColors.maroon,
+                        color: palette.danger,
                       ),
                     ),
                   ],
@@ -1561,23 +1660,23 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
                   child: ElevatedButton(
                     key: const Key('add-done-button'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.olive,
-                      foregroundColor: AppColors.white,
+                      backgroundColor: palette.actionBg,
+                      foregroundColor: palette.onAction,
                       elevation: 4.0,
-                      shadowColor: AppColors.olive.withValues(alpha: 0.35),
+                      shadowColor: palette.shadowColor,
                       shape: const RoundedRectangleBorder(
                         borderRadius: AppRadius.pill,
                       ),
                     ),
                     onPressed: _handleSubmit,
-                    child: const Text(
+                    child: Text(
                       'DONE',
                       style: TextStyle(
                         fontFamily: 'Poppins',
                         fontSize: 16.0,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 1.0,
-                        color: AppColors.white,
+                        color: palette.onAction,
                       ),
                     ),
                   ),

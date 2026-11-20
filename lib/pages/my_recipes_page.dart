@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
-import '../core/theme/app_colors.dart';
+import '../core/theme/app_palette.dart';
 import '../models/models.dart';
 import '../providers/recipes_provider.dart';
 import '../providers/ui_helper.dart';
@@ -125,12 +125,12 @@ class _MyRecipesPageState extends ConsumerState<MyRecipesPage> {
                         _searchQuery = '';
                       });
                     },
-                    child: const Text(
+                    child: Text(
                       'Bersihkan Pencarian',
                       style: TextStyle(
                         fontFamily: 'Poppins',
                         fontWeight: FontWeight.w600,
-                        color: AppColors.maroon,
+                        color: context.palette.danger,
                       ),
                     ),
                   ),

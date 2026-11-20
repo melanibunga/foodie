@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:foodie/app/app.dart';
 import 'package:foodie/app/router.dart';
-import 'package:foodie/core/theme/app_colors.dart';
+import 'package:foodie/core/theme/app_palette.dart';
 import 'package:foodie/core/theme/app_theme.dart';
 import 'package:foodie/data/places.dart';
 import 'package:foodie/data/user.dart';
@@ -58,26 +58,21 @@ void main() {
   group('Fase 16 — Dark Mode & Real Map Tests', () {
     test('Dark theme tokens & ThemeData are properly configured', () {
       final darkTheme = AppTheme.darkTheme;
+      const palette = AppPalette.dark;
 
       expect(darkTheme.brightness, Brightness.dark);
-      expect(darkTheme.colorScheme.primary, AppColors.oliveDark);
-      expect(darkTheme.colorScheme.surface, AppColors.surfaceDark);
-      expect(darkTheme.colorScheme.outline, AppColors.borderDark);
-      expect(darkTheme.scaffoldBackgroundColor, AppColors.bgDark);
+      expect(darkTheme.colorScheme.primary, palette.actionBg);
+      expect(darkTheme.colorScheme.surface, palette.surface);
+      expect(darkTheme.colorScheme.outline, palette.border);
+      expect(darkTheme.scaffoldBackgroundColor, palette.bg);
     });
 
     testWidgets(
-      'FoodieApp applies Dark Theme when user settings has darkMode true',
+      'FoodieApp applies Dark Theme when themeMode is dark',
       (tester) async {
         final prefs = await SharedPreferences.getInstance();
 
-        final darkUser = seedUser.copyWith(
-          settings: seedUser.settings.copyWith(darkMode: true),
-        );
-        await prefs.setString(
-          'foodie:auth',
-          jsonEncode(AuthState(isLoggedIn: true, user: darkUser).toJson()),
-        );
+        await prefs.setString('foodie:themeMode', 'dark');
 
         final container = ProviderContainer(
           overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],

@@ -646,78 +646,74 @@ void main() {
       },
     );
 
-    testWidgets(
-      'Judul langkah is REQUIRED in Detail Langkah dialog',
-      (tester) async {
-        tester.view.physicalSize = const Size(screenWidth, screenHeight);
-        tester.view.devicePixelRatio = 1.0;
-        addTearDown(() => tester.view.reset());
+    testWidgets('Judul langkah is REQUIRED in Detail Langkah dialog', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(screenWidth, screenHeight);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.reset());
 
-        final prefs = await SharedPreferences.getInstance();
-        final router = createRouter(
-          initialLocation: '/add',
-          getAuthState: () => const AuthState(isLoggedIn: true, user: seedUser),
-        );
+      final prefs = await SharedPreferences.getInstance();
+      final router = createRouter(
+        initialLocation: '/add',
+        getAuthState: () => const AuthState(isLoggedIn: true, user: seedUser),
+      );
 
-        await tester.pumpWidget(
-          ProviderScope(
-            overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
-            child: MaterialApp.router(
-              theme: AppTheme.lightTheme,
-              routerConfig: router,
-            ),
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+          child: MaterialApp.router(
+            theme: AppTheme.lightTheme,
+            routerConfig: router,
           ),
-        );
-        await tester.pumpAndSettle();
+        ),
+      );
+      await tester.pumpAndSettle();
 
-        // Buka sheet Cooking Instructions
-        await tester.tap(find.text('Add one or multiple steps'));
-        await tester.pumpAndSettle();
+      // Buka sheet Cooking Instructions
+      await tester.tap(find.text('Add one or multiple steps'));
+      await tester.pumpAndSettle();
 
-        // Tap "Tambah Langkah"
-        await tester.tap(find.text('Tambah Langkah'));
-        await tester.pumpAndSettle();
+      // Tap "Tambah Langkah"
+      await tester.tap(find.text('Tambah Langkah'));
+      await tester.pumpAndSettle();
 
-        // Dialog "Detail Langkah" terbuka
-        expect(find.text('Detail Langkah'), findsOneWidget);
-        expect(find.text('Judul Langkah'), findsOneWidget);
-        expect(find.text('*'), findsWidgets);
+      // Dialog "Detail Langkah" terbuka
+      expect(find.text('Detail Langkah'), findsOneWidget);
+      expect(find.text('Judul Langkah'), findsOneWidget);
+      expect(find.text('*'), findsWidgets);
 
-        // Hanya isi deskripsi, tanpa mengisi judul langkah
-        final descField = find.widgetWithText(
-          TextField,
-          'Tuliskan detail langkah...',
-        );
-        await tester.enterText(descField, 'Hanya menulis deskripsi saja');
-        await tester.pump();
+      // Hanya isi deskripsi, tanpa mengisi judul langkah
+      final descField = find.widgetWithText(
+        TextField,
+        'Tuliskan detail langkah...',
+      );
+      await tester.enterText(descField, 'Hanya menulis deskripsi saja');
+      await tester.pump();
 
-        // Tap "Tambahkan"
-        await tester.tap(find.text('Tambahkan'));
-        await tester.pumpAndSettle();
+      // Tap "Tambahkan"
+      await tester.tap(find.text('Tambahkan'));
+      await tester.pumpAndSettle();
 
-        // Dialog HARUS TETAP TERBUKA dan muncul error
-        expect(find.text('Detail Langkah'), findsOneWidget);
-        expect(find.text('Judul langkah wajib diisi'), findsOneWidget);
+      // Dialog HARUS TETAP TERBUKA dan muncul error
+      expect(find.text('Detail Langkah'), findsOneWidget);
+      expect(find.text('Judul langkah wajib diisi'), findsOneWidget);
 
-        // Isi judul langkah
-        final titleField = find.widgetWithText(
-          TextField,
-          'Mis. Tumis Bawang',
-        );
-        await tester.enterText(titleField, 'Kupas Bawang');
-        await tester.pumpAndSettle();
+      // Isi judul langkah
+      final titleField = find.widgetWithText(TextField, 'Mis. Tumis Bawang');
+      await tester.enterText(titleField, 'Kupas Bawang');
+      await tester.pumpAndSettle();
 
-        // Pesan error hilang
-        expect(find.text('Judul langkah wajib diisi'), findsNothing);
+      // Pesan error hilang
+      expect(find.text('Judul langkah wajib diisi'), findsNothing);
 
-        // Tap "Tambahkan" lagi
-        await tester.tap(find.text('Tambahkan'));
-        await tester.pumpAndSettle();
+      // Tap "Tambahkan" lagi
+      await tester.tap(find.text('Tambahkan'));
+      await tester.pumpAndSettle();
 
-        // Dialog tertutup, langkah muncul di sheet
-        expect(find.text('Detail Langkah'), findsNothing);
-        expect(find.text('Kupas Bawang'), findsOneWidget);
-      },
-    );
+      // Dialog tertutup, langkah muncul di sheet
+      expect(find.text('Detail Langkah'), findsNothing);
+      expect(find.text('Kupas Bawang'), findsOneWidget);
+    });
   });
 }

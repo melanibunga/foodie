@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../core/theme/app_colors.dart';
+import '../core/theme/app_palette.dart';
 import '../core/theme/app_radius.dart';
 import '../core/theme/app_shadows.dart';
 import '../core/theme/app_text.dart';
@@ -12,157 +12,179 @@ class DevTokensPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.palette;
     return Scaffold(
+      backgroundColor: palette.bg,
       appBar: AppBar(
-        title: const Text(
+        backgroundColor: palette.surface,
+        title: Text(
           'Design Tokens (STYLE GUIDE)',
-          style: AppText.pageTitle,
+          style: AppText.pageTitle.copyWith(color: palette.textStrong),
         ),
       ),
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         children: [
-          _buildSectionHeader('1. Color Swatches (PRD §4)'),
+          _buildSectionHeader(
+            context,
+            '1. Color Swatches (PRD §4 & AppPalette)',
+          ),
           const SizedBox(height: 12),
-          _buildColorGrid(),
+          _buildColorGrid(context),
           const SizedBox(height: 28),
-          _buildSectionHeader('2. Typography (Poppins)'),
+          _buildSectionHeader(context, '2. Typography (Poppins)'),
           const SizedBox(height: 12),
-          _buildTypographySection(),
+          _buildTypographySection(context),
           const SizedBox(height: 28),
-          _buildSectionHeader('3. Radius & Shadows'),
+          _buildSectionHeader(context, '3. Radius & Shadows'),
           const SizedBox(height: 12),
-          _buildRadiusAndShadowSection(),
+          _buildRadiusAndShadowSection(context),
           const SizedBox(height: 40),
         ],
       ),
     );
   }
 
-  Widget _buildSectionHeader(String title) {
+  Widget _buildSectionHeader(BuildContext context, String title) {
+    final palette = context.palette;
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
       decoration: BoxDecoration(
-        color: AppColors.olive,
+        color: palette.actionBg,
         borderRadius: AppRadius.buttonSmall,
       ),
       child: Text(
         title,
-        style: AppText.cardHeroTitle.copyWith(color: AppColors.white),
+        style: AppText.cardHeroTitle.copyWith(color: palette.onAction),
       ),
     );
   }
 
-  Widget _buildColorGrid() {
+  Widget _buildColorGrid(BuildContext context) {
+    final palette = context.palette;
+    String hex(Color c) =>
+        '#${(c.toARGB32() & 0x00FFFFFF).toRadixString(16).padLeft(6, '0').toUpperCase()}';
+
     final colors = <({String name, String hex, Color color, Color text})>[
       (
-        name: 'olive (primary)',
-        hex: '#263C32',
-        color: AppColors.olive,
-        text: AppColors.white,
+        name: 'bg',
+        hex: hex(palette.bg),
+        color: palette.bg,
+        text: palette.textStrong,
       ),
       (
-        name: 'amber (accent)',
-        hex: '#F59E0B',
-        color: AppColors.amber,
-        text: AppColors.olive,
+        name: 'surface',
+        hex: hex(palette.surface),
+        color: palette.surface,
+        text: palette.textStrong,
       ),
       (
-        name: 'maroon',
-        hex: '#800020',
-        color: AppColors.maroon,
-        text: AppColors.white,
+        name: 'surfaceAlt',
+        hex: hex(palette.surfaceAlt),
+        color: palette.surfaceAlt,
+        text: palette.textStrong,
       ),
       (
-        name: 'sage',
-        hex: '#717665',
-        color: AppColors.sage,
-        text: AppColors.white,
-      ),
-      (name: 'bg', hex: '#F5F5F0', color: AppColors.bg, text: AppColors.olive),
-      (
-        name: 'white',
-        hex: '#FFFFFF',
-        color: AppColors.white,
-        text: AppColors.olive,
+        name: 'navSurface',
+        hex: hex(palette.navSurface),
+        color: palette.navSurface,
+        text: palette.textStrong,
       ),
       (
-        name: 'amberSoft',
-        hex: '#F4E9CE',
-        color: AppColors.amberSoft,
-        text: AppColors.olive,
+        name: 'actionBg',
+        hex: hex(palette.actionBg),
+        color: palette.actionBg,
+        text: palette.onAction,
       ),
       (
-        name: 'maroonSoft',
-        hex: '#F4E6E9',
-        color: AppColors.maroonSoft,
-        text: AppColors.maroon,
+        name: 'accent',
+        hex: hex(palette.accent),
+        color: palette.accent,
+        text: palette.onAccent,
       ),
       (
-        name: 'fieldGray',
-        hex: '#D6D6D6',
-        color: AppColors.fieldGray,
-        text: AppColors.textBody,
+        name: 'danger',
+        hex: hex(palette.danger),
+        color: palette.danger,
+        text: palette.onDanger,
       ),
       (
-        name: 'chipGray',
-        hex: '#E8E8E2',
-        color: AppColors.chipGray,
-        text: AppColors.textBody,
+        name: 'textStrong',
+        hex: hex(palette.textStrong),
+        color: palette.textStrong,
+        text: palette.bg,
       ),
       (
-        name: 'mapBg',
-        hex: '#E7E9DE',
-        color: AppColors.mapBg,
-        text: AppColors.olive,
-      ),
-      (
-        name: 'mapBlock',
-        hex: '#DEE3D8',
-        color: AppColors.mapBlock,
-        text: AppColors.olive,
-      ),
-      (
-        name: 'splashDark',
-        hex: '#082B21',
-        color: AppColors.splashDark,
-        text: AppColors.white,
-      ),
-      (
-        name: 'photoGray',
-        hex: '#D9D9D4',
-        color: AppColors.photoGray,
-        text: AppColors.olive,
-      ),
-      (
-        name: 'photoGrayIcon',
-        hex: '#BDBDB5',
-        color: AppColors.photoGrayIcon,
-        text: AppColors.olive,
-      ),
-      (
-        name: 'outerBg',
-        hex: '#E9E9E2',
-        color: AppColors.outerBg,
-        text: AppColors.olive,
+        name: 'textSecondary',
+        hex: hex(palette.textSecondary),
+        color: palette.textSecondary,
+        text: palette.bg,
       ),
       (
         name: 'border',
-        hex: '#E3E3DC',
-        color: AppColors.border,
-        text: AppColors.olive,
+        hex: hex(palette.border),
+        color: palette.border,
+        text: palette.textStrong,
+      ),
+      (
+        name: 'field',
+        hex: hex(palette.field),
+        color: palette.field,
+        text: palette.textStrong,
+      ),
+      (
+        name: 'accentSoft',
+        hex: hex(palette.accentSoft),
+        color: palette.accentSoft,
+        text: palette.onAccentSoft,
+      ),
+      (
+        name: 'dangerSoft',
+        hex: hex(palette.dangerSoft),
+        color: palette.dangerSoft,
+        text: palette.danger,
+      ),
+      (
+        name: 'chip',
+        hex: hex(palette.chip),
+        color: palette.chip,
+        text: palette.textStrong,
+      ),
+      (
+        name: 'photo',
+        hex: hex(palette.photo),
+        color: palette.photo,
+        text: palette.textStrong,
+      ),
+      (
+        name: 'photoIcon',
+        hex: hex(palette.photoIcon),
+        color: palette.photoIcon,
+        text: palette.textStrong,
+      ),
+      (
+        name: 'mapBg',
+        hex: hex(palette.mapBg),
+        color: palette.mapBg,
+        text: palette.textStrong,
+      ),
+      (
+        name: 'mapBlock',
+        hex: hex(palette.mapBlock),
+        color: palette.mapBlock,
+        text: palette.textStrong,
       ),
       (
         name: 'toggleOff',
-        hex: '#E0E0DA',
-        color: AppColors.toggleOff,
-        text: AppColors.textBody,
+        hex: hex(palette.toggleOff),
+        color: palette.toggleOff,
+        text: palette.textStrong,
       ),
       (
         name: 'summaryBg',
-        hex: '#F4F1EA',
-        color: AppColors.summaryBg,
-        text: AppColors.olive,
+        hex: hex(palette.summaryBg),
+        color: palette.summaryBg,
+        text: palette.textStrong,
       ),
     ];
 
@@ -177,7 +199,7 @@ class DevTokensPage extends StatelessWidget {
           decoration: BoxDecoration(
             color: c.color,
             borderRadius: AppRadius.card,
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: palette.border),
             boxShadow: AppShadows.card,
           ),
           child: Column(
@@ -210,7 +232,8 @@ class DevTokensPage extends StatelessWidget {
     );
   }
 
-  Widget _buildTypographySection() {
+  Widget _buildTypographySection(BuildContext context) {
+    final palette = context.palette;
     final samples = <({String label, TextStyle style, String sample})>[
       (
         label: 'H1 auth (32/38 w800)',
@@ -264,7 +287,7 @@ class DevTokensPage extends StatelessWidget {
       ),
       (
         label: 'Bottom nav (11/13 w600)',
-        style: AppText.bottomNav.copyWith(color: AppColors.olive),
+        style: AppText.bottomNav.copyWith(color: palette.textStrong),
         sample: 'Home • Search • Add • Plan • Loc',
       ),
     ];
@@ -277,9 +300,9 @@ class DevTokensPage extends StatelessWidget {
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: AppColors.white,
+            color: palette.surface,
             borderRadius: AppRadius.card,
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: palette.border),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -287,7 +310,7 @@ class DevTokensPage extends StatelessWidget {
               Text(
                 s.label,
                 style: AppText.caption.copyWith(
-                  color: AppColors.maroon,
+                  color: palette.danger,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -300,61 +323,69 @@ class DevTokensPage extends StatelessWidget {
     );
   }
 
-  Widget _buildRadiusAndShadowSection() {
+  Widget _buildRadiusAndShadowSection(BuildContext context) {
+    final palette = context.palette;
     return Column(
       children: [
         _buildBoxItem(
+          context: context,
           title: 'Card Radius (16) + Card Shadow',
           borderRadius: AppRadius.card,
           shadow: AppShadows.card,
         ),
         const SizedBox(height: 12),
         _buildBoxItem(
+          context: context,
           title: 'Card Large Radius (20)',
           borderRadius: AppRadius.cardLarge,
           shadow: AppShadows.card,
         ),
         const SizedBox(height: 12),
         _buildBoxItem(
+          context: context,
           title: 'Detail Card Radius (32)',
           borderRadius: AppRadius.detailCard,
           shadow: AppShadows.card,
         ),
         const SizedBox(height: 12),
         _buildBoxItem(
+          context: context,
           title: 'Pill Radius (999) + Nav Shadow',
           borderRadius: AppRadius.pill,
           shadow: AppShadows.bottomNav,
-          color: AppColors.olive,
-          textColor: AppColors.white,
+          color: palette.actionBg,
+          textColor: palette.onAction,
         ),
         const SizedBox(height: 12),
         _buildBoxItem(
+          context: context,
           title: 'CTA Button Shadow (Amber)',
           borderRadius: AppRadius.button,
           shadow: AppShadows.cta,
-          color: AppColors.amber,
-          textColor: AppColors.olive,
+          color: palette.accent,
+          textColor: palette.onAccent,
         ),
       ],
     );
   }
 
   Widget _buildBoxItem({
+    required BuildContext context,
     required String title,
     required BorderRadius borderRadius,
     required List<BoxShadow> shadow,
-    Color color = AppColors.white,
-    Color textColor = AppColors.textBody,
+    Color? color,
+    Color? textColor,
   }) {
+    final palette = context.palette;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: color,
+        color: color ?? palette.surface,
         borderRadius: borderRadius,
         boxShadow: shadow,
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: palette.border),
       ),
       child: Text(
         title,
@@ -362,7 +393,7 @@ class DevTokensPage extends StatelessWidget {
           fontFamily: AppText.fontFamily,
           fontSize: 13,
           fontWeight: FontWeight.w600,
-          color: textColor,
+          color: textColor ?? palette.textBody,
         ),
       ),
     );

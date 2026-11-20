@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
-import '../core/theme/app_colors.dart';
+import '../core/theme/app_palette.dart';
 import '../core/theme/app_radius.dart';
-import '../core/theme/app_shadows.dart';
 import '../core/theme/app_text.dart';
 import 'ui/sticky_bottom_bar.dart';
 
@@ -24,10 +23,10 @@ enum NavTab {
   const NavTab(this.route, this.label, this.icon);
 }
 
-/// Floating bottom navigation bar (365 × 75 pada lebar 440) sesuai PRD §5.2, §14.4.
+/// Floating bottom navigation bar (365 × 75 pada lebar 440) sesuai PRD §5.2, §14.4, §16.
 /// - Floating overlay dengan bayangan halus
 /// - 5 tab: Home · Search · Add · Plan · Nearby
-/// - Item aktif = lingkaran amber 59 × 57 di dalam bar (berisi ikon + label warna olive)
+/// - Item aktif = lingkaran amber 59 × 57 di dalam bar (berisi ikon + label warna onAccent)
 class AppBottomNav extends StatelessWidget {
   final String currentRoute;
 
@@ -44,6 +43,7 @@ class AppBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.palette;
     final bottomMargin = bottomGap(context);
     final activeTab = _activeTab;
 
@@ -56,17 +56,23 @@ class AppBottomNav extends StatelessWidget {
           width: 365.0,
           height: 75.0,
           padding: const EdgeInsets.symmetric(horizontal: 6.0),
-          decoration: const BoxDecoration(
-            color: AppColors.olive,
+          decoration: BoxDecoration(
+            color: palette.navSurface,
             borderRadius: AppRadius.bottomNav,
-            boxShadow: AppShadows.bottomNav,
+            boxShadow: [
+              BoxShadow(
+                color: palette.shadowColor,
+                offset: const Offset(0, 8),
+                blurRadius: 24,
+              ),
+            ],
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: NavTab.values.map((tab) {
               final isActive = tab == activeTab;
-              return _buildNavItem(context, tab, isActive);
+              return _buildNavItem(context, tab, isActive, palette);
             }).toList(),
           ),
         ),
@@ -74,7 +80,12 @@ class AppBottomNav extends StatelessWidget {
     );
   }
 
-  Widget _buildNavItem(BuildContext context, NavTab tab, bool isActive) {
+  Widget _buildNavItem(
+    BuildContext context,
+    NavTab tab,
+    bool isActive,
+    AppPalette palette,
+  ) {
     if (isActive) {
       // Item aktif: lingkaran amber 59 × 57
       return Semantics(
@@ -90,21 +101,21 @@ class AppBottomNav extends StatelessWidget {
           child: Container(
             width: 59.0,
             height: 57.0,
-            decoration: const BoxDecoration(
-              color: AppColors.amber,
+            decoration: BoxDecoration(
+              color: palette.accent,
               shape: BoxShape.circle,
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(tab.icon, color: AppColors.olive, size: 20.0),
+                Icon(tab.icon, color: palette.onAccent, size: 20.0),
                 const SizedBox(height: 2),
                 Text(
                   tab.label,
                   maxLines: 1,
                   overflow: TextOverflow.clip,
                   style: AppText.bottomNav.copyWith(
-                    color: AppColors.olive,
+                    color: palette.onAccent,
                     fontSize: 10.0,
                     fontWeight: FontWeight.w700,
                   ),
@@ -117,6 +128,10 @@ class AppBottomNav extends StatelessWidget {
     }
 
     // Item non-aktif
+    final inactiveColor = palette.isDark
+        ? palette.textStrong
+        : palette.onAction;
+
     return Semantics(
       label: tab.label,
       button: true,
@@ -135,14 +150,14 @@ class AppBottomNav extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(tab.icon, color: AppColors.white, size: 20.0),
+              Icon(tab.icon, color: inactiveColor, size: 20.0),
               const SizedBox(height: 2),
               Text(
                 tab.label,
                 maxLines: 1,
                 overflow: TextOverflow.clip,
                 style: AppText.bottomNav.copyWith(
-                  color: AppColors.white,
+                  color: inactiveColor,
                   fontSize: 10.0,
                   fontWeight: FontWeight.w500,
                 ),

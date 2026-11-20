@@ -7,7 +7,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../app/app_shell.dart';
-import '../core/theme/app_colors.dart';
+import '../core/theme/app_palette.dart';
 import '../core/theme/app_radius.dart';
 import '../core/theme/app_shadows.dart';
 import '../models/models.dart';
@@ -24,9 +24,9 @@ import '../widgets/ui/empty_state.dart';
 
 enum NearbyQuickFilter { terdekat, bukaSekarang, hargaHemat }
 
-/// Halaman Nearby (/nearby) sesuai PRD §6.8, §7.2 dan design/location.jpg:
+/// Halaman Nearby (/nearby) sesuai PRD §6.8, §7.2, §16 dan design/location.jpg:
 /// - AppHeader global di atas.
-/// - Baris pencarian: search bar putih ("Cari resto atau rumah makan") + tombol filter bulat chipGray.
+/// - Baris pencarian: search bar putih ("Cari resto atau rumah makan") + tombol filter bulat chip.
 /// - Chip filter: Terdekat (default aktif), Buka sekarang, Harga hemat.
 /// - Kartu peta ilustrasi statis IllustratedMap (375x210 radius 20).
 /// - Judul "Pilihan Di Sekitarmu" + "{n} tempat" (dinamis).
@@ -213,6 +213,7 @@ class _NearbyPageState extends ConsumerState<NearbyPage> {
     showAppBottomSheet(
       context: context,
       builder: (sheetContext) {
+        final palette = sheetContext.palette;
         return StatefulBuilder(
           builder: (context, setSheetState) {
             final bottomPadding = math.max(
@@ -234,13 +235,13 @@ class _NearbyPageState extends ConsumerState<NearbyPage> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
+                      Text(
                         'Filter',
                         style: TextStyle(
                           fontFamily: 'Poppins',
                           fontSize: 20.0,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.olive,
+                          color: palette.textStrong,
                         ),
                       ),
                       GestureDetector(
@@ -251,13 +252,13 @@ class _NearbyPageState extends ConsumerState<NearbyPage> {
                             tempStatus = 'Semua';
                           });
                         },
-                        child: const Text(
+                        child: Text(
                           'Reset',
                           style: TextStyle(
                             fontFamily: 'Poppins',
                             fontSize: 14.0,
                             fontWeight: FontWeight.w600,
-                            color: AppColors.maroon,
+                            color: palette.danger,
                           ),
                         ),
                       ),
@@ -266,13 +267,13 @@ class _NearbyPageState extends ConsumerState<NearbyPage> {
                   const SizedBox(height: 20.0),
 
                   // 1. Bagian Radius
-                  const Text(
+                  Text(
                     'Radius',
                     style: TextStyle(
                       fontFamily: 'Poppins',
                       fontSize: 14.0,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.olive,
+                      color: palette.textStrong,
                     ),
                   ),
                   const SizedBox(height: 8.0),
@@ -284,22 +285,22 @@ class _NearbyPageState extends ConsumerState<NearbyPage> {
                       return ChoiceChip(
                         label: Text(radius),
                         selected: isSelected,
-                        selectedColor: AppColors.olive,
-                        backgroundColor: AppColors.white,
+                        selectedColor: palette.actionBg,
+                        backgroundColor: palette.surface,
                         labelStyle: TextStyle(
                           fontFamily: 'Poppins',
                           fontSize: 12.0,
                           fontWeight: FontWeight.w600,
                           color: isSelected
-                              ? AppColors.white
-                              : AppColors.textBody,
+                              ? palette.onAction
+                              : palette.textBody,
                         ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(999.0),
                           side: BorderSide(
                             color: isSelected
-                                ? AppColors.olive
-                                : AppColors.border,
+                                ? palette.actionBg
+                                : palette.border,
                           ),
                         ),
                         showCheckmark: false,
@@ -314,13 +315,13 @@ class _NearbyPageState extends ConsumerState<NearbyPage> {
                   const SizedBox(height: 18.0),
 
                   // 2. Bagian Kisaran Harga
-                  const Text(
+                  Text(
                     'Kisaran harga',
                     style: TextStyle(
                       fontFamily: 'Poppins',
                       fontSize: 14.0,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.olive,
+                      color: palette.textStrong,
                     ),
                   ),
                   const SizedBox(height: 8.0),
@@ -333,22 +334,22 @@ class _NearbyPageState extends ConsumerState<NearbyPage> {
                           return ChoiceChip(
                             label: Text(price),
                             selected: isSelected,
-                            selectedColor: AppColors.olive,
-                            backgroundColor: AppColors.white,
+                            selectedColor: palette.actionBg,
+                            backgroundColor: palette.surface,
                             labelStyle: TextStyle(
                               fontFamily: 'Poppins',
                               fontSize: 12.0,
                               fontWeight: FontWeight.w600,
                               color: isSelected
-                                  ? AppColors.white
-                                  : AppColors.textBody,
+                                  ? palette.onAction
+                                  : palette.textBody,
                             ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(999.0),
                               side: BorderSide(
                                 color: isSelected
-                                    ? AppColors.olive
-                                    : AppColors.border,
+                                    ? palette.actionBg
+                                    : palette.border,
                               ),
                             ),
                             showCheckmark: false,
@@ -364,13 +365,13 @@ class _NearbyPageState extends ConsumerState<NearbyPage> {
                   const SizedBox(height: 18.0),
 
                   // 3. Bagian Status
-                  const Text(
+                  Text(
                     'Status',
                     style: TextStyle(
                       fontFamily: 'Poppins',
                       fontSize: 14.0,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.olive,
+                      color: palette.textStrong,
                     ),
                   ),
                   const SizedBox(height: 8.0),
@@ -382,22 +383,22 @@ class _NearbyPageState extends ConsumerState<NearbyPage> {
                       return ChoiceChip(
                         label: Text(status),
                         selected: isSelected,
-                        selectedColor: AppColors.olive,
-                        backgroundColor: AppColors.white,
+                        selectedColor: palette.actionBg,
+                        backgroundColor: palette.surface,
                         labelStyle: TextStyle(
                           fontFamily: 'Poppins',
                           fontSize: 12.0,
                           fontWeight: FontWeight.w600,
                           color: isSelected
-                              ? AppColors.white
-                              : AppColors.textBody,
+                              ? palette.onAction
+                              : palette.textBody,
                         ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(999.0),
                           side: BorderSide(
                             color: isSelected
-                                ? AppColors.olive
-                                : AppColors.border,
+                                ? palette.actionBg
+                                : palette.border,
                           ),
                         ),
                         showCheckmark: false,
@@ -448,6 +449,7 @@ class _NearbyPageState extends ConsumerState<NearbyPage> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.palette;
     final allPlaces = ref.watch(placesProvider);
     final locationState = ref.watch(locationProvider);
     final filteredPlaces = _filterAndSortPlaces(allPlaces);
@@ -476,39 +478,40 @@ class _NearbyPageState extends ConsumerState<NearbyPage> {
                     child: Container(
                       height: 46.0,
                       decoration: BoxDecoration(
-                        color: AppColors.white,
+                        color: palette.field,
                         borderRadius: BorderRadius.circular(999.0),
-                        boxShadow: const [
+                        border: Border.all(color: palette.fieldBorder),
+                        boxShadow: [
                           BoxShadow(
-                            color: AppColors.shadowShell,
+                            color: palette.shadowColor,
                             blurRadius: 4.0,
-                            offset: Offset(0, 1),
+                            offset: const Offset(0, 1),
                           ),
                         ],
                       ),
                       padding: const EdgeInsets.symmetric(horizontal: 14.0),
                       child: Row(
                         children: [
-                          const Icon(
+                          Icon(
                             LucideIcons.search,
-                            color: AppColors.sage,
+                            color: palette.textSecondary,
                             size: 18.0,
                           ),
                           const SizedBox(width: 8.0),
                           Expanded(
                             child: TextField(
                               controller: _searchController,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontFamily: 'Poppins',
                                 fontSize: 13.0,
-                                color: AppColors.textBody,
+                                color: palette.textBody,
                               ),
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 hintText: 'Cari resto atau rumah makan',
                                 hintStyle: TextStyle(
                                   fontFamily: 'Poppins',
                                   fontSize: 13.0,
-                                  color: AppColors.sage,
+                                  color: palette.textSecondary,
                                 ),
                                 border: InputBorder.none,
                                 isDense: true,
@@ -521,10 +524,10 @@ class _NearbyPageState extends ConsumerState<NearbyPage> {
                               onTap: () {
                                 _searchController.clear();
                               },
-                              child: const Icon(
+                              child: Icon(
                                 LucideIcons.x,
                                 size: 16.0,
-                                color: AppColors.sage,
+                                color: palette.textSecondary,
                               ),
                             ),
                         ],
@@ -534,7 +537,7 @@ class _NearbyPageState extends ConsumerState<NearbyPage> {
 
                   const SizedBox(width: 12.0),
 
-                  // Tombol Filter Bulat (chipGray, 46x46)
+                  // Tombol Filter Bulat (chip, 46x46)
                   Semantics(
                     label: 'Filter pencarian tempat',
                     button: true,
@@ -543,15 +546,15 @@ class _NearbyPageState extends ConsumerState<NearbyPage> {
                       child: Container(
                         width: 46.0,
                         height: 46.0,
-                        decoration: const BoxDecoration(
-                          color: AppColors.chipGray,
+                        decoration: BoxDecoration(
+                          color: palette.chip,
                           shape: BoxShape.circle,
                         ),
                         alignment: Alignment.center,
-                        child: const Icon(
+                        child: Icon(
                           LucideIcons.slidersHorizontal,
                           size: 18.0,
-                          color: AppColors.olive,
+                          color: palette.textStrong,
                         ),
                       ),
                     ),
@@ -572,6 +575,7 @@ class _NearbyPageState extends ConsumerState<NearbyPage> {
                 child: Row(
                   children: [
                     _buildQuickChip(
+                      palette: palette,
                       label: 'Terdekat',
                       isSelected: _quickFilter == NearbyQuickFilter.terdekat,
                       onTap: () {
@@ -582,6 +586,7 @@ class _NearbyPageState extends ConsumerState<NearbyPage> {
                     ),
                     const SizedBox(width: 10.0),
                     _buildQuickChip(
+                      palette: palette,
                       label: 'Buka sekarang',
                       isSelected:
                           _quickFilter == NearbyQuickFilter.bukaSekarang,
@@ -593,6 +598,7 @@ class _NearbyPageState extends ConsumerState<NearbyPage> {
                     ),
                     const SizedBox(width: 10.0),
                     _buildQuickChip(
+                      palette: palette,
                       label: 'Harga hemat',
                       isSelected: _quickFilter == NearbyQuickFilter.hargaHemat,
                       onTap: () {
@@ -668,24 +674,24 @@ class _NearbyPageState extends ConsumerState<NearbyPage> {
                 crossAxisAlignment: CrossAxisAlignment.baseline,
                 textBaseline: TextBaseline.alphabetic,
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: Text(
                       'Pilihan Di Sekitarmu',
                       style: TextStyle(
                         fontFamily: 'Poppins',
                         fontSize: 18.0,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.olive,
+                        color: palette.textStrong,
                       ),
                     ),
                   ),
                   Text(
                     '${filteredPlaces.length} tempat',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Poppins',
                       fontSize: 11.0,
                       fontWeight: FontWeight.w500,
-                      color: AppColors.sage,
+                      color: palette.textSecondary,
                     ),
                   ),
                 ],
@@ -727,6 +733,7 @@ class _NearbyPageState extends ConsumerState<NearbyPage> {
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 12.0),
                     child: _buildPlaceCard(
+                      palette: palette,
                       place: place,
                       index: index + 1,
                       isSelected: isSelected,
@@ -746,6 +753,7 @@ class _NearbyPageState extends ConsumerState<NearbyPage> {
   }
 
   Widget _buildQuickChip({
+    required AppPalette palette,
     required String label,
     required bool isSelected,
     required VoidCallback onTap,
@@ -755,15 +763,15 @@ class _NearbyPageState extends ConsumerState<NearbyPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.olive : AppColors.white,
+          color: isSelected ? palette.actionBg : palette.surface,
           borderRadius: BorderRadius.circular(999.0),
           boxShadow: isSelected
               ? null
-              : const [
+              : [
                   BoxShadow(
-                    color: AppColors.shadowShell,
+                    color: palette.shadowColor,
                     blurRadius: 3.0,
-                    offset: Offset(0, 1),
+                    offset: const Offset(0, 1),
                   ),
                 ],
         ),
@@ -773,7 +781,7 @@ class _NearbyPageState extends ConsumerState<NearbyPage> {
             fontFamily: 'Poppins',
             fontSize: 12.0,
             fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-            color: isSelected ? AppColors.white : AppColors.textBody,
+            color: isSelected ? palette.onAction : palette.textBody,
           ),
         ),
       ),
@@ -781,6 +789,7 @@ class _NearbyPageState extends ConsumerState<NearbyPage> {
   }
 
   Widget _buildPlaceCard({
+    required AppPalette palette,
     required Place place,
     required int index,
     required bool isSelected,
@@ -791,30 +800,30 @@ class _NearbyPageState extends ConsumerState<NearbyPage> {
     return GestureDetector(
       onTap: () => _onSelectPlace(place.id),
       child: Container(
-        decoration: const BoxDecoration(
-          color: AppColors.white,
+        decoration: BoxDecoration(
+          color: palette.surface,
           borderRadius: AppRadius.cardLarge,
           boxShadow: AppShadows.card,
         ),
         padding: const EdgeInsets.all(14.0),
         child: Row(
           children: [
-            // Lingkaran Nomor (32x32: amber bila terpilih, chipGray bila lain)
+            // Lingkaran Nomor (32x32: accent bila terpilih, chip bila lain)
             Container(
               width: 32.0,
               height: 32.0,
               decoration: BoxDecoration(
-                color: isSelected ? AppColors.amber : AppColors.chipGray,
+                color: isSelected ? palette.accent : palette.chip,
                 shape: BoxShape.circle,
               ),
               alignment: Alignment.center,
               child: Text(
                 '$index',
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Poppins',
                   fontSize: 13.0,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.textBody,
+                  color: isSelected ? palette.onAccent : palette.textBody,
                 ),
               ),
             ),
@@ -826,46 +835,46 @@ class _NearbyPageState extends ConsumerState<NearbyPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Nama Tempat (14/700 olive)
+                  // Nama Tempat (14/700 textStrong)
                   Text(
                     place.name,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Poppins',
                       fontSize: 14.0,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.olive,
+                      color: palette.textStrong,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2.0),
 
-                  // "Cuisine · Rp..–.. rb" (11 sage)
+                  // "Cuisine · Rp..–.. rb" (11 textSecondary)
                   Text(
                     '${place.cuisine} · Rp$priceMinStr–$priceMaxStr rb',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Poppins',
                       fontSize: 11.0,
                       fontWeight: FontWeight.w400,
-                      color: AppColors.sage,
+                      color: palette.textSecondary,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2.0),
 
-                  // "Jarak · Menit" (11 sage)
+                  // "Jarak · Menit" (11 textSecondary)
                   Text(
                     isSelected &&
                             _routeResult != null &&
                             !_routeResult!.isStraightLineFallback
                         ? _routeResult!.distanceAndDurationString
                         : '${place.distanceM} m · ${place.walkMin} menit',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Poppins',
                       fontSize: 11.0,
                       fontWeight: FontWeight.w400,
-                      color: AppColors.sage,
+                      color: palette.textSecondary,
                     ),
                   ),
                 ],
@@ -878,19 +887,19 @@ class _NearbyPageState extends ConsumerState<NearbyPage> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                // Status "Buka" (olive) atau "Tutup" (maroon)
+                // Status "Buka" (actionBg) atau "Tutup" (danger)
                 Text(
                   place.open ? 'Buka' : 'Tutup',
                   style: TextStyle(
                     fontFamily: 'Poppins',
                     fontSize: 11.0,
                     fontWeight: FontWeight.w600,
-                    color: place.open ? AppColors.olive : AppColors.maroon,
+                    color: place.open ? palette.actionBg : palette.danger,
                   ),
                 ),
                 const SizedBox(height: 6.0),
 
-                // Tombol "Rute" (terpilih = olive teks putih, lain = chipGray teks olive)
+                // Tombol "Rute" (terpilih = actionBg teks onAction, lain = chip teks textStrong)
                 Semantics(
                   label: 'Rute ke ${place.name}',
                   button: true,
@@ -902,9 +911,7 @@ class _NearbyPageState extends ConsumerState<NearbyPage> {
                         vertical: 6.0,
                       ),
                       decoration: BoxDecoration(
-                        color: isSelected
-                            ? AppColors.olive
-                            : AppColors.chipGray,
+                        color: isSelected ? palette.actionBg : palette.chip,
                         borderRadius: BorderRadius.circular(999.0),
                       ),
                       alignment: Alignment.center,
@@ -914,7 +921,9 @@ class _NearbyPageState extends ConsumerState<NearbyPage> {
                           fontFamily: 'Poppins',
                           fontSize: 12.0,
                           fontWeight: FontWeight.w600,
-                          color: isSelected ? AppColors.white : AppColors.olive,
+                          color: isSelected
+                              ? palette.onAction
+                              : palette.textStrong,
                         ),
                       ),
                     ),

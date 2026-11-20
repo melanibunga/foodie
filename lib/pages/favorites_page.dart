@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
-import '../core/theme/app_colors.dart';
+import '../core/theme/app_palette.dart';
 import '../models/models.dart';
 import '../providers/favorites_provider.dart';
 import '../providers/recipes_provider.dart';
@@ -62,6 +62,7 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.palette;
     final favoriteRecipes = ref.watch(favoriteRecipesProvider);
     final favoriteCount = ref.watch(favoriteCountProvider);
 
@@ -115,16 +116,16 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage> {
 
           // 1. Label "Filter bahan utama" & Chip Filter Horizontal
           if (favoriteRecipes.isNotEmpty) ...[
-            const SliverToBoxAdapter(
+            SliverToBoxAdapter(
               child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 24.0),
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
                 child: Text(
                   'Filter bahan utama',
                   style: TextStyle(
                     fontFamily: 'Poppins',
                     fontSize: 13.0,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.olive,
+                    color: palette.textStrong,
                   ),
                 ),
               ),
@@ -201,12 +202,12 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage> {
                         _selectedIngredient = null;
                       });
                     },
-                    child: const Text(
+                    child: Text(
                       'Reset Filter',
                       style: TextStyle(
                         fontFamily: 'Poppins',
                         fontWeight: FontWeight.w600,
-                        color: AppColors.maroon,
+                        color: palette.danger,
                       ),
                     ),
                   ),

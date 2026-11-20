@@ -1,63 +1,66 @@
 import 'package:flutter/material.dart';
 
-import 'app_colors.dart';
+import 'app_palette.dart';
 import 'app_radius.dart';
 import 'app_text.dart';
 
-/// Tema aplikasi Foodie.id yang terpusat dan konsisten dengan token desain.
+/// Tema aplikasi Foodie.id yang terpusat dan konsisten dengan token palet semantik.
 abstract final class AppTheme {
   static ThemeData get lightTheme {
-    const colorScheme = ColorScheme(
+    const palette = AppPalette.light;
+
+    final colorScheme = ColorScheme(
       brightness: Brightness.light,
-      primary: AppColors.olive,
-      onPrimary: AppColors.white,
-      secondary: AppColors.amber,
-      onSecondary: AppColors.olive,
-      error: AppColors.maroon,
-      onError: AppColors.white,
-      surface: AppColors.bg,
-      onSurface: AppColors.textBody,
-      outline: AppColors.border,
-      surfaceContainerHighest: AppColors.chipGray,
+      primary: palette.actionBg,
+      onPrimary: palette.onAction,
+      secondary: palette.accent,
+      onSecondary: palette.onAccent,
+      error: palette.danger,
+      onError: palette.onDanger,
+      surface: palette.surface,
+      onSurface: palette.textBody,
+      outline: palette.border,
+      surfaceContainerHighest: palette.chip,
     );
 
     return ThemeData(
       useMaterial3: true,
       fontFamily: AppText.fontFamily,
-      scaffoldBackgroundColor: AppColors.bg,
+      scaffoldBackgroundColor: palette.bg,
       colorScheme: colorScheme,
+      extensions: const [palette],
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      splashColor: const Color(0x14263C32),
-      highlightColor: const Color(0x0A263C32),
-      appBarTheme: const AppBarTheme(
-        backgroundColor: AppColors.bg,
-        foregroundColor: AppColors.olive,
+      splashColor: palette.shadowColor,
+      highlightColor: palette.shadowColor,
+      appBarTheme: AppBarTheme(
+        backgroundColor: palette.bg,
+        foregroundColor: palette.textStrong,
         elevation: 0,
         scrolledUnderElevation: 0,
         surfaceTintColor: Colors.transparent,
         centerTitle: false,
-        titleTextStyle: AppText.pageTitle,
+        titleTextStyle: AppText.pageTitle.copyWith(color: palette.textStrong),
       ),
-      cardTheme: const CardThemeData(
-        color: AppColors.white,
+      cardTheme: CardThemeData(
+        color: palette.surface,
         elevation: 0,
         margin: EdgeInsets.zero,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: AppRadius.card),
+        shape: const RoundedRectangleBorder(borderRadius: AppRadius.card),
       ),
-      dialogTheme: const DialogThemeData(
-        backgroundColor: AppColors.white,
+      dialogTheme: DialogThemeData(
+        backgroundColor: palette.surface,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: AppRadius.cardLarge),
+        shape: const RoundedRectangleBorder(borderRadius: AppRadius.cardLarge),
       ),
-      bottomSheetTheme: const BottomSheetThemeData(
-        backgroundColor: AppColors.white,
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: palette.surface,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: AppRadius.sheetTop),
+        shape: const RoundedRectangleBorder(borderRadius: AppRadius.sheetTop),
         showDragHandle: false,
       ),
-      dividerTheme: const DividerThemeData(
-        color: AppColors.border,
+      dividerTheme: DividerThemeData(
+        color: palette.divider,
         thickness: 1,
         space: 1,
       ),
@@ -65,31 +68,34 @@ abstract final class AppTheme {
   }
 
   static ThemeData get darkTheme {
-    const colorScheme = ColorScheme(
+    const palette = AppPalette.dark;
+
+    final colorScheme = ColorScheme(
       brightness: Brightness.dark,
-      primary: AppColors.oliveDark,
-      onPrimary: AppColors.white,
-      secondary: AppColors.amber,
-      onSecondary: AppColors.bgDark,
-      error: AppColors.maroonDark,
-      onError: AppColors.white,
-      surface: AppColors.surfaceDark,
-      onSurface: AppColors.textBodyDark,
-      outline: AppColors.borderDark,
-      surfaceContainerHighest: AppColors.chipGrayDark,
+      primary: palette.actionBg,
+      onPrimary: palette.onAction,
+      secondary: palette.accent,
+      onSecondary: palette.onAccent,
+      error: palette.danger,
+      onError: palette.onDanger,
+      surface: palette.surface,
+      onSurface: palette.textBody,
+      outline: palette.border,
+      surfaceContainerHighest: palette.chip,
     );
 
     return ThemeData(
       useMaterial3: true,
       fontFamily: AppText.fontFamily,
-      scaffoldBackgroundColor: AppColors.bgDark,
+      scaffoldBackgroundColor: palette.bg,
       colorScheme: colorScheme,
+      extensions: const [palette],
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      splashColor: AppColors.shadowOlive,
-      highlightColor: AppColors.shadowOlive,
-      appBarTheme: const AppBarTheme(
-        backgroundColor: AppColors.bgDark,
-        foregroundColor: AppColors.textTitleDark,
+      splashColor: palette.shadowColor,
+      highlightColor: palette.shadowColor,
+      appBarTheme: AppBarTheme(
+        backgroundColor: palette.bg,
+        foregroundColor: palette.textStrong,
         elevation: 0,
         scrolledUnderElevation: 0,
         surfaceTintColor: Colors.transparent,
@@ -98,29 +104,29 @@ abstract final class AppTheme {
           fontFamily: AppText.fontFamily,
           fontSize: 24,
           fontWeight: FontWeight.w700,
-          color: AppColors.textTitleDark,
+          color: palette.textStrong,
         ),
       ),
-      cardTheme: const CardThemeData(
-        color: AppColors.surfaceDark,
+      cardTheme: CardThemeData(
+        color: palette.surface,
         elevation: 0,
         margin: EdgeInsets.zero,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: AppRadius.card),
+        shape: const RoundedRectangleBorder(borderRadius: AppRadius.card),
       ),
-      dialogTheme: const DialogThemeData(
-        backgroundColor: AppColors.surfaceDark,
+      dialogTheme: DialogThemeData(
+        backgroundColor: palette.surface,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: AppRadius.cardLarge),
+        shape: const RoundedRectangleBorder(borderRadius: AppRadius.cardLarge),
       ),
-      bottomSheetTheme: const BottomSheetThemeData(
-        backgroundColor: AppColors.surfaceDark,
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: palette.surface,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: AppRadius.sheetTop),
+        shape: const RoundedRectangleBorder(borderRadius: AppRadius.sheetTop),
         showDragHandle: false,
       ),
-      dividerTheme: const DividerThemeData(
-        color: AppColors.borderDark,
+      dividerTheme: DividerThemeData(
+        color: palette.divider,
         thickness: 1,
         space: 1,
       ),

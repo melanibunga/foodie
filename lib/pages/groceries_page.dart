@@ -6,33 +6,34 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../app/app_shell.dart';
-import '../core/theme/app_colors.dart';
+import '../core/theme/app_palette.dart';
 import '../core/theme/app_radius.dart';
 import '../core/theme/app_shadows.dart';
 import '../core/utils/format_rupiah.dart';
 import '../models/models.dart';
 import '../providers/cart_provider.dart';
 import '../providers/ui_helper.dart';
+import '../widgets/grocery_group_header.dart';
 import '../widgets/ui/app_checkbox.dart';
 import '../widgets/ui/empty_state.dart';
 import '../widgets/ui/sticky_bottom_bar.dart';
 
-/// Halaman My Groceries (/groceries) sesuai PRD §6.11, §15.7, §15.8 dan design/Daftar Belanja.jpg:
+/// Halaman My Groceries (/groceries) sesuai PRD §6.11, §15.7, §15.8, §16 dan design/Daftar Belanja.jpg:
 /// - Tanpa header global dan tanpa bottom nav.
-/// - Top bar: tombol panah kiri + "My Groceries" (24/700 olive).
-/// - Add bar: ikon cart chipGray, placeholder "+ Tambah bahan belanja…", input angka "Rp", tombol plus olive 36x36.
+/// - Top bar: tombol panah kiri + "My Groceries" (24/700 textStrong).
+/// - Add bar: ikon cart surfaceAlt, placeholder "+ Tambah bahan belanja…", input angka "Rp", tombol plus actionBg 36x36.
 ///   Item baru masuk grup "Belanjaan Kamu Nich" (item custom).
 /// - K1 Urutan: grup resep diurutkan descending (terbaru di atas). Item di custom group juga terbaru di atas.
 /// - K2 Kartu pin: grup custom ("Belanjaan Kamu Nich") SELALU di paling atas, selalu tampil walau kosong.
-///   Background amberSoft, border 1px amber @ 40%, ikon pin kecil di samping judul.
-///   Teks olive, takaran olive @ 75%, checkbox olive. Tanpa tombol "Hapus menu" dan tanpa subtotal.
-///   Hapus item per bahan lewat swipe ke kiri (Dismissible endToStart latar maroon + trash putih) + Semantics "Hapus".
-/// - Grup kartu per menu: header nama menu (15/700) + "Hapus menu" (maroon 11/600),
+///   Background accentSoft, border 1px amber @ 40%, ikon pin kecil di samping judul.
+///   Teks textStrong, takaran accentSoftTextAlt, checkbox actionBg/accent. Tanpa tombol "Hapus menu" dan tanpa subtotal.
+///   Hapus item per bahan lewat swipe ke kiri (Dismissible endToStart latar danger + trash onDanger) + Semantics "Hapus".
+/// - Grup kartu per menu: header nama menu (15/700) + "Hapus menu" (danger 11/600),
 ///   baris item (checkbox kotak 22, nama 14/600 + takaran 11 sage, harga 13/600).
 ///   Footer kanan-bawah: "Subtotal Rp X" (10 sage).
 /// - Catatan kecil: "Harga estimasi, ketuk item untuk mengubah" (tap harga untuk edit inline).
-/// - Panel ringkasan sticky bawah (putih, radius atas 24, padding 24):
-///   "Total estimasi (belum dibeli)" (11 sage) + total besar (24/700 olive) + tombol "Kosongkan semua" (164x44).
+/// - Panel ringkasan sticky bawah (surface, radius atas 24, padding 24):
+///   "Total estimasi (belum dibeli)" (11 textSecondary) + total besar (24/700 textStrong) + tombol "Kosongkan semua" (164x44).
 /// - Aturan hitung:
 ///   Subtotal grup = jumlah SEMUA item di grup itu.
 ///   Total estimasi = jumlah SEMUA item yang BELUM DICENTANG di seluruh grup.
@@ -126,6 +127,7 @@ class _GroceriesPageState extends ConsumerState<GroceriesPage> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.palette;
     final displayGroups = ref.watch(displayCartGroupsProvider);
     final totalUnchecked = ref.watch(cartTotalUncheckedProvider);
     final totalItemsCount = ref.watch(cartCountProvider);
@@ -139,7 +141,7 @@ class _GroceriesPageState extends ConsumerState<GroceriesPage> {
 
     return Scaffold(
       resizeToAvoidBottomInset: false,
-      backgroundColor: AppColors.bg,
+      backgroundColor: palette.bg,
       body: Stack(
         children: [
           // Konten Scrollable
@@ -176,22 +178,24 @@ class _GroceriesPageState extends ConsumerState<GroceriesPage> {
                                 shape: BoxShape.circle,
                               ),
                               alignment: Alignment.centerLeft,
-                              child: const Icon(
+                              child: Icon(
                                 LucideIcons.arrowLeft,
                                 size: 24.0,
-                                color: AppColors.olive,
+                                color: palette.textStrong,
                               ),
                             ),
                           ),
                         ),
                         const SizedBox(width: 8.0),
-                        const Text(
-                          'My Groceries',
-                          style: TextStyle(
-                            fontFamily: 'Poppins',
-                            fontSize: 24.0,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.olive,
+                        Expanded(
+                          child: Text(
+                            'My Groceries',
+                            style: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontSize: 24.0,
+                              fontWeight: FontWeight.w700,
+                              color: palette.textStrong,
+                            ),
                           ),
                         ),
                       ],
@@ -199,7 +203,7 @@ class _GroceriesPageState extends ConsumerState<GroceriesPage> {
                   ),
                 ),
 
-                // 2. Add Bar (Kartu putih radius 14, tinggi ≈ 52)
+                // 2. Add Bar (Kartu surface radius 14, tinggi ≈ 52)
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -207,26 +211,26 @@ class _GroceriesPageState extends ConsumerState<GroceriesPage> {
                       height: 52.0,
                       padding: const EdgeInsets.symmetric(horizontal: 10.0),
                       decoration: BoxDecoration(
-                        color: AppColors.white,
+                        color: palette.surface,
                         borderRadius: BorderRadius.circular(14.0),
-                        border: Border.all(color: AppColors.border),
+                        border: Border.all(color: palette.border),
                         boxShadow: AppShadows.card,
                       ),
                       child: Row(
                         children: [
-                          // Lingkaran chipGray berisi ikon cart
+                          // Lingkaran surfaceAlt berisi ikon cart
                           Container(
                             width: 34.0,
                             height: 34.0,
-                            decoration: const BoxDecoration(
-                              color: AppColors.chipGray,
+                            decoration: BoxDecoration(
+                              color: palette.surfaceAlt,
                               shape: BoxShape.circle,
                             ),
                             alignment: Alignment.center,
-                            child: const Icon(
+                            child: Icon(
                               LucideIcons.shoppingBag,
                               size: 16.0,
-                              color: AppColors.olive,
+                              color: palette.textStrong,
                             ),
                           ),
                           const SizedBox(width: 10.0),
@@ -235,17 +239,17 @@ class _GroceriesPageState extends ConsumerState<GroceriesPage> {
                           Expanded(
                             child: TextField(
                               controller: _nameController,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontFamily: 'Poppins',
                                 fontSize: 13.0,
-                                color: AppColors.textBody,
+                                color: palette.textBody,
                               ),
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 hintText: '+ Tambah bahan belanja…',
                                 hintStyle: TextStyle(
                                   fontFamily: 'Poppins',
                                   fontSize: 13.0,
-                                  color: AppColors.sage,
+                                  color: palette.textSecondary,
                                 ),
                                 border: InputBorder.none,
                                 isDense: true,
@@ -257,27 +261,27 @@ class _GroceriesPageState extends ConsumerState<GroceriesPage> {
 
                           const SizedBox(width: 8.0),
 
-                          // Pill harga chipGray "Rp" (input angka)
+                          // Pill harga surfaceAlt "Rp" (input angka)
                           Container(
                             height: 34.0,
                             padding: const EdgeInsets.symmetric(
                               horizontal: 8.0,
                             ),
                             decoration: BoxDecoration(
-                              color: AppColors.chipGray,
+                              color: palette.surfaceAlt,
                               borderRadius: BorderRadius.circular(10.0),
                             ),
                             alignment: Alignment.center,
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Text(
+                                Text(
                                   'Rp ',
                                   style: TextStyle(
                                     fontFamily: 'Poppins',
                                     fontSize: 11.0,
                                     fontWeight: FontWeight.w600,
-                                    color: AppColors.olive,
+                                    color: palette.textStrong,
                                   ),
                                 ),
                                 SizedBox(
@@ -288,18 +292,18 @@ class _GroceriesPageState extends ConsumerState<GroceriesPage> {
                                     inputFormatters: [
                                       FilteringTextInputFormatter.digitsOnly,
                                     ],
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontFamily: 'Poppins',
                                       fontSize: 12.0,
                                       fontWeight: FontWeight.w600,
-                                      color: AppColors.olive,
+                                      color: palette.textStrong,
                                     ),
-                                    decoration: const InputDecoration(
+                                    decoration: InputDecoration(
                                       hintText: '0',
                                       hintStyle: TextStyle(
                                         fontFamily: 'Poppins',
                                         fontSize: 12.0,
-                                        color: AppColors.sage,
+                                        color: palette.textSecondary,
                                       ),
                                       border: InputBorder.none,
                                       isDense: true,
@@ -314,21 +318,21 @@ class _GroceriesPageState extends ConsumerState<GroceriesPage> {
 
                           const SizedBox(width: 8.0),
 
-                          // Tombol persegi olive 36 x 36 radius 10 dengan ikon "+"
+                          // Tombol persegi actionBg 36 x 36 radius 10 dengan ikon "+"
                           GestureDetector(
                             onTap: _handleAddCustomItem,
                             child: Container(
                               width: 36.0,
                               height: 36.0,
                               decoration: BoxDecoration(
-                                color: AppColors.olive,
+                                color: palette.actionBg,
                                 borderRadius: BorderRadius.circular(10.0),
                               ),
                               alignment: Alignment.center,
-                              child: const Icon(
+                              child: Icon(
                                 LucideIcons.plus,
                                 size: 18.0,
-                                color: AppColors.white,
+                                color: palette.onAction,
                               ),
                             ),
                           ),
@@ -366,9 +370,9 @@ class _GroceriesPageState extends ConsumerState<GroceriesPage> {
 
                 // 4. Catatan Kecil: "Harga estimasi, ketuk item untuk mengubah"
                 if (hasItems)
-                  const SliverToBoxAdapter(
+                  SliverToBoxAdapter(
                     child: Padding(
-                      padding: EdgeInsets.symmetric(
+                      padding: const EdgeInsets.symmetric(
                         horizontal: 24.0,
                         vertical: 12.0,
                       ),
@@ -379,7 +383,7 @@ class _GroceriesPageState extends ConsumerState<GroceriesPage> {
                             fontFamily: 'Poppins',
                             fontSize: 11.0,
                             fontWeight: FontWeight.w400,
-                            color: AppColors.sage,
+                            color: palette.textSecondary,
                           ),
                         ),
                       ),
@@ -394,7 +398,7 @@ class _GroceriesPageState extends ConsumerState<GroceriesPage> {
             ),
           ),
 
-          // 6. Panel Ringkasan Sticky Bawah (Putih, radius atas 24, padding 24)
+          // 6. Panel Ringkasan Sticky Bawah (surface, radius atas 24, padding 24)
           if (hasItems)
             Positioned(
               left: 0,
@@ -402,13 +406,13 @@ class _GroceriesPageState extends ConsumerState<GroceriesPage> {
               bottom: 0,
               child: Container(
                 decoration: BoxDecoration(
-                  color: AppColors.white,
+                  color: palette.surface,
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(24.0),
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.shadowOlive,
+                      color: palette.shadowColor,
                       offset: const Offset(0, -4),
                       blurRadius: 16.0,
                     ),
@@ -428,23 +432,23 @@ class _GroceriesPageState extends ConsumerState<GroceriesPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Text(
+                          Text(
                             'Total estimasi (belum dibeli)',
                             style: TextStyle(
                               fontFamily: 'Poppins',
                               fontSize: 11.0,
                               fontWeight: FontWeight.w400,
-                              color: AppColors.sage,
+                              color: palette.textSecondary,
                             ),
                           ),
                           const SizedBox(height: 2.0),
                           Text(
                             formatRupiah(totalUnchecked),
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontFamily: 'Poppins',
                               fontSize: 24.0,
                               fontWeight: FontWeight.w700,
-                              color: AppColors.olive,
+                              color: palette.textStrong,
                             ),
                           ),
                         ],
@@ -456,21 +460,21 @@ class _GroceriesPageState extends ConsumerState<GroceriesPage> {
                       height: 44.0,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.olive,
-                          foregroundColor: AppColors.white,
+                          backgroundColor: palette.actionBg,
+                          foregroundColor: palette.onAction,
                           elevation: 0,
                           shape: const RoundedRectangleBorder(
                             borderRadius: AppRadius.button,
                           ),
                         ),
                         onPressed: _handleClearAll,
-                        child: const Text(
+                        child: Text(
                           'Kosongkan semua',
                           style: TextStyle(
                             fontFamily: 'Poppins',
                             fontSize: 12.0,
                             fontWeight: FontWeight.w600,
-                            color: AppColors.white,
+                            color: palette.onAction,
                           ),
                         ),
                       ),
@@ -485,13 +489,14 @@ class _GroceriesPageState extends ConsumerState<GroceriesPage> {
   }
 
   Widget _buildGroupCard(BuildContext context, CartGroup group) {
+    final palette = context.palette;
     final subtotal = ref.watch(cartSubtotalProvider(group.id));
     final isCustomGroup = group.recipeId == null;
 
-    final cardBg = isCustomGroup ? AppColors.amberSoft : AppColors.white;
+    final cardBg = isCustomGroup ? palette.accentSoft : palette.surface;
     final cardBorder = isCustomGroup
-        ? Border.all(color: AppColors.amber.withValues(alpha: 0.4), width: 1.0)
-        : Border.all(color: AppColors.border);
+        ? Border.all(color: palette.accent.withValues(alpha: 0.4), width: 1.0)
+        : Border.all(color: palette.border);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16.0),
@@ -505,41 +510,30 @@ class _GroceriesPageState extends ConsumerState<GroceriesPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header: Nama menu (15/700 olive) + ikon pin jika custom / "Hapus menu" (maroon 11/600) jika resep
-          Row(
-            children: [
-              Flexible(
-                child: Text(
-                  group.name,
-                  style: const TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 15.0,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.olive,
-                  ),
-                ),
-              ),
-              if (isCustomGroup) ...[
-                const SizedBox(width: 6.0),
-                const Icon(LucideIcons.pin, size: 14.0, color: AppColors.olive),
-              ],
-              if (!isCustomGroup) ...[
-                const Spacer(),
-                GestureDetector(
-                  onTap: () => _handleRemoveGroup(group),
-                  child: const Text(
-                    'Hapus menu',
+          // Header: Nama menu (15/700) + ikon pin jika custom / "Hapus menu" (danger 11/600) jika resep
+          if (isCustomGroup)
+            Row(
+              children: [
+                Flexible(
+                  child: Text(
+                    group.name,
                     style: TextStyle(
                       fontFamily: 'Poppins',
-                      fontSize: 11.0,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.maroon,
+                      fontSize: 15.0,
+                      fontWeight: FontWeight.w700,
+                      color: palette.textStrong,
                     ),
                   ),
                 ),
+                const SizedBox(width: 6.0),
+                Icon(LucideIcons.pin, size: 14.0, color: palette.textStrong),
               ],
-            ],
-          ),
+            )
+          else
+            GroceryGroupHeader(
+              title: group.name,
+              onRemove: () => _handleRemoveGroup(group),
+            ),
 
           const SizedBox(height: 12.0),
 
@@ -553,7 +547,7 @@ class _GroceriesPageState extends ConsumerState<GroceriesPage> {
                   fontFamily: 'Poppins',
                   fontSize: 12.0,
                   fontWeight: FontWeight.w400,
-                  color: AppColors.olive.withValues(alpha: 0.75),
+                  color: palette.accentSoftTextAlt,
                 ),
               ),
             ),
@@ -599,11 +593,13 @@ class _GroceriesPageState extends ConsumerState<GroceriesPage> {
                               fontWeight: FontWeight.w600,
                               color: isCustomGroup
                                   ? (item.checked
-                                        ? AppColors.olive.withValues(alpha: 0.6)
-                                        : AppColors.olive)
+                                        ? palette.textStrong.withValues(
+                                            alpha: 0.6,
+                                          )
+                                        : palette.textStrong)
                                   : (item.checked
-                                        ? AppColors.sage
-                                        : AppColors.textBody),
+                                        ? palette.textSecondary
+                                        : palette.textBody),
                               decoration: item.checked
                                   ? TextDecoration.lineThrough
                                   : TextDecoration.none,
@@ -616,8 +612,8 @@ class _GroceriesPageState extends ConsumerState<GroceriesPage> {
                               fontSize: 11.0,
                               fontWeight: FontWeight.w400,
                               color: isCustomGroup
-                                  ? AppColors.olive.withValues(alpha: 0.75)
-                                  : AppColors.sage,
+                                  ? palette.accentSoftTextAlt
+                                  : palette.textSecondary,
                             ),
                           ),
                         ],
@@ -632,21 +628,21 @@ class _GroceriesPageState extends ConsumerState<GroceriesPage> {
                       padding: const EdgeInsets.symmetric(horizontal: 6.0),
                       decoration: BoxDecoration(
                         color: isCustomGroup
-                            ? AppColors.white
-                            : AppColors.summaryBg,
+                            ? palette.surface
+                            : palette.summaryBg,
                         borderRadius: BorderRadius.circular(8.0),
-                        border: Border.all(color: AppColors.olive),
+                        border: Border.all(color: palette.actionBg),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Text(
+                          Text(
                             'Rp ',
                             style: TextStyle(
                               fontFamily: 'Poppins',
                               fontSize: 11.0,
                               fontWeight: FontWeight.w600,
-                              color: AppColors.olive,
+                              color: palette.textStrong,
                             ),
                           ),
                           SizedBox(
@@ -658,11 +654,11 @@ class _GroceriesPageState extends ConsumerState<GroceriesPage> {
                               inputFormatters: [
                                 FilteringTextInputFormatter.digitsOnly,
                               ],
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontFamily: 'Poppins',
                                 fontSize: 12.0,
                                 fontWeight: FontWeight.w600,
-                                color: AppColors.olive,
+                                color: palette.textStrong,
                               ),
                               decoration: const InputDecoration(
                                 border: InputBorder.none,
@@ -675,10 +671,10 @@ class _GroceriesPageState extends ConsumerState<GroceriesPage> {
                           ),
                           GestureDetector(
                             onTap: () => _saveInlinePrice(group.id, item.id),
-                            child: const Icon(
+                            child: Icon(
                               LucideIcons.check,
                               size: 16.0,
-                              color: AppColors.olive,
+                              color: palette.actionBg,
                             ),
                           ),
                         ],
@@ -700,11 +696,11 @@ class _GroceriesPageState extends ConsumerState<GroceriesPage> {
                           fontWeight: FontWeight.w600,
                           color: isCustomGroup
                               ? (item.checked
-                                    ? AppColors.olive.withValues(alpha: 0.6)
-                                    : AppColors.olive)
+                                    ? palette.textStrong.withValues(alpha: 0.6)
+                                    : palette.textStrong)
                               : (item.checked
-                                    ? AppColors.sage
-                                    : AppColors.textBody),
+                                    ? palette.textSecondary
+                                    : palette.textBody),
                         ),
                       ),
                     ),
@@ -732,12 +728,12 @@ class _GroceriesPageState extends ConsumerState<GroceriesPage> {
                     alignment: Alignment.centerRight,
                     padding: const EdgeInsets.only(right: 16.0),
                     decoration: BoxDecoration(
-                      color: AppColors.maroon,
+                      color: palette.danger,
                       borderRadius: BorderRadius.circular(12.0),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       LucideIcons.trash2,
-                      color: AppColors.white,
+                      color: palette.onDanger,
                       size: 20.0,
                     ),
                   ),
@@ -745,12 +741,12 @@ class _GroceriesPageState extends ConsumerState<GroceriesPage> {
                     alignment: Alignment.centerRight,
                     padding: const EdgeInsets.only(right: 16.0),
                     decoration: BoxDecoration(
-                      color: AppColors.maroon,
+                      color: palette.danger,
                       borderRadius: BorderRadius.circular(12.0),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       LucideIcons.trash2,
-                      color: AppColors.white,
+                      color: palette.onDanger,
                       size: 20.0,
                     ),
                   ),
@@ -775,11 +771,11 @@ class _GroceriesPageState extends ConsumerState<GroceriesPage> {
               alignment: Alignment.centerRight,
               child: Text(
                 'Subtotal ${formatRupiah(subtotal)}',
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Poppins',
                   fontSize: 10.0,
                   fontWeight: FontWeight.w400,
-                  color: AppColors.sage,
+                  color: palette.textSecondary,
                 ),
               ),
             ),

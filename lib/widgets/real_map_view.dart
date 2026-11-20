@@ -3,14 +3,14 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
-import '../core/theme/app_colors.dart';
+import '../core/theme/app_palette.dart';
 import '../core/theme/app_radius.dart';
 import '../core/theme/app_shadows.dart';
 import '../models/models.dart';
 import '../services/location_service.dart';
 import '../services/route_service.dart';
 
-/// Widget Peta Nyata berbasis OpenStreetMap menggunakan flutter_map sesuai PRD §14.12
+/// Widget Peta Nyata berbasis OpenStreetMap menggunakan flutter_map sesuai PRD §14.12 dan §16
 class RealMapView extends StatefulWidget {
   final List<Place> places;
   final String? selectedPlaceId;
@@ -104,55 +104,56 @@ class _RealMapViewState extends State<RealMapView> {
 
   void _fitBoundsToRoute(List<LatLng> points) {
     if (points.isEmpty) return;
-    try {
-      if (points.length == 1) {
-        _mapController.move(points.first, 15.5);
-        return;
-      }
-      final bounds = LatLngBounds.fromPoints(points);
-      _mapController.fitCamera(
-        CameraFit.bounds(
-          bounds: bounds,
-          padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 36.0),
-          maxZoom: 16.5,
-        ),
-      );
-    } catch (e) {
-      debugPrint('Error fitting camera bounds: $e');
+    if (points.length == 1) {
+      _mapController.move(points.first, 15.5);
+      return;
     }
+
+    final bounds = LatLngBounds.fromPoints(points);
+    _mapController.fitCamera(
+      CameraFit.bounds(
+        bounds: bounds,
+        padding: const EdgeInsets.all(36.0),
+        maxZoom: 16.5,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final selectedPlace = _findSelectedPlace();
-
+    final palette = context.palette;
     final userLatLng = LatLng(
       widget.userCoordinates.latitude,
       widget.userCoordinates.longitude,
     );
 
-    // Titik-titik rute
-    List<LatLng> routePoints = [];
+    final selectedPlace = _findSelectedPlace();
+
+    // Rute dari user ke selectedPlace
+    List<LatLng> routePoints = const [];
+    bool isStraightLine = false;
+
     if (widget.routeResult != null && widget.routeResult!.points.isNotEmpty) {
-      routePoints = widget.routeResult!.points;
+      routePoints = widget.routeResult!.points
+          .map((p) => LatLng(p.latitude, p.longitude))
+          .toList();
+      isStraightLine = widget.routeResult!.isStraightLineFallback;
     } else if (selectedPlace != null) {
-      // Garis lurus langsung bila rute OSRM belum selesai di-fetch
+      // Fallback garis lurus bila routeResult belum siap
       routePoints = [
         userLatLng,
         LatLng(selectedPlace.latitude, selectedPlace.longitude),
       ];
+      isStraightLine = true;
     }
 
-    final isStraightLine =
-        widget.routeResult == null ||
-        widget.routeResult!.isStraightLineFallback;
+    final userPrimary = palette.isDark ? palette.accent : palette.actionBg;
 
     return Container(
       width: double.infinity,
       height: widget.height,
       decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceDark : AppColors.mapBg,
+        color: palette.surface,
         borderRadius: AppRadius.cardLarge,
         boxShadow: AppShadows.card,
       ),
@@ -178,6 +179,36 @@ class _RealMapViewState extends State<RealMapView> {
               TileLayer(
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'id.foodie.app',
+                tileBuilder: (context, tileWidget, tile) {
+                  if (palette.isDark) {
+                    return ColorFiltered(
+                      colorFilter: const ColorFilter.matrix(<double>[
+                        -0.75,
+                        0,
+                        0,
+                        0,
+                        255,
+                        0,
+                        -0.75,
+                        0,
+                        0,
+                        255,
+                        0,
+                        0,
+                        -0.75,
+                        0,
+                        255,
+                        0,
+                        0,
+                        0,
+                        1,
+                        0,
+                      ]),
+                      child: tileWidget,
+                    );
+                  }
+                  return tileWidget;
+                },
                 errorTileCallback: (tile, error, stackTrace) {
                   _tileErrorCount++;
                   if (_tileErrorCount >= 4) {
@@ -193,7 +224,7 @@ class _RealMapViewState extends State<RealMapView> {
                     Polyline(
                       points: routePoints,
                       strokeWidth: 3.5,
-                      color: isDark ? AppColors.amber : AppColors.olive,
+                      color: userPrimary,
                       pattern: isStraightLine
                           ? StrokePattern.dashed(segments: const [8, 6])
                           : const StrokePattern.solid(),
@@ -204,7 +235,7 @@ class _RealMapViewState extends State<RealMapView> {
               // Marker Layer
               MarkerLayer(
                 markers: [
-                  // Marker Titik Pengguna (lingkaran olive + halo hijau muda)
+                  // Marker Titik Pengguna
                   Marker(
                     point: userLatLng,
                     width: 32.0,
@@ -217,18 +248,18 @@ class _RealMapViewState extends State<RealMapView> {
                           height: 30.0,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: AppColors.oliveSoftDark,
+                            color: userPrimary.withValues(alpha: 0.25),
                           ),
                         ),
                         Container(
                           width: 16.0,
                           height: 16.0,
-                          decoration: const BoxDecoration(
+                          decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: AppColors.olive,
+                            color: userPrimary,
                             boxShadow: [
                               BoxShadow(
-                                color: AppColors.shadowShell,
+                                color: palette.shadowColor,
                                 blurRadius: 4.0,
                               ),
                             ],
@@ -237,9 +268,9 @@ class _RealMapViewState extends State<RealMapView> {
                             child: Container(
                               width: 6.0,
                               height: 6.0,
-                              decoration: const BoxDecoration(
+                              decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: AppColors.white,
+                                color: palette.surface,
                               ),
                             ),
                           ),
@@ -258,6 +289,17 @@ class _RealMapViewState extends State<RealMapView> {
                         place.longitude,
                       );
 
+                      final pinBg = isSelected
+                          ? palette.accent
+                          : (palette.isDark
+                                ? palette.surfaceAlt
+                                : palette.actionBg);
+                      final pinFg = isSelected
+                          ? palette.onAccent
+                          : (palette.isDark
+                                ? palette.textStrong
+                                : palette.onAction);
+
                       return Marker(
                         point: placeLatLng,
                         width: 32.0,
@@ -272,29 +314,27 @@ class _RealMapViewState extends State<RealMapView> {
                             height: 28.0,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: isSelected
-                                  ? AppColors.amber
-                                  : AppColors.olive,
+                              color: pinBg,
                               border: Border.all(
-                                color: AppColors.white,
+                                color: palette.surface,
                                 width: 2.0,
                               ),
-                              boxShadow: const [
+                              boxShadow: [
                                 BoxShadow(
-                                  color: AppColors.shadowShell,
+                                  color: palette.shadowColor,
                                   blurRadius: 4.0,
-                                  offset: Offset(0, 1),
+                                  offset: const Offset(0, 1),
                                 ),
                               ],
                             ),
                             alignment: Alignment.center,
                             child: Text(
                               '${i + 1}',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontFamily: 'Poppins',
                                 fontSize: 12.0,
                                 fontWeight: FontWeight.w700,
-                                color: AppColors.white,
+                                color: pinFg,
                               ),
                             ),
                           ),
@@ -317,13 +357,13 @@ class _RealMapViewState extends State<RealMapView> {
                 vertical: 5.0,
               ),
               decoration: BoxDecoration(
-                color: isDark ? AppColors.surfaceDark : AppColors.white,
+                color: palette.surface,
                 borderRadius: BorderRadius.circular(999.0),
-                boxShadow: const [
+                boxShadow: [
                   BoxShadow(
-                    color: AppColors.shadowShell,
+                    color: palette.shadowColor,
                     blurRadius: 4.0,
-                    offset: Offset(0, 1),
+                    offset: const Offset(0, 1),
                   ),
                 ],
               ),
@@ -333,7 +373,7 @@ class _RealMapViewState extends State<RealMapView> {
                   fontFamily: 'Poppins',
                   fontSize: 11.0,
                   fontWeight: FontWeight.w600,
-                  color: isDark ? AppColors.textTitleDark : AppColors.olive,
+                  color: palette.textStrong,
                 ),
               ),
             ),
@@ -355,13 +395,13 @@ class _RealMapViewState extends State<RealMapView> {
                       vertical: 5.0,
                     ),
                     decoration: BoxDecoration(
-                      color: isDark ? AppColors.surfaceDark : AppColors.white,
+                      color: palette.surface,
                       borderRadius: BorderRadius.circular(999.0),
-                      boxShadow: const [
+                      boxShadow: [
                         BoxShadow(
-                          color: AppColors.shadowShell,
+                          color: palette.shadowColor,
                           blurRadius: 4.0,
-                          offset: Offset(0, 1),
+                          offset: const Offset(0, 1),
                         ),
                       ],
                     ),
@@ -369,20 +409,20 @@ class _RealMapViewState extends State<RealMapView> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         if (widget.isLoadingRoute) ...[
-                          const SizedBox(
+                          SizedBox(
                             width: 12.0,
                             height: 12.0,
                             child: CircularProgressIndicator(
                               strokeWidth: 2.0,
-                              color: AppColors.olive,
+                              color: palette.actionBg,
                             ),
                           ),
                           const SizedBox(width: 4.0),
                         ] else ...[
-                          const Icon(
+                          Icon(
                             LucideIcons.map,
                             size: 13.0,
-                            color: AppColors.olive,
+                            color: palette.textStrong,
                           ),
                           const SizedBox(width: 4.0),
                         ],
@@ -392,9 +432,7 @@ class _RealMapViewState extends State<RealMapView> {
                             fontFamily: 'Poppins',
                             fontSize: 11.0,
                             fontWeight: FontWeight.w600,
-                            color: isDark
-                                ? AppColors.textTitleDark
-                                : AppColors.olive,
+                            color: palette.textStrong,
                           ),
                         ),
                       ],
@@ -414,8 +452,7 @@ class _RealMapViewState extends State<RealMapView> {
                 vertical: 2.0,
               ),
               decoration: BoxDecoration(
-                color: (isDark ? AppColors.surfaceDark : AppColors.white)
-                    .withValues(alpha: 0.8),
+                color: palette.surface.withValues(alpha: 0.8),
                 borderRadius: BorderRadius.circular(4.0),
               ),
               child: Text(
@@ -424,7 +461,7 @@ class _RealMapViewState extends State<RealMapView> {
                   fontFamily: 'Poppins',
                   fontSize: 8.0,
                   fontWeight: FontWeight.w400,
-                  color: isDark ? AppColors.textTitleDark : AppColors.sage,
+                  color: palette.textSecondary,
                 ),
               ),
             ),
@@ -445,13 +482,13 @@ class _RealMapViewState extends State<RealMapView> {
                     vertical: 6.0,
                   ),
                   decoration: BoxDecoration(
-                    color: isDark ? AppColors.surfaceDark : AppColors.white,
+                    color: palette.surface,
                     borderRadius: BorderRadius.circular(999.0),
-                    boxShadow: const [
+                    boxShadow: [
                       BoxShadow(
-                        color: AppColors.shadowShell,
+                        color: palette.shadowColor,
                         blurRadius: 4.0,
-                        offset: Offset(0, 1),
+                        offset: const Offset(0, 1),
                       ),
                     ],
                   ),
@@ -461,9 +498,7 @@ class _RealMapViewState extends State<RealMapView> {
                       Icon(
                         LucideIcons.crosshair,
                         size: 14.0,
-                        color: isDark
-                            ? AppColors.textTitleDark
-                            : AppColors.olive,
+                        color: palette.textStrong,
                       ),
                       const SizedBox(width: 4.0),
                       Text(
@@ -472,9 +507,7 @@ class _RealMapViewState extends State<RealMapView> {
                           fontFamily: 'Poppins',
                           fontSize: 11.0,
                           fontWeight: FontWeight.w600,
-                          color: isDark
-                              ? AppColors.textTitleDark
-                              : AppColors.olive,
+                          color: palette.textStrong,
                         ),
                       ),
                     ],

@@ -4,13 +4,13 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../app/app_shell.dart';
-import '../core/theme/app_colors.dart';
+import '../core/theme/app_palette.dart';
 import '../core/theme/app_radius.dart';
 import '../core/theme/app_shadows.dart';
 import '../core/theme/app_text.dart';
+import '../providers/ui_helper.dart';
 import '../widgets/ui/app_button.dart';
 import '../widgets/ui/app_input.dart';
-import '../providers/ui_helper.dart';
 
 /// Halaman Lupa Kata Sandi sesuai PRD §7.9.
 class ForgotPage extends ConsumerStatefulWidget {
@@ -68,9 +68,10 @@ class _ForgotPageState extends ConsumerState<ForgotPage> {
   @override
   Widget build(BuildContext context) {
     final topPadding = AppShell.topChrome(context);
+    final palette = context.palette;
 
     return Scaffold(
-      backgroundColor: AppColors.bg,
+      backgroundColor: palette.bg,
       body: SafeArea(
         top: false,
         bottom: true,
@@ -91,10 +92,10 @@ class _ForgotPageState extends ConsumerState<ForgotPage> {
                     label: 'Kembali',
                     button: true,
                     child: IconButton(
-                      icon: const Icon(
+                      icon: Icon(
                         LucideIcons.arrowLeft,
                         size: 24,
-                        color: AppColors.textTitle,
+                        color: palette.textStrong,
                       ),
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(
@@ -111,13 +112,13 @@ class _ForgotPageState extends ConsumerState<ForgotPage> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  const Text(
+                  Text(
                     'Lupa kata sandi',
                     style: TextStyle(
                       fontFamily: 'Poppins',
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
-                      color: AppColors.textTitle,
+                      color: palette.textStrong,
                     ),
                   ),
                 ],
@@ -132,14 +133,14 @@ class _ForgotPageState extends ConsumerState<ForgotPage> {
                   vertical: 4,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.amberSoft,
+                  color: palette.accentSoft,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Text(
+                child: Text(
                   'MASAK LEBIH MUDAH',
                   style: TextStyle(
                     fontFamily: 'Poppins',
-                    color: AppColors.olive,
+                    color: palette.onAccentSoft,
                     fontSize: 9,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0.5,
@@ -150,13 +151,13 @@ class _ForgotPageState extends ConsumerState<ForgotPage> {
               const SizedBox(height: 12),
 
               // H1: "Atur ulang / kata sandi."
-              const Text(
+              Text(
                 'Atur ulang\nkata sandi.',
                 style: TextStyle(
                   fontFamily: 'Poppins',
                   fontSize: 32,
                   fontWeight: FontWeight.w800,
-                  color: AppColors.olive,
+                  color: palette.textStrong,
                   height: 1.2,
                 ),
               ),
@@ -164,13 +165,13 @@ class _ForgotPageState extends ConsumerState<ForgotPage> {
               const SizedBox(height: 8),
 
               // Sub-judul
-              const Text(
+              Text(
                 'Masukkan email terdaftar untuk menerima tautan pemulihan kata sandi.',
                 style: TextStyle(
                   fontFamily: 'Poppins',
                   fontSize: 13,
                   fontWeight: FontWeight.w400,
-                  color: AppColors.sage,
+                  color: palette.textSecondary,
                 ),
               ),
 
@@ -178,8 +179,8 @@ class _ForgotPageState extends ConsumerState<ForgotPage> {
 
               // Kartu form
               Container(
-                decoration: const BoxDecoration(
-                  color: AppColors.white,
+                decoration: BoxDecoration(
+                  color: palette.surface,
                   borderRadius: AppRadius.cardLarge,
                   boxShadow: AppShadows.card,
                 ),
@@ -192,10 +193,10 @@ class _ForgotPageState extends ConsumerState<ForgotPage> {
                       hintText: 'Masukkan email kamu',
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
-                      prefixIcon: const Icon(
+                      prefixIcon: Icon(
                         LucideIcons.mail,
                         size: 20,
-                        color: AppColors.sage,
+                        color: palette.textSecondary,
                       ),
                       errorText: _emailError,
                       onChanged: (_) {
@@ -226,7 +227,7 @@ class _ForgotPageState extends ConsumerState<ForgotPage> {
                 child: Text(
                   'Ide masak sehari-hari, dalam satu tempat.',
                   style: AppText.caption.copyWith(
-                    color: AppColors.sage,
+                    color: palette.textSecondary,
                     fontSize: 11,
                   ),
                 ),

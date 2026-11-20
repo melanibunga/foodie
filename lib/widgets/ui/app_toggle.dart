@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_palette.dart';
 import '../../core/theme/app_radius.dart';
 
-/// Toggle switch kustom Foodie.id sesuai PRD §5.3.
-/// Ukuran track 52 × 30 px. Aktif = Maroon (#800020), Non-aktif = #E0E0DA.
+/// Toggle switch kustom Foodie.id sesuai PRD §5.3 dan §16.
+/// Ukuran track 52 × 30 px.
 class AppToggle extends StatelessWidget {
   final bool value;
   final ValueChanged<bool>? onChanged;
@@ -13,6 +13,8 @@ class AppToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.palette;
+
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onChanged != null ? () => onChanged!(!value) : null,
@@ -22,20 +24,20 @@ class AppToggle extends StatelessWidget {
         height: 30.0,
         padding: const EdgeInsets.all(3.0),
         decoration: BoxDecoration(
-          color: value ? AppColors.maroon : AppColors.toggleOff,
+          color: value ? palette.danger : palette.toggleOff,
           borderRadius: AppRadius.pill,
         ),
         alignment: value ? Alignment.centerRight : Alignment.centerLeft,
         child: Container(
           width: 24.0,
           height: 24.0,
-          decoration: const BoxDecoration(
-            color: AppColors.white,
+          decoration: BoxDecoration(
+            color: palette.toggleKnob,
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: AppColors.shadowThumb,
-                offset: Offset(0, 1),
+                color: palette.shadowColor,
+                offset: const Offset(0, 1),
                 blurRadius: 3,
               ),
             ],

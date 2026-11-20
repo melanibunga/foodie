@@ -4,15 +4,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
-import '../core/theme/app_colors.dart';
+import '../core/theme/app_palette.dart';
 import '../providers/auth_provider.dart';
 
-/// Halaman Splash / Onboarding sesuai PRD §6.1 dan design/splash.jpg.
+/// Halaman Splash / Onboarding sesuai PRD §6.1, §16 dan design/splash.jpg.
 class SplashPage extends ConsumerWidget {
   const SplashPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final palette = context.palette;
     final mediaQuery = MediaQuery.of(context);
     // Lebar kontainer aplikasi (maks 440 px)
     final screenWidth = mediaQuery.size.width > 440
@@ -22,7 +23,7 @@ class SplashPage extends ConsumerWidget {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
       child: Scaffold(
-        backgroundColor: AppColors.splashDark,
+        backgroundColor: palette.splashBg,
         body: SingleChildScrollView(
           physics: const ClampingScrollPhysics(),
           child: Column(
@@ -35,11 +36,9 @@ class SplashPage extends ConsumerWidget {
                   clipBehavior: Clip.none,
                   children: [
                     // Blok photoGray polos tanpa ikon untuk v1 sesuai PRD §6.1 & §10
-                    Positioned.fill(
-                      child: Container(color: AppColors.photoGray),
-                    ),
+                    Positioned.fill(child: Container(color: palette.photo)),
 
-                    // Gradien memudar ke splashDark (#082B21) mulai ≈ y 560
+                    // Gradien memudar ke splashBg (#082B21) mulai ≈ y 560
                     Positioned.fill(
                       child: DecoratedBox(
                         decoration: BoxDecoration(
@@ -50,8 +49,8 @@ class SplashPage extends ConsumerWidget {
                             colors: [
                               Colors.transparent,
                               Colors.transparent,
-                              AppColors.splashDark.withValues(alpha: 0.85),
-                              AppColors.splashDark,
+                              palette.splashBg.withValues(alpha: 0.85),
+                              palette.splashBg,
                             ],
                           ),
                         ),
@@ -65,14 +64,14 @@ class SplashPage extends ConsumerWidget {
                       top: 210,
                       child: _FloatingPill(
                         text: 'Bumbu Halus',
-                        bgColor: AppColors.olive,
-                        textColor: AppColors.white,
-                        circleColor: AppColors.white,
-                        circleBorderColor: AppColors.olive,
-                        icon: const Icon(
+                        bgColor: palette.navSurface,
+                        textColor: palette.onOverlay,
+                        circleColor: palette.onOverlay,
+                        circleBorderColor: palette.navSurface,
+                        icon: Icon(
                           LucideIcons.shoppingBag,
                           size: 13,
-                          color: AppColors.olive,
+                          color: palette.navSurface,
                         ),
                       ),
                     ),
@@ -84,14 +83,14 @@ class SplashPage extends ConsumerWidget {
                       top: 300,
                       child: _FloatingPill(
                         text: 'Kecap Manis',
-                        bgColor: AppColors.olive,
-                        textColor: AppColors.white,
-                        circleColor: AppColors.white,
+                        bgColor: palette.navSurface,
+                        textColor: palette.onOverlay,
+                        circleColor: palette.onOverlay,
                         circleBorderColor: null,
-                        icon: const Icon(
+                        icon: Icon(
                           LucideIcons.plus,
                           size: 15,
-                          color: AppColors.olive,
+                          color: palette.navSurface,
                         ),
                       ),
                     ),
@@ -103,14 +102,14 @@ class SplashPage extends ConsumerWidget {
                       top: 435,
                       child: _FloatingPill(
                         text: 'Siap Masak',
-                        bgColor: AppColors.amber,
-                        textColor: AppColors.olive,
-                        circleColor: AppColors.white,
+                        bgColor: palette.accent,
+                        textColor: palette.onAction,
+                        circleColor: palette.onOverlay,
                         circleBorderColor: null,
-                        icon: const Icon(
+                        icon: Icon(
                           LucideIcons.shoppingBag,
                           size: 13,
-                          color: AppColors.olive,
+                          color: palette.navSurface,
                         ),
                       ),
                     ),
@@ -131,21 +130,21 @@ class SplashPage extends ConsumerWidget {
                         Container(
                           width: 32,
                           height: 32,
-                          decoration: const BoxDecoration(
-                            color: AppColors.white,
+                          decoration: BoxDecoration(
+                            color: palette.onOverlay,
                             shape: BoxShape.circle,
                           ),
-                          child: const Center(
+                          child: Center(
                             child: Icon(
                               LucideIcons.utensilsCrossed,
                               size: 16,
-                              color: AppColors.olive,
+                              color: palette.navSurface,
                             ),
                           ),
                         ),
                         const SizedBox(width: 10),
                         RichText(
-                          text: const TextSpan(
+                          text: TextSpan(
                             children: [
                               TextSpan(
                                 text: 'FOODIE',
@@ -153,7 +152,7 @@ class SplashPage extends ConsumerWidget {
                                   fontFamily: 'Poppins',
                                   fontWeight: FontWeight.w800,
                                   fontSize: 20,
-                                  color: AppColors.white,
+                                  color: palette.onOverlay,
                                   letterSpacing: 2.0,
                                 ),
                               ),
@@ -163,7 +162,7 @@ class SplashPage extends ConsumerWidget {
                                   fontFamily: 'Poppins',
                                   fontWeight: FontWeight.w800,
                                   fontSize: 20,
-                                  color: AppColors.amber,
+                                  color: palette.accent,
                                   letterSpacing: 2.0,
                                 ),
                               ),
@@ -173,7 +172,7 @@ class SplashPage extends ConsumerWidget {
                                   fontFamily: 'Poppins',
                                   fontWeight: FontWeight.w800,
                                   fontSize: 20,
-                                  color: AppColors.white,
+                                  color: palette.onOverlay,
                                   letterSpacing: 2.0,
                                 ),
                               ),
@@ -188,7 +187,7 @@ class SplashPage extends ConsumerWidget {
                     // Judul 2 baris: Jelajahi Cita Rasa / Autentik Nusantara
                     RichText(
                       textAlign: TextAlign.center,
-                      text: const TextSpan(
+                      text: TextSpan(
                         children: [
                           TextSpan(
                             text: 'Jelajahi Cita Rasa\n',
@@ -196,7 +195,7 @@ class SplashPage extends ConsumerWidget {
                               fontFamily: 'Poppins',
                               fontWeight: FontWeight.w700,
                               fontSize: 22,
-                              color: AppColors.white,
+                              color: palette.onOverlay,
                               height: 1.3,
                             ),
                           ),
@@ -206,7 +205,7 @@ class SplashPage extends ConsumerWidget {
                               fontFamily: 'Poppins',
                               fontWeight: FontWeight.w700,
                               fontSize: 22,
-                              color: AppColors.amber,
+                              color: palette.accent,
                               height: 1.3,
                             ),
                           ),
@@ -225,7 +224,7 @@ class SplashPage extends ConsumerWidget {
                         fontFamily: 'Poppins',
                         fontWeight: FontWeight.w400,
                         fontSize: 12,
-                        color: AppColors.white.withValues(alpha: 0.7),
+                        color: palette.onOverlay.withValues(alpha: 0.7),
                         height: 1.4,
                       ),
                     ),
@@ -240,12 +239,10 @@ class SplashPage extends ConsumerWidget {
                         height: 44,
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.amber,
-                            foregroundColor: AppColors.olive,
+                            backgroundColor: palette.accent,
+                            foregroundColor: palette.onAction,
                             elevation: 0,
-                            shadowColor: AppColors.amber.withValues(
-                              alpha: 0.35,
-                            ),
+                            shadowColor: palette.accent.withValues(alpha: 0.35),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -259,13 +256,13 @@ class SplashPage extends ConsumerWidget {
                               context.push('/login');
                             }
                           },
-                          child: const Text(
+                          child: Text(
                             'Mulai Eksplorasi →',
                             style: TextStyle(
                               fontFamily: 'Poppins',
                               fontWeight: FontWeight.w700,
                               fontSize: 14,
-                              color: AppColors.olive,
+                              color: palette.onAction,
                             ),
                           ),
                         ),
@@ -280,11 +277,11 @@ class SplashPage extends ConsumerWidget {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Text(
+                          Text(
                             '✓ ',
                             style: TextStyle(
                               fontFamily: 'Poppins',
-                              color: AppColors.amber,
+                              color: palette.accent,
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
                             ),
@@ -293,7 +290,7 @@ class SplashPage extends ConsumerWidget {
                             '100% Halal',
                             style: TextStyle(
                               fontFamily: 'Poppins',
-                              color: AppColors.white.withValues(alpha: 0.6),
+                              color: palette.onOverlay.withValues(alpha: 0.6),
                               fontSize: 11,
                             ),
                           ),
@@ -301,15 +298,15 @@ class SplashPage extends ConsumerWidget {
                             '  •  ',
                             style: TextStyle(
                               fontFamily: 'Poppins',
-                              color: AppColors.white.withValues(alpha: 0.4),
+                              color: palette.onOverlay.withValues(alpha: 0.4),
                               fontSize: 11,
                             ),
                           ),
-                          const Text(
+                          Text(
                             '✓ ',
                             style: TextStyle(
                               fontFamily: 'Poppins',
-                              color: AppColors.amber,
+                              color: palette.accent,
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
                             ),
@@ -318,7 +315,7 @@ class SplashPage extends ConsumerWidget {
                             'Bahan Segar Terpilih',
                             style: TextStyle(
                               fontFamily: 'Poppins',
-                              color: AppColors.white.withValues(alpha: 0.6),
+                              color: palette.onOverlay.withValues(alpha: 0.6),
                               fontSize: 11,
                             ),
                           ),
@@ -361,11 +358,11 @@ class _FloatingPill extends StatelessWidget {
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(999),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(
-            color: AppColors.shadowNav,
+            color: Color(0x2E000000),
             blurRadius: 10,
-            offset: const Offset(0, 4),
+            offset: Offset(0, 4),
           ),
         ],
       ),

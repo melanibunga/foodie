@@ -6,7 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../app/app_shell.dart';
-import '../core/theme/app_colors.dart';
+import '../core/theme/app_palette.dart';
 import '../core/utils/week_utils.dart';
 import '../models/models.dart';
 import '../providers/favorites_provider.dart';
@@ -16,10 +16,10 @@ import '../providers/ui_helper.dart';
 import '../widgets/page_with_header.dart';
 import '../widgets/recipe_cards.dart';
 
-/// Halaman Meal Plan (/meal-plan) sesuai PRD §6.7, §7.6 dan design/meal plan.jpg:
+/// Halaman Meal Plan (/meal-plan) sesuai PRD §6.7, §7.6, §16 dan design/meal plan.jpg:
 /// - AppHeader global di atas.
-/// - Pemilih minggu (tengah): tombol bulat olive 35px dengan chevron putih mengapit "This Week" (22/700 olive).
-/// - 7 section hari Monday–Sunday: judul hari (18/700 olive) kiri + tombol plus bulat amberSoft 28px di kanan.
+/// - Pemilih minggu (tengah): tombol bulat actionBg 35px dengan chevron onAction mengapit "This Week" (22/700 textStrong).
+/// - 7 section hari Monday–Sunday: judul hari (18/700 textStrong) kiri + tombol plus bulat accentSoft 28px di kanan.
 /// - Carousel horizontal FeaturedRecipeCard (kartu pertama lebar penuh, kartu berikutnya mengintip).
 /// - Hari kosong -> kartu putus-putus "Belum ada menu" + "+ Tambah menu".
 /// - Plus -> /search?pick=YYYY-MM-DD.
@@ -89,6 +89,7 @@ class _MealPlanPageState extends ConsumerState<MealPlanPage> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.palette;
     final allRecipes = ref.watch(recipesProvider);
     final favorites = ref.watch(favoritesProvider);
     final recipeMap = {for (final r in allRecipes) r.id: r};
@@ -99,12 +100,12 @@ class _MealPlanPageState extends ConsumerState<MealPlanPage> {
     return PageWithHeader(
       resizeToAvoidBottomInset: false,
       subHeader: Container(
-        color: AppColors.bg,
+        color: palette.bg,
         padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 10.0),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Tombol Chevron Kiri (Bulat olive 35px)
+            // Tombol Chevron Kiri (Bulat actionBg 35px)
             Semantics(
               label: 'Minggu sebelumnya',
               button: true,
@@ -113,35 +114,35 @@ class _MealPlanPageState extends ConsumerState<MealPlanPage> {
                 child: Container(
                   width: 35.0,
                   height: 35.0,
-                  decoration: const BoxDecoration(
-                    color: AppColors.olive,
+                  decoration: BoxDecoration(
+                    color: palette.actionBg,
                     shape: BoxShape.circle,
                   ),
                   alignment: Alignment.center,
-                  child: const Icon(
+                  child: Icon(
                     LucideIcons.chevronLeft,
                     size: 18.0,
-                    color: AppColors.white,
+                    color: palette.onAction,
                   ),
                 ),
               ),
             ),
 
-            // Judul Minggu (22/700 olive)
+            // Judul Minggu (22/700 textStrong)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20.0),
               child: Text(
                 weekLabel,
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Poppins',
                   fontSize: 22.0,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.olive,
+                  color: palette.textStrong,
                 ),
               ),
             ),
 
-            // Tombol Chevron Kanan (Bulat olive 35px)
+            // Tombol Chevron Kanan (Bulat actionBg 35px)
             Semantics(
               label: 'Minggu berikutnya',
               button: true,
@@ -150,15 +151,15 @@ class _MealPlanPageState extends ConsumerState<MealPlanPage> {
                 child: Container(
                   width: 35.0,
                   height: 35.0,
-                  decoration: const BoxDecoration(
-                    color: AppColors.olive,
+                  decoration: BoxDecoration(
+                    color: palette.actionBg,
                     shape: BoxShape.circle,
                   ),
                   alignment: Alignment.center,
-                  child: const Icon(
+                  child: Icon(
                     LucideIcons.chevronRight,
                     size: 18.0,
-                    color: AppColors.white,
+                    color: palette.onAction,
                   ),
                 ),
               ),
@@ -206,6 +207,7 @@ class _MealPlanPageState extends ConsumerState<MealPlanPage> {
     required Map<String, Recipe> recipeMap,
     required List<String> favorites,
   }) {
+    final palette = context.palette;
     final entries = ref.watch(mealPlanByDateProvider(dateKey));
     final now = ref.watch(clockProvider);
     final today = DateTime(now.year, now.month, now.day);
@@ -226,18 +228,18 @@ class _MealPlanPageState extends ConsumerState<MealPlanPage> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Judul Hari (18/700 olive)
+                // Judul Hari (18/700 textStrong)
                 Text(
                   dayName,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Poppins',
                     fontSize: 18.0,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.olive,
+                    color: palette.textStrong,
                   ),
                 ),
 
-                // Tombol Plus Bulat 28px (amberSoft, ikon plus olive; non-aktif redup bila hari lampau)
+                // Tombol Plus Bulat 28px (accentSoft, ikon plus onAccentSoft; non-aktif redup bila hari lampau)
                 Semantics(
                   container: true,
                   label: isPast
@@ -254,16 +256,16 @@ class _MealPlanPageState extends ConsumerState<MealPlanPage> {
                         width: 28.0,
                         height: 28.0,
                         decoration: BoxDecoration(
-                          color: isPast
-                              ? AppColors.chipGray
-                              : AppColors.amberSoft,
+                          color: isPast ? palette.chip : palette.accentSoft,
                           shape: BoxShape.circle,
                         ),
                         alignment: Alignment.center,
                         child: Icon(
                           LucideIcons.plus,
                           size: 16.0,
-                          color: isPast ? AppColors.sage : AppColors.olive,
+                          color: isPast
+                              ? palette.textSecondary
+                              : palette.onAccentSoft,
                         ),
                       ),
                     ),
@@ -339,11 +341,12 @@ class _MealPlanPageState extends ConsumerState<MealPlanPage> {
     String dayName, {
     required bool isPast,
   }) {
+    final palette = context.palette;
     return GestureDetector(
       onTap: isPast ? null : () => context.push('/search?pick=$dateKey'),
       child: CustomPaint(
         painter: _DashedBorderPainter(
-          color: AppColors.border,
+          color: palette.border,
           strokeWidth: 1.5,
           radius: 16.0,
           dashLength: 6.0,
@@ -354,37 +357,37 @@ class _MealPlanPageState extends ConsumerState<MealPlanPage> {
           height: 110.0,
           decoration: BoxDecoration(
             color: isPast
-                ? AppColors.chipGray.withValues(alpha: 0.3)
-                : AppColors.white.withValues(alpha: 0.6),
+                ? palette.chip.withValues(alpha: 0.3)
+                : palette.surface.withValues(alpha: 0.6),
             borderRadius: BorderRadius.circular(16.0),
           ),
           alignment: Alignment.center,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text(
+              Text(
                 'Belum ada menu',
                 style: TextStyle(
                   fontFamily: 'Poppins',
                   fontSize: 13.0,
                   fontWeight: FontWeight.w500,
-                  color: AppColors.sage,
+                  color: palette.textSecondary,
                 ),
               ),
               if (!isPast) ...[
                 const SizedBox(height: 6.0),
                 Row(
                   mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    Icon(LucideIcons.plus, size: 14.0, color: AppColors.olive),
-                    SizedBox(width: 4.0),
+                  children: [
+                    Icon(LucideIcons.plus, size: 14.0, color: palette.actionBg),
+                    const SizedBox(width: 4.0),
                     Text(
                       'Tambah menu',
                       style: TextStyle(
                         fontFamily: 'Poppins',
                         fontSize: 12.0,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.olive,
+                        color: palette.actionBg,
                       ),
                     ),
                   ],

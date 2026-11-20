@@ -3,9 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../core/theme/app_colors.dart';
+import '../core/theme/app_palette.dart';
 import '../core/theme/app_radius.dart';
-import '../core/theme/app_shadows.dart';
 import '../core/theme/app_text.dart';
 import '../widgets/ui/sticky_bottom_bar.dart';
 
@@ -66,8 +65,8 @@ double calculateToastBottomOffset(
   return gap;
 }
 
-/// Helper Toast pill maroon kustom sesuai PRD §7.9, §14.5, §15.1:
-/// - Background maroon (#800020), teks putih 12/600, radius pill, bayangan kartu
+/// Helper Toast pill kustom sesuai PRD §7.9, §14.5, §15.1:
+/// - Background danger, teks putih 12/600, radius pill, bayangan kartu
 /// - Posisi 16 px di atas elemen fixed paling bawah halaman itu
 /// - Durasi 2.2 detik (2200 ms)
 void showAppToast(
@@ -92,6 +91,7 @@ void showAppToast(
   late final OverlayEntry entry;
   entry = OverlayEntry(
     builder: (context) {
+      final palette = context.palette;
       return Positioned(
         left: 24,
         right: 24,
@@ -101,18 +101,24 @@ void showAppToast(
           child: Center(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              decoration: const BoxDecoration(
-                color: AppColors.maroon,
+              decoration: BoxDecoration(
+                color: palette.danger,
                 borderRadius: AppRadius.pill,
-                boxShadow: AppShadows.card,
+                boxShadow: [
+                  BoxShadow(
+                    color: palette.shadowColor,
+                    offset: const Offset(0, 2),
+                    blurRadius: 8,
+                  ),
+                ],
               ),
               child: Text(
                 message,
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Poppins',
                   fontSize: 12.0,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.white,
+                  color: palette.onDanger,
                   decoration: TextDecoration.none,
                 ),
                 textAlign: TextAlign.center,
@@ -139,24 +145,29 @@ Future<bool> showAppConfirmDialog(
   String cancelLabel = 'Batal',
   bool isDanger = true,
 }) async {
+  final palette = context.palette;
   final result = await showDialog<bool>(
     context: context,
-    barrierColor: AppColors.dialogBarrier,
+    barrierColor: palette.dialogBarrier,
     builder: (context) {
+      final p = context.palette;
       return Dialog(
         shape: const RoundedRectangleBorder(borderRadius: AppRadius.cardLarge),
-        backgroundColor: AppColors.white,
+        backgroundColor: p.surface,
         child: Padding(
           padding: const EdgeInsets.all(24.0),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: AppText.sectionTitle),
+              Text(
+                title,
+                style: AppText.sectionTitle.copyWith(color: p.textStrong),
+              ),
               const SizedBox(height: 10),
               Text(
                 message,
-                style: AppText.body.copyWith(color: AppColors.sage),
+                style: AppText.body.copyWith(color: p.textSecondary),
               ),
               const SizedBox(height: 24),
               Row(
@@ -164,8 +175,8 @@ Future<bool> showAppConfirmDialog(
                 children: [
                   OutlinedButton(
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.olive,
-                      side: const BorderSide(color: AppColors.olive),
+                      foregroundColor: p.textStrong,
+                      side: BorderSide(color: p.border),
                       shape: const RoundedRectangleBorder(
                         borderRadius: AppRadius.button,
                       ),
@@ -173,16 +184,14 @@ Future<bool> showAppConfirmDialog(
                     onPressed: () => Navigator.of(context).pop(false),
                     child: Text(
                       cancelLabel,
-                      style: AppText.buttonMd.copyWith(color: AppColors.olive),
+                      style: AppText.buttonMd.copyWith(color: p.textStrong),
                     ),
                   ),
                   const SizedBox(width: 12),
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: isDanger
-                          ? AppColors.maroon
-                          : AppColors.olive,
-                      foregroundColor: AppColors.white,
+                      backgroundColor: isDanger ? p.danger : p.actionBg,
+                      foregroundColor: isDanger ? p.onDanger : p.onAction,
                       shape: const RoundedRectangleBorder(
                         borderRadius: AppRadius.button,
                       ),
@@ -208,13 +217,15 @@ Future<void> showAppSuccessDialog(
   required String title,
   required String message,
 }) async {
+  final palette = context.palette;
   await showDialog<void>(
     context: context,
-    barrierColor: AppColors.dialogBarrier,
+    barrierColor: palette.dialogBarrier,
     builder: (context) {
+      final p = context.palette;
       return Dialog(
         shape: const RoundedRectangleBorder(borderRadius: AppRadius.cardLarge),
-        backgroundColor: AppColors.white,
+        backgroundColor: p.surface,
         child: Padding(
           padding: const EdgeInsets.all(24.0),
           child: Column(
@@ -223,26 +234,22 @@ Future<void> showAppSuccessDialog(
               Container(
                 width: 56,
                 height: 56,
-                decoration: const BoxDecoration(
-                  color: AppColors.amberSoft,
+                decoration: BoxDecoration(
+                  color: p.accentSoft,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
-                  Icons.check,
-                  color: AppColors.olive,
-                  size: 32,
-                ),
+                child: Icon(Icons.check, color: p.onAccentSoft, size: 32),
               ),
               const SizedBox(height: 16),
               Text(
                 title,
-                style: AppText.subSectionTitle,
+                style: AppText.subSectionTitle.copyWith(color: p.textStrong),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
               Text(
                 message,
-                style: AppText.body.copyWith(color: AppColors.sage),
+                style: AppText.body.copyWith(color: p.textSecondary),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
@@ -250,8 +257,8 @@ Future<void> showAppSuccessDialog(
                 width: double.infinity,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.olive,
-                    foregroundColor: AppColors.white,
+                    backgroundColor: p.actionBg,
+                    foregroundColor: p.onAction,
                     shape: const RoundedRectangleBorder(
                       borderRadius: AppRadius.button,
                     ),

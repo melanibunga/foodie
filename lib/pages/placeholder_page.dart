@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../core/theme/app_colors.dart';
+import '../core/theme/app_palette.dart';
 import '../core/theme/app_radius.dart';
 import '../core/theme/app_text.dart';
 
@@ -18,13 +18,18 @@ class PlaceholderPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.palette;
+
     return Scaffold(
-      backgroundColor: AppColors.bg,
+      backgroundColor: palette.bg,
       appBar: AppBar(
-        title: Text(title, style: AppText.pageTitle),
+        title: Text(
+          title,
+          style: AppText.pageTitle.copyWith(color: palette.textStrong),
+        ),
         leading: context.canPop()
             ? IconButton(
-                icon: const Icon(Icons.arrow_back, color: AppColors.olive),
+                icon: Icon(Icons.arrow_back, color: palette.textStrong),
                 onPressed: () => context.pop(),
               )
             : null,
@@ -39,32 +44,32 @@ class PlaceholderPage extends StatelessWidget {
                 width: 64,
                 height: 64,
                 decoration: BoxDecoration(
-                  color: AppColors.amberSoft,
+                  color: palette.accentSoft,
                   borderRadius: AppRadius.card,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.restaurant_menu,
-                  color: AppColors.olive,
+                  color: palette.onAccentSoft,
                   size: 32,
                 ),
               ),
               const SizedBox(height: 16),
               Text(
                 title,
-                style: AppText.sectionTitle,
+                style: AppText.sectionTitle.copyWith(color: palette.textStrong),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
               Text(
                 'Route: $routePath',
-                style: AppText.caption.copyWith(color: AppColors.sage),
+                style: AppText.caption.copyWith(color: palette.textSecondary),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.olive,
-                  foregroundColor: AppColors.white,
+                  backgroundColor: palette.actionBg,
+                  foregroundColor: palette.onAction,
                   shape: const RoundedRectangleBorder(
                     borderRadius: AppRadius.button,
                   ),

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
-import '../core/theme/app_colors.dart';
+import '../core/theme/app_palette.dart';
 import '../core/theme/app_radius.dart';
 import '../core/theme/app_text.dart';
 import '../providers/recipes_provider.dart';
@@ -40,6 +40,7 @@ class _DevComponentsPageState extends ConsumerState<DevComponentsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.palette;
     final allRecipes = ref.watch(recipesProvider);
     final demoRecipe = allRecipes.first; // Ayam Kecap Bawang
     final demoGridRecipe = allRecipes.length > 2
@@ -47,7 +48,7 @@ class _DevComponentsPageState extends ConsumerState<DevComponentsPage> {
         : allRecipes.first; // Soto Ayam
 
     return Scaffold(
-      backgroundColor: AppColors.bg,
+      backgroundColor: palette.bg,
       body: Stack(
         children: [
           // Konten Scrollable
@@ -63,7 +64,7 @@ class _DevComponentsPageState extends ConsumerState<DevComponentsPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildHeader('1. AppButtons (PRD §5.3)'),
+                      _buildHeader(context, '1. AppButtons (PRD §5.3)'),
                       const SizedBox(height: 12),
                       Wrap(
                         spacing: 8,
@@ -116,7 +117,7 @@ class _DevComponentsPageState extends ConsumerState<DevComponentsPage> {
                       ),
 
                       const SizedBox(height: 28),
-                      _buildHeader('2. AppChips Kategori'),
+                      _buildHeader(context, '2. AppChips Kategori'),
                       const SizedBox(height: 12),
                       Wrap(
                         spacing: 8,
@@ -138,15 +139,15 @@ class _DevComponentsPageState extends ConsumerState<DevComponentsPage> {
                       ),
 
                       const SizedBox(height: 28),
-                      _buildHeader('3. AppInput (PRD §5.3)'),
+                      _buildHeader(context, '3. AppInput (PRD §5.3)'),
                       const SizedBox(height: 12),
                       AppInput(
                         label: 'Email Pengguna',
                         hintText: 'Masukkan email',
                         controller: _inputController,
-                        prefixIcon: const Icon(
+                        prefixIcon: Icon(
                           Icons.email_outlined,
-                          color: AppColors.sage,
+                          color: palette.textSecondary,
                           size: 20,
                         ),
                       ),
@@ -156,9 +157,9 @@ class _DevComponentsPageState extends ConsumerState<DevComponentsPage> {
                         hintText: 'Minimal 8 karakter',
                         controller: _passController,
                         isPassword: true,
-                        prefixIcon: const Icon(
+                        prefixIcon: Icon(
                           Icons.lock_outline,
-                          color: AppColors.sage,
+                          color: palette.textSecondary,
                           size: 20,
                         ),
                       ),
@@ -171,7 +172,7 @@ class _DevComponentsPageState extends ConsumerState<DevComponentsPage> {
                       ),
 
                       const SizedBox(height: 28),
-                      _buildHeader('4. AppCheckbox, Toggle & Badge'),
+                      _buildHeader(context, '4. AppCheckbox, Toggle & Badge'),
                       const SizedBox(height: 12),
                       Wrap(
                         crossAxisAlignment: WrapCrossAlignment.center,
@@ -215,9 +216,9 @@ class _DevComponentsPageState extends ConsumerState<DevComponentsPage> {
                           const SizedBox(width: 12),
                           AppBadge.pill(
                             count: 12,
-                            icon: const Icon(
+                            icon: Icon(
                               Icons.favorite,
-                              color: AppColors.white,
+                              color: palette.onAccent,
                               size: 14,
                             ),
                           ),
@@ -226,6 +227,7 @@ class _DevComponentsPageState extends ConsumerState<DevComponentsPage> {
 
                       const SizedBox(height: 28),
                       _buildHeader(
+                        context,
                         '5. ImagePlaceholder & SmartImage (PRD §10)',
                       ),
                       const SizedBox(height: 12),
@@ -256,7 +258,7 @@ class _DevComponentsPageState extends ConsumerState<DevComponentsPage> {
                       ),
 
                       const SizedBox(height: 28),
-                      _buildHeader('6. Skeleton Loading Denyut Halus'),
+                      _buildHeader(context, '6. Skeleton Loading Denyut Halus'),
                       const SizedBox(height: 12),
                       const Row(
                         children: [
@@ -276,7 +278,7 @@ class _DevComponentsPageState extends ConsumerState<DevComponentsPage> {
                       ),
 
                       const SizedBox(height: 28),
-                      _buildHeader('7. Modals: Sheet, Dialog & Toast'),
+                      _buildHeader(context, '7. Modals: Sheet, Dialog & Toast'),
                       const SizedBox(height: 12),
                       Wrap(
                         spacing: 8,
@@ -355,7 +357,7 @@ class _DevComponentsPageState extends ConsumerState<DevComponentsPage> {
                       ),
 
                       const SizedBox(height: 28),
-                      _buildHeader('8. Recipe Cards (PRD §5.4)'),
+                      _buildHeader(context, '8. Recipe Cards (PRD §5.4)'),
                       const SizedBox(height: 12),
                       const Text(
                         'A. FeaturedRecipeCard (Daily Inspiration / Meal Plan)',
@@ -410,13 +412,13 @@ class _DevComponentsPageState extends ConsumerState<DevComponentsPage> {
                       ),
 
                       const SizedBox(height: 28),
-                      _buildHeader('9. EmptyState'),
+                      _buildHeader(context, '9. EmptyState'),
                       const SizedBox(height: 12),
                       Container(
                         decoration: BoxDecoration(
-                          color: AppColors.white,
+                          color: palette.surface,
                           borderRadius: AppRadius.card,
-                          border: Border.all(color: AppColors.border),
+                          border: Border.all(color: palette.border),
                         ),
                         child: EmptyState(
                           icon: LucideIcons.heart,
@@ -444,18 +446,19 @@ class _DevComponentsPageState extends ConsumerState<DevComponentsPage> {
     );
   }
 
-  Widget _buildHeader(String title) {
+  Widget _buildHeader(BuildContext context, String title) {
+    final palette = context.palette;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
       decoration: BoxDecoration(
-        color: AppColors.olive,
+        color: palette.actionBg,
         borderRadius: AppRadius.buttonSmall,
       ),
       child: Text(
         title,
         style: AppText.cardHeroTitle.copyWith(
-          color: AppColors.white,
+          color: palette.onAction,
           fontSize: 13,
         ),
       ),
