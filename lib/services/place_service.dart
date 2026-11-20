@@ -359,7 +359,7 @@ class OverpassPlaceService implements PlaceService {
 
     final query =
         '''
-[out:json][timeout:15];
+[out:json][timeout:10];
 (
   node["amenity"~"restaurant|fast_food|cafe|food_court"]($minLat,$minLon,$maxLat,$maxLon);
   way["amenity"~"restaurant|fast_food|cafe|food_court"]($minLat,$minLon,$maxLat,$maxLon);
@@ -367,31 +367,60 @@ class OverpassPlaceService implements PlaceService {
 out center 80;
 ''';
 
-    final response = await _dio.post<Map<String, dynamic>>(
+    // Daftar mirror endpoint Overpass publik
+    const endpoints = [
       'https://overpass-api.de/api/interpreter',
-      data: 'data=${Uri.encodeQueryComponent(query)}',
-      cancelToken: cancelToken,
-      options: Options(
-        contentType: Headers.formUrlEncodedContentType,
-        headers: {'User-Agent': 'FoodieApp/1.0 (id.foodie.foodie)'},
-      ),
-    );
+      'https://overpass.kumi.systems/api/interpreter',
+      'https://overpass.private.coffee/api/interpreter',
+    ];
 
-    if (response.statusCode == 200 && response.data != null) {
-      final places = parseOverpassResponse(
-        response.data!,
-        latitude: centerLat,
-        longitude: centerLng,
-        radiusMeters: 5000,
-        ignoreNameless: true,
-        limit: 80,
-      );
+    for (final endpoint in endpoints) {
+      if (cancelToken != null && cancelToken.isCancelled) break;
+      try {
+        final response = await _dio.post<Map<String, dynamic>>(
+          endpoint,
+          data: 'data=${Uri.encodeQueryComponent(query)}',
+          cancelToken: cancelToken,
+          options: Options(
+            contentType: Headers.formUrlEncodedContentType,
+            headers: {'User-Agent': 'FoodieApp/1.0 (id.foodie.foodie)'},
+            sendTimeout: const Duration(seconds: 5),
+            receiveTimeout: const Duration(seconds: 6),
+          ),
+        );
 
-      _bboxCache[cacheKey] = _BboxCacheEntry(places, DateTime.now());
-      return places;
+        if (response.statusCode == 200 && response.data != null) {
+          final places = parseOverpassResponse(
+            response.data!,
+            latitude: centerLat,
+            longitude: centerLng,
+            radiusMeters: 5000,
+            ignoreNameless: true,
+            limit: 80,
+          );
+
+          if (places.isNotEmpty) {
+            _bboxCache[cacheKey] = _BboxCacheEntry(places, DateTime.now());
+            return places;
+          }
+        }
+      } catch (e) {
+        if (cancelToken != null && cancelToken.isCancelled) rethrow;
+        debugPrint('Overpass bbox endpoint $endpoint failed: $e');
+      }
     }
 
-    return const [];
+    // Jika seluruh mirror Overpass gagal atau diblokir provider: fallback aman ke data lokal
+    debugPrint(
+      'Overpass bbox failed/unavailable, falling back to LocalPlaceService',
+    );
+    final fallbackPlaces = _localService.getPlacesSync(
+      latitude: centerLat,
+      longitude: centerLng,
+      radiusMeters: 5000,
+    );
+    _bboxCache[cacheKey] = _BboxCacheEntry(fallbackPlaces, DateTime.now());
+    return fallbackPlaces;
   }
 
   @override
@@ -405,6 +434,20 @@ out center 80;
     final cleanQuery = query.trim();
     if (cleanQuery.isEmpty) return const [];
 
+    // Cari dulu kecocokan pada data lokal/template secara instan
+    final localMatches = _localService
+        .getPlacesSync(
+          latitude: latitude,
+          longitude: longitude,
+          radiusMeters: radiusMeters,
+        )
+        .where(
+          (p) =>
+              p.name.toLowerCase().contains(cleanQuery.toLowerCase()) ||
+              p.cuisine.toLowerCase().contains(cleanQuery.toLowerCase()),
+        )
+        .toList();
+
     // Escape regex characters untuk Overpass QL
     final escaped = cleanQuery
         .replaceAll(r'\', r'\\')
@@ -413,7 +456,7 @@ out center 80;
 
     final overpassQuery =
         '''
-[out:json][timeout:15];
+[out:json][timeout:10];
 (
   node["amenity"~"restaurant|fast_food|cafe|food_court"]["name"~"$escaped",i](around:$radiusMeters,$latitude,$longitude);
   way["amenity"~"restaurant|fast_food|cafe|food_court"]["name"~"$escaped",i](around:$radiusMeters,$latitude,$longitude);
@@ -421,32 +464,58 @@ out center 80;
 out center 8;
 ''';
 
-    final response = await _dio.post<Map<String, dynamic>>(
+    const endpoints = [
       'https://overpass-api.de/api/interpreter',
-      data: 'data=${Uri.encodeQueryComponent(overpassQuery)}',
-      cancelToken: cancelToken,
-      options: Options(
-        contentType: Headers.formUrlEncodedContentType,
-        headers: {'User-Agent': 'FoodieApp/1.0 (id.foodie.foodie)'},
-      ),
-    );
+      'https://overpass.kumi.systems/api/interpreter',
+      'https://overpass.private.coffee/api/interpreter',
+    ];
 
-    if (response.statusCode == 200 && response.data != null) {
-      final results = parseOverpassResponse(
-        response.data!,
-        latitude: latitude,
-        longitude: longitude,
-        radiusMeters: radiusMeters,
-        ignoreNameless: true,
-        limit: 8,
-      );
+    List<Place> overpassResults = [];
 
-      // Urutkan berdasarkan jarak dari lokasi pengguna
-      results.sort((a, b) => a.distanceM.compareTo(b.distanceM));
-      return results;
+    for (final endpoint in endpoints) {
+      if (cancelToken != null && cancelToken.isCancelled) break;
+      try {
+        final response = await _dio.post<Map<String, dynamic>>(
+          endpoint,
+          data: 'data=${Uri.encodeQueryComponent(overpassQuery)}',
+          cancelToken: cancelToken,
+          options: Options(
+            contentType: Headers.formUrlEncodedContentType,
+            headers: {'User-Agent': 'FoodieApp/1.0 (id.foodie.foodie)'},
+            sendTimeout: const Duration(seconds: 4),
+            receiveTimeout: const Duration(seconds: 5),
+          ),
+        );
+
+        if (response.statusCode == 200 && response.data != null) {
+          final results = parseOverpassResponse(
+            response.data!,
+            latitude: latitude,
+            longitude: longitude,
+            radiusMeters: radiusMeters,
+            ignoreNameless: true,
+            limit: 8,
+          );
+
+          if (results.isNotEmpty) {
+            overpassResults = results;
+            break;
+          }
+        }
+      } catch (e) {
+        if (cancelToken != null && cancelToken.isCancelled) rethrow;
+        debugPrint('Overpass search endpoint $endpoint failed: $e');
+      }
     }
 
-    return const [];
+    if (overpassResults.isNotEmpty) {
+      overpassResults.sort((a, b) => a.distanceM.compareTo(b.distanceM));
+      return overpassResults.take(8).toList();
+    }
+
+    // Jika Overpass tidak mengembalikan hasil atau offline/gagal: gunakan hasil template lokal
+    localMatches.sort((a, b) => a.distanceM.compareTo(b.distanceM));
+    return localMatches.take(8).toList();
   }
 
   Future<List<Place>> _fetchOverpass({
@@ -686,6 +755,32 @@ class LocalPlaceService implements PlaceService {
       mockY: 44.0,
     ),
     _PlaceTemplate(
+      id: 'ayam-geprek-bu-rum',
+      name: 'Ayam Geprek Bu Rum',
+      cuisine: 'Ayam Geprek & Sambal Bawang',
+      priceMin: 14000,
+      priceMax: 25000,
+      distanceM: 320,
+      walkMin: 4,
+      open: true,
+      bearingDegrees: 60.0,
+      mockX: 55.0,
+      mockY: 28.0,
+    ),
+    _PlaceTemplate(
+      id: 'olive-fried-chicken',
+      name: 'Olive Fried Chicken',
+      cuisine: 'Ayam Goreng Crispy',
+      priceMin: 15000,
+      priceMax: 28000,
+      distanceM: 520,
+      walkMin: 7,
+      open: true,
+      bearingDegrees: 175.0,
+      mockX: 68.0,
+      mockY: 60.0,
+    ),
+    _PlaceTemplate(
       id: 'warung-padang-salero',
       name: 'Warung Padang Salero',
       cuisine: 'Masakan Padang',
@@ -723,6 +818,71 @@ class LocalPlaceService implements PlaceService {
       bearingDegrees: 85.0,
       mockX: 15.0,
       mockY: 75.0,
+    ),
+    _PlaceTemplate(
+      id: 'bakso-pak-min',
+      name: 'Bakso & Mie Ayam Pak Min',
+      cuisine: 'Bakso & Mie Ayam',
+      priceMin: 15000,
+      priceMax: 25000,
+      distanceM: 620,
+      walkMin: 8,
+      open: true,
+      bearingDegrees: 200.0,
+      mockX: 40.0,
+      mockY: 65.0,
+    ),
+    _PlaceTemplate(
+      id: 'warmindo-berkah',
+      name: 'Warmindo Berkah',
+      cuisine: 'Mie & Nasi Telur',
+      priceMin: 10000,
+      priceMax: 20000,
+      distanceM: 260,
+      walkMin: 3,
+      open: true,
+      bearingDegrees: 15.0,
+      mockX: 52.0,
+      mockY: 38.0,
+    ),
+    _PlaceTemplate(
+      id: 'bebek-goreng-h-slamet',
+      name: 'Bebek Goreng H. Slamet',
+      cuisine: 'Bebek Goreng & Sambal Korek',
+      priceMin: 28000,
+      priceMax: 50000,
+      distanceM: 880,
+      walkMin: 12,
+      open: true,
+      bearingDegrees: 290.0,
+      mockX: 30.0,
+      mockY: 25.0,
+    ),
+    _PlaceTemplate(
+      id: 'soto-ayam-pak-dalbe',
+      name: 'Soto Ayam Pak Dalbe',
+      cuisine: 'Soto Ayam Kampung',
+      priceMin: 16000,
+      priceMax: 28000,
+      distanceM: 950,
+      walkMin: 13,
+      open: true,
+      bearingDegrees: 110.0,
+      mockX: 72.0,
+      mockY: 52.0,
+    ),
+    _PlaceTemplate(
+      id: 'kopi-klotok-kaliurang',
+      name: 'Warung Kopi Klotok',
+      cuisine: 'Kopi & Pisang Goreng',
+      priceMin: 12000,
+      priceMax: 30000,
+      distanceM: 1800,
+      walkMin: 24,
+      open: true,
+      bearingDegrees: 10.0,
+      mockX: 50.0,
+      mockY: 15.0,
     ),
   ];
 

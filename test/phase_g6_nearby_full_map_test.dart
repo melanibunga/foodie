@@ -478,7 +478,7 @@ void main() {
                     'name': 'Sate Klatak Mak Adi',
                     'amenity': 'restaurant',
                     'cuisine': 'sate;indonesian',
-                    'opening_hours': '10:00-22:00',
+                    'opening_hours': '24/7',
                   },
                 },
               ],
@@ -546,6 +546,20 @@ void main() {
           find.text('Membuka rute ke Sate Klatak Mak Adi'),
           findsOneWidget,
         );
+
+        // Tunggu timer toast selesai
+        await tester.pump(const Duration(milliseconds: 2300));
+        await tester.pump();
+
+        // Kartu berubah menjadi minimalis dengan tombol Keluar Rute
+        expect(find.byKey(const ValueKey('exit-route-btn')), findsOneWidget);
+        expect(find.text('Keluar Rute'), findsOneWidget);
+
+        // Tap tombol Keluar Rute
+        await tester.tap(find.byKey(const ValueKey('exit-route-btn')));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(find.text('Keluar dari panduan rute'), findsOneWidget);
 
         // Tunggu timer toast selesai
         await tester.pump(const Duration(milliseconds: 2300));

@@ -16,10 +16,12 @@ import '../providers/location_provider.dart';
 import '../providers/places_provider.dart';
 import '../providers/ui_helper.dart';
 import '../services/location_service.dart';
+import '../services/place_service.dart';
 import '../services/route_service.dart';
 import '../widgets/illustrated_map.dart';
 import '../widgets/page_with_header.dart';
 import '../widgets/ui/app_button.dart';
+import '../widgets/ui/sticky_bottom_bar.dart';
 
 /// Halaman Nearby (/nearby) sesuai PRD §6.8, §14.12, §14.2, §14.5, §17.7:
 /// - PETA PENUH (Full-screen map) interaktif OpenStreetMap.
@@ -187,7 +189,12 @@ class _NearbyPageState extends ConsumerState<NearbyPage>
 
       if (mounted && !cancelToken.isCancelled) {
         setState(() {
-          _visiblePlaces = places;
+          _visiblePlaces = places.isNotEmpty
+              ? places
+              : LocalPlaceService().getPlacesSync(
+                  latitude: loc?.latitude ?? cameraCenter.latitude,
+                  longitude: loc?.longitude ?? cameraCenter.longitude,
+                );
           _isLoadingPlaces = false;
           _hasPlacesError = false;
         });
@@ -195,20 +202,29 @@ class _NearbyPageState extends ConsumerState<NearbyPage>
     } on DioException catch (e) {
       if (cancelToken.isCancelled) return;
       if (mounted) {
+        final fallback = LocalPlaceService().getPlacesSync(
+          latitude: loc?.latitude ?? cameraCenter.latitude,
+          longitude: loc?.longitude ?? cameraCenter.longitude,
+        );
         setState(() {
+          _visiblePlaces = fallback;
           _isLoadingPlaces = false;
-          _hasPlacesError = true;
+          _hasPlacesError = fallback.isEmpty;
         });
-        showAppToast(context, 'Gagal memuat tempat makan');
       }
       debugPrint('Overpass bbox error: ${e.message}');
     } catch (e) {
+      if (cancelToken.isCancelled) return;
       if (mounted) {
+        final fallback = LocalPlaceService().getPlacesSync(
+          latitude: loc?.latitude ?? cameraCenter.latitude,
+          longitude: loc?.longitude ?? cameraCenter.longitude,
+        );
         setState(() {
+          _visiblePlaces = fallback;
           _isLoadingPlaces = false;
-          _hasPlacesError = true;
+          _hasPlacesError = fallback.isEmpty;
         });
-        showAppToast(context, 'Gagal memuat tempat makan');
       }
       debugPrint('Overpass error: $e');
     }
@@ -277,8 +293,17 @@ class _NearbyPageState extends ConsumerState<NearbyPage>
     } catch (e) {
       if (cancelToken.isCancelled) return;
       if (mounted) {
+        final localFallback = await LocalPlaceService().searchByName(
+          query: query,
+          latitude: centerLat != 0
+              ? centerLat
+              : (loc?.latitude ?? UserCoordinates.defaultKaliurang.latitude),
+          longitude: centerLng != 0
+              ? centerLng
+              : (loc?.longitude ?? UserCoordinates.defaultKaliurang.longitude),
+        );
         setState(() {
-          _searchResults = [];
+          _searchResults = localFallback;
           _isSearching = false;
           _searchHasSearched = true;
         });
@@ -424,6 +449,7 @@ class _NearbyPageState extends ConsumerState<NearbyPage>
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
+    final navBarTop = bottomGap(context) + 75.0;
     final locState = ref.watch(locationProvider);
     final userCoords = locState.coordinates;
     final userLatLng = userCoords != null
@@ -697,10 +723,15 @@ class _NearbyPageState extends ConsumerState<NearbyPage>
                         ),
                       ),
                       if (_isSearching)
-                        Icon(
-                          LucideIcons.loader,
-                          size: 16.0,
-                          color: palette.actionBg,
+                        SizedBox(
+                          width: 16.0,
+                          height: 16.0,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.0,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              palette.actionBg,
+                            ),
+                          ),
                         )
                       else if (_searchController.text.isNotEmpty)
                         GestureDetector(
@@ -734,10 +765,15 @@ class _NearbyPageState extends ConsumerState<NearbyPage>
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(
-                                    LucideIcons.loader,
-                                    size: 16.0,
-                                    color: palette.actionBg,
+                                  SizedBox(
+                                    width: 14.0,
+                                    height: 14.0,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.0,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        palette.actionBg,
+                                      ),
+                                    ),
                                   ),
                                   const SizedBox(width: 10.0),
                                   Text(
@@ -905,10 +941,15 @@ class _NearbyPageState extends ConsumerState<NearbyPage>
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        LucideIcons.loader,
-                        size: 12.0,
-                        color: palette.actionBg,
+                      SizedBox(
+                        width: 12.0,
+                        height: 12.0,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.0,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            palette.actionBg,
+                          ),
+                        ),
                       ),
                       const SizedBox(width: 8.0),
                       Flexible(
@@ -1069,10 +1110,15 @@ class _NearbyPageState extends ConsumerState<NearbyPage>
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
-                          LucideIcons.loader,
-                          size: 13.0,
-                          color: palette.actionBg,
+                        SizedBox(
+                          width: 12.0,
+                          height: 12.0,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.0,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              palette.actionBg,
+                            ),
+                          ),
                         ),
                         const SizedBox(width: 6.0),
                         Text(
@@ -1167,8 +1213,8 @@ class _NearbyPageState extends ConsumerState<NearbyPage>
           Positioned(
             left: 16.0,
             bottom: _selectedPlace != null
-                ? AppShell.bottomNavPadding + 140.0
-                : AppShell.bottomNavPadding + 14.0,
+                ? (_routeResult != null ? navBarTop + 88.0 : navBarTop + 196.0)
+                : navBarTop + 24.0,
             child: Container(
               padding: const EdgeInsets.symmetric(
                 horizontal: 6.0,
@@ -1194,8 +1240,8 @@ class _NearbyPageState extends ConsumerState<NearbyPage>
           Positioned(
             right: 16.0,
             bottom: _selectedPlace != null
-                ? AppShell.bottomNavPadding + 140.0
-                : AppShell.bottomNavPadding + 16.0,
+                ? (_routeResult != null ? navBarTop + 88.0 : navBarTop + 196.0)
+                : navBarTop + 24.0,
             child: Semantics(
               label: 'Pusatkan ke lokasi saya',
               button: true,
@@ -1242,145 +1288,155 @@ class _NearbyPageState extends ConsumerState<NearbyPage>
             Positioned(
               left: 16.0,
               right: 16.0,
-              bottom: AppShell.bottomNavPadding + 12.0,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: palette.surface,
-                  borderRadius: BorderRadius.circular(16.0),
-                  boxShadow: AppShadows.card,
-                  border: Border.all(color: palette.border),
-                ),
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Baris Atas: Nama Tempat & Tombol Tutup (x)
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Column(
+              bottom: navBarTop + 18.0,
+              child: _routeResult != null
+                  ? _buildMinimalistRouteCard(
+                      context,
+                      palette,
+                      _selectedPlace!,
+                      _routeResult!,
+                    )
+                  : Container(
+                      decoration: BoxDecoration(
+                        color: palette.surface,
+                        borderRadius: BorderRadius.circular(16.0),
+                        boxShadow: AppShadows.card,
+                        border: Border.all(color: palette.border),
+                      ),
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Baris Atas: Nama Tempat & Tombol Tutup (x)
+                          Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                _selectedPlace!.name,
-                                style: TextStyle(
-                                  fontFamily: 'Poppins',
-                                  fontSize: 15.0,
-                                  fontWeight: FontWeight.w700,
-                                  color: palette.textStrong,
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      _selectedPlace!.name,
+                                      style: TextStyle(
+                                        fontFamily: 'Poppins',
+                                        fontSize: 15.0,
+                                        fontWeight: FontWeight.w700,
+                                        color: palette.textStrong,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 2.0),
+                                    Text(
+                                      _selectedPlace!.cuisine,
+                                      style: TextStyle(
+                                        fontFamily: 'Poppins',
+                                        fontSize: 12.0,
+                                        fontWeight: FontWeight.w500,
+                                        color: palette.textSecondary,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
                                 ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
                               ),
-                              const SizedBox(height: 2.0),
-                              Text(
-                                _selectedPlace!.cuisine,
-                                style: TextStyle(
-                                  fontFamily: 'Poppins',
-                                  fontSize: 12.0,
-                                  fontWeight: FontWeight.w500,
-                                  color: palette.textSecondary,
+                              GestureDetector(
+                                key: const ValueKey('close-place-card'),
+                                onTap: _deselectPlace,
+                                child: Container(
+                                  width: 28.0,
+                                  height: 28.0,
+                                  decoration: BoxDecoration(
+                                    color: palette.chip,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Icon(
+                                    LucideIcons.x,
+                                    size: 16.0,
+                                    color: palette.textSecondary,
+                                  ),
                                 ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
                               ),
                             ],
                           ),
-                        ),
-                        GestureDetector(
-                          key: const ValueKey('close-place-card'),
-                          onTap: _deselectPlace,
-                          child: Container(
-                            width: 28.0,
-                            height: 28.0,
-                            decoration: BoxDecoration(
-                              color: palette.chip,
-                              shape: BoxShape.circle,
-                            ),
-                            alignment: Alignment.center,
-                            child: Icon(
-                              LucideIcons.x,
-                              size: 16.0,
-                              color: palette.textSecondary,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
 
-                    const SizedBox(height: 8.0),
+                          const SizedBox(height: 8.0),
 
-                    // Info Jam Buka & Jarak
-                    Row(
-                      children: [
-                        // Status Buka / Jam
-                        Text(
-                          _selectedPlace!.open
-                              ? 'Buka'
-                              : (_selectedPlace!.isUnknownHours
-                                    ? 'Jam belum tercatat'
-                                    : 'Tutup'),
-                          style: TextStyle(
-                            fontFamily: 'Poppins',
-                            fontSize: 11.0,
-                            fontWeight: FontWeight.w600,
-                            color: _selectedPlace!.open
-                                ? palette.actionBg
-                                : (_selectedPlace!.isUnknownHours
-                                      ? palette.textSecondary
-                                      : palette.danger),
+                          // Info Jam Buka & Jarak
+                          Row(
+                            children: [
+                              // Status Buka / Jam
+                              Text(
+                                _selectedPlace!.open
+                                    ? 'Buka'
+                                    : (_selectedPlace!.isUnknownHours
+                                          ? 'Jam belum tercatat'
+                                          : 'Tutup'),
+                                style: TextStyle(
+                                  fontFamily: 'Poppins',
+                                  fontSize: 11.0,
+                                  fontWeight: FontWeight.w600,
+                                  color: _selectedPlace!.open
+                                      ? palette.actionBg
+                                      : (_selectedPlace!.isUnknownHours
+                                            ? palette.textSecondary
+                                            : palette.danger),
+                                ),
+                              ),
+                              if (_selectedPlace!.openingHours != null &&
+                                  _selectedPlace!.openingHours!.isNotEmpty) ...[
+                                Flexible(
+                                  child: Text(
+                                    ' · ${_selectedPlace!.openingHours}',
+                                    style: TextStyle(
+                                      fontFamily: 'Poppins',
+                                      fontSize: 11.0,
+                                      color: palette.textSecondary,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                              const Spacer(),
+                              // Jarak & Waktu
+                              Text(
+                                '${_selectedPlace!.distanceM} m · ${_selectedPlace!.walkMin} menit',
+                                style: TextStyle(
+                                  fontFamily: 'Poppins',
+                                  fontSize: 11.0,
+                                  fontWeight: FontWeight.w500,
+                                  color: palette.textSecondary,
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                        if (_selectedPlace!.openingHours != null &&
-                            _selectedPlace!.openingHours!.isNotEmpty) ...[
-                          Text(
-                            ' · ${_selectedPlace!.openingHours}',
-                            style: TextStyle(
-                              fontFamily: 'Poppins',
-                              fontSize: 11.0,
-                              color: palette.textSecondary,
+
+                          const SizedBox(height: 12.0),
+
+                          // Tombol Rute
+                          SizedBox(
+                            width: double.infinity,
+                            child: AppButton(
+                              label: _isLoadingRoute ? 'Memuat rute…' : 'Rute',
+                              icon: const Icon(
+                                LucideIcons.navigation,
+                                size: 16.0,
+                              ),
+                              variant: AppButtonVariant.primary,
+                              size: AppButtonSize.md,
+                              isLoading: _isLoadingRoute,
+                              onPressed: _isLoadingRoute
+                                  ? null
+                                  : () => _fetchRouteForPlace(_selectedPlace!),
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
-                        const Spacer(),
-                        // Jarak & Waktu
-                        Text(
-                          _routeResult != null &&
-                                  !_routeResult!.isStraightLineFallback
-                              ? _routeResult!.distanceAndDurationString
-                              : '${_selectedPlace!.distanceM} m · ${_selectedPlace!.walkMin} menit',
-                          style: TextStyle(
-                            fontFamily: 'Poppins',
-                            fontSize: 11.0,
-                            fontWeight: FontWeight.w500,
-                            color: palette.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 12.0),
-
-                    // Tombol Rute
-                    SizedBox(
-                      width: double.infinity,
-                      child: AppButton(
-                        label: _isLoadingRoute ? 'Memuat rute…' : 'Rute',
-                        icon: const Icon(LucideIcons.navigation, size: 16.0),
-                        variant: AppButtonVariant.primary,
-                        size: AppButtonSize.md,
-                        onPressed: _isLoadingRoute
-                            ? null
-                            : () => _fetchRouteForPlace(_selectedPlace!),
                       ),
                     ),
-                  ],
-                ),
-              ),
             ),
 
           // 9. Overlay: Kartu Penjelasan / Rationale & Status Izin (§17.7 & PRD §14.12)
@@ -1493,10 +1549,11 @@ class _NearbyPageState extends ConsumerState<NearbyPage>
     required String secondaryButtonLabel,
     required VoidCallback onSecondaryPressed,
   }) {
+    final navBarTop = bottomGap(context) + 75.0;
     return Positioned(
       left: 16.0,
       right: 16.0,
-      bottom: AppShell.bottomNavPadding + 16.0,
+      bottom: navBarTop + 18.0,
       child: Container(
         padding: const EdgeInsets.all(20.0),
         decoration: BoxDecoration(
@@ -1563,6 +1620,143 @@ class _NearbyPageState extends ConsumerState<NearbyPage>
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Helper untuk membangun kartu alert minimalis saat rute sedang aktif
+  Widget _buildMinimalistRouteCard(
+    BuildContext context,
+    AppPalette palette,
+    Place place,
+    RouteResult route,
+  ) {
+    return Container(
+      decoration: BoxDecoration(
+        color: palette.surface,
+        borderRadius: BorderRadius.circular(16.0),
+        boxShadow: AppShadows.card,
+        border: Border.all(color: palette.border),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
+      child: Row(
+        children: [
+          // Icon rute navigasi
+          Container(
+            width: 38.0,
+            height: 38.0,
+            decoration: BoxDecoration(
+              color: palette.accent.withValues(alpha: 0.2),
+              shape: BoxShape.circle,
+            ),
+            alignment: Alignment.center,
+            child: Icon(
+              LucideIcons.navigation,
+              size: 18.0,
+              color: palette.actionBg,
+            ),
+          ),
+          const SizedBox(width: 12.0),
+
+          // Info Tujuan & Jarak / Durasi
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  place.name,
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                    color: palette.textStrong,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2.0),
+                Text(
+                  route.isStraightLineFallback
+                      ? '${place.distanceM} m · garis lurus'
+                      : route.distanceAndDurationString,
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w500,
+                    color: palette.textSecondary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(width: 10.0),
+
+          // Tombol Keluar Rute
+          GestureDetector(
+            key: const ValueKey('exit-route-btn'),
+            onTap: () {
+              setState(() {
+                _routeResult = null;
+              });
+              showAppToast(context, 'Keluar dari panduan rute');
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 10.0,
+                vertical: 6.0,
+              ),
+              decoration: BoxDecoration(
+                color: palette.danger.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8.0),
+                border: Border.all(
+                  color: palette.danger.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(LucideIcons.xCircle, size: 13.0, color: palette.danger),
+                  const SizedBox(width: 4.0),
+                  Text(
+                    'Keluar Rute',
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 11.0,
+                      fontWeight: FontWeight.w600,
+                      color: palette.danger,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(width: 6.0),
+
+          // Tombol Tutup (x)
+          GestureDetector(
+            key: const ValueKey('close-place-card'),
+            onTap: _deselectPlace,
+            child: Container(
+              width: 28.0,
+              height: 28.0,
+              decoration: BoxDecoration(
+                color: palette.chip,
+                shape: BoxShape.circle,
+              ),
+              alignment: Alignment.center,
+              child: Icon(
+                LucideIcons.x,
+                size: 15.0,
+                color: palette.textSecondary,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
