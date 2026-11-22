@@ -134,7 +134,7 @@ class CartGroup {
     final items = rawItems != null
         ? rawItems.asMap().entries.map((entry) {
             final idx = entry.key;
-            final itemMap = entry.value as Map<String, dynamic>;
+            final itemMap = Map<String, dynamic>.from(entry.value as Map);
             final itemFallback = groupAddedAt.add(Duration(seconds: idx));
             return CartItem.fromJson(itemMap, itemFallback);
           }).toList()

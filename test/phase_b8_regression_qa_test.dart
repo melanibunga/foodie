@@ -1,10 +1,8 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:foodie/app/router.dart';
 import 'package:foodie/core/theme/app_theme.dart';
-import 'package:foodie/core/utils/week_utils.dart';
 import 'package:foodie/data/user.dart';
 import 'package:foodie/pages/cooked_page.dart';
 import 'package:foodie/pages/my_recipes_page.dart';
@@ -12,15 +10,12 @@ import 'package:foodie/pages/search_page.dart';
 import 'package:foodie/providers/auth_provider.dart';
 import 'package:foodie/providers/location_provider.dart';
 import 'package:foodie/providers/meal_plan_provider.dart';
-import 'package:foodie/providers/places_provider.dart';
 import 'package:foodie/providers/storage_provider.dart';
 import 'package:foodie/services/location_service.dart';
-import 'package:foodie/services/route_service.dart';
 import 'package:foodie/widgets/real_map_view.dart';
 import 'package:foodie/widgets/recipe_cards.dart';
 import 'package:foodie/widgets/ui/sticky_bottom_bar.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:latlong2/latlong.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import 'test_helper.dart';
@@ -52,21 +47,6 @@ class MockLocationService extends LocationService {
   Future<UserCoordinates?> getCurrentPosition() async => position;
 }
 
-class MockTestRouteService implements RouteService {
-  @override
-  Future<RouteResult> getFootRoute({
-    required LatLng start,
-    required LatLng destination,
-    CancelToken? cancelToken,
-  }) async {
-    return RouteResult(
-      points: [start, destination],
-      distanceMeters: 450,
-      durationSeconds: 320,
-    );
-  }
-}
-
 void main() {
   setUp(() {
     // mock storage initialized
@@ -90,7 +70,6 @@ void main() {
           ProviderScope(
             overrides: [
               foodieBoxesProvider.overrideWithValue(boxes),
-              routeServiceProvider.overrideWithValue(MockTestRouteService()),
               locationServiceProvider.overrideWithValue(
                 const MockLocationService(),
               ),
@@ -146,9 +125,12 @@ void main() {
 
         // Sheet pilih tanggal terbuka
         expect(find.text('Tambah ke Meal Plan'), findsOneWidget);
-        final now = DateTime.now();
-        final todayName = WeekUtils.dayNames[now.weekday - 1];
-        await tester.tap(find.text(todayName).first);
+        // Drag sheet list view to show future days (especially on weekends when earlier week days are past)
+        await tester.drag(find.byType(ListView).last, const Offset(0, -250));
+        await tester.pumpAndSettle();
+
+        final addDayBtn = find.byIcon(Icons.add_circle_outline).first;
+        await tester.tap(addDayBtn);
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 2300));
         await tester.pumpAndSettle();
@@ -303,7 +285,10 @@ void main() {
     testWidgets('Meal Plan duplicate prevention test (M2 logic & query)', (
       tester,
     ) async {
-      final container = ProviderContainer();
+      final boxes = await initTestBoxes();
+      final container = ProviderContainer(
+        overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
+      );
       addTearDown(container.dispose);
 
       final notifier = container.read(mealPlanProvider.notifier);
@@ -341,7 +326,6 @@ void main() {
             locationServiceProvider.overrideWithValue(
               const MockLocationService(),
             ),
-            routeServiceProvider.overrideWithValue(MockTestRouteService()),
           ],
           child: MaterialApp.router(
             theme: AppTheme.lightTheme,

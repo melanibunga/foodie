@@ -5,9 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:foodie/models/models.dart';
 import 'package:foodie/services/place_service.dart';
-import 'package:foodie/services/route_service.dart';
 import 'package:hive/hive.dart';
-import 'package:latlong2/latlong.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -358,60 +356,6 @@ void main() {
       expect(requestCount, equals(1)); // Tidak request lagi
       expect(p2.first.name, equals('Resto Debounce'));
     });
-  });
-
-  group('4. OsrmRouteService & Straight Line Fallback', () {
-    test('Parse respon OSRM GeoJSON berhasil', () {
-      final start = const LatLng(-7.7653, 110.3789);
-      final dest = const LatLng(-7.7640, 110.3800);
-
-      final osrmJson = {
-        'code': 'Ok',
-        'routes': [
-          {
-            'distance': 250.0,
-            'duration': 180.0,
-            'geometry': {
-              'coordinates': [
-                [110.3789, -7.7653],
-                [110.3795, -7.7648],
-                [110.3800, -7.7640],
-              ],
-            },
-          },
-        ],
-      };
-
-      final result = OsrmRouteService.parseOsrmResponse(osrmJson, start, dest);
-      expect(result.isStraightLineFallback, isFalse);
-      expect(result.distanceMeters, equals(250.0));
-      expect(result.durationSeconds, equals(180.0));
-      expect(result.points.length, equals(3));
-      expect(result.formattedDistance, equals('250 m'));
-      expect(result.formattedDuration, equals('3 menit'));
-      expect(result.distanceAndDurationString, equals('250 m · 3 menit'));
-    });
-
-    test(
-      'Respon OSRM gagal atau tidak Ok mengembalikan straight line fallback',
-      () {
-        final start = const LatLng(-7.7653, 110.3789);
-        final dest = const LatLng(-7.7640, 110.3800);
-
-        final errorJson = {'code': 'NoRoute', 'routes': []};
-
-        final result = OsrmRouteService.parseOsrmResponse(
-          errorJson,
-          start,
-          dest,
-        );
-        expect(result.isStraightLineFallback, isTrue);
-        expect(result.points.length, equals(2));
-        expect(result.points.first.latitude, equals(start.latitude));
-        expect(result.points.last.latitude, equals(dest.latitude));
-        expect(result.distanceMeters, greaterThan(0));
-      },
-    );
   });
 }
 

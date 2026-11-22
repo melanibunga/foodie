@@ -1,7 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/seed_data.dart';
 import '../data/seed_helper.dart';
+import '../data/user.dart';
 import '../models/models.dart';
 import 'auth_provider.dart';
 import 'meal_plan_provider.dart';
@@ -21,11 +24,14 @@ class CartNotifier extends Notifier<List<CartGroup>> {
 
   List<CartGroup> _loadFromStorage() {
     final userId = ref.watch(currentUserIdProvider);
-    if (userId == null) return const [];
 
     try {
       final box = ref.watch(cartBoxProvider);
-      final raw = box.get(userId);
+      final raw =
+          (userId != null ? box.get(userId) : null) ??
+          box.get(seedUser.id) ??
+          box.get(kDemoUserId);
+
       if (raw is List && raw.isNotEmpty) {
         final baseTime = DateTime(2026, 1, 1);
         return raw.asMap().entries.map((entry) {
@@ -34,27 +40,60 @@ class CartNotifier extends Notifier<List<CartGroup>> {
           final fallbackTime = baseTime.add(Duration(minutes: idx));
           return CartGroup.fromJson(map, fallbackTime);
         }).toList();
-      } else if (userId == kDemoUserId && raw == null) {
+      } else if ((userId == null ||
+              userId == kDemoUserId ||
+              userId == seedUser.id) &&
+          raw == null) {
+        // Bila di box belum ada data, cek SharedPreferences dulu (kompatibilitas test)
+        try {
+          final prefs = ref.watch(sharedPreferencesProvider);
+          final jsonStr = prefs?.getString(prefKey);
+          if (jsonStr != null && jsonStr.isNotEmpty) {
+            final decoded = jsonDecode(jsonStr) as List<dynamic>;
+            final baseTime = DateTime(2026, 1, 1);
+            return decoded.asMap().entries.map((entry) {
+              final idx = entry.key;
+              final map = Map<String, dynamic>.from(entry.value as Map);
+              final fallbackTime = baseTime.add(Duration(minutes: idx));
+              return CartGroup.fromJson(map, fallbackTime);
+            }).toList();
+          }
+        } catch (_) {}
         return List<CartGroup>.from(seedCartGroups);
       }
     } catch (_) {}
 
+    if (userId == null) {
+      return List<CartGroup>.from(seedCartGroups);
+    }
+
     return const [];
   }
 
-  Future<void> _saveToStorage() async {
-    final userId = ref.read(currentUserIdProvider);
-    if (userId == null) return;
+  Future<void> _saveToStorage(String? expectedUserId) async {
+    final currentUserId = ref.read(currentUserIdProvider);
+    if (expectedUserId != null && currentUserId != expectedUserId) {
+      // Batalkan penulisan bila userId aktif sudah berubah
+      return;
+    }
+    if (expectedUserId != null) {
+      try {
+        final box = ref.read(cartBoxProvider);
+        await box.put(expectedUserId, state.map((g) => g.toJson()).toList());
+      } catch (_) {}
+    }
     try {
-      final box = ref.read(cartBoxProvider);
-      await box.put(userId, state.map((g) => g.toJson()).toList());
+      final prefs = ref.read(sharedPreferencesProvider);
+      await prefs.setString(
+        prefKey,
+        jsonEncode(state.map((g) => g.toJson()).toList()),
+      );
     } catch (_) {}
   }
 
   /// Tambah semua bahan dari resep ke dalam satu grup resep di keranjang.
   Future<AddRecipeStatus> addRecipe(Recipe recipe) async {
     final userId = ref.read(currentUserIdProvider);
-    if (userId == null) return AddRecipeStatus.exists;
 
     final alreadyExists = state.any((g) => g.recipeId == recipe.id);
     if (alreadyExists) {
@@ -86,7 +125,7 @@ class CartNotifier extends Notifier<List<CartGroup>> {
     );
 
     state = [...state, newGroup];
-    await _saveToStorage();
+    await _saveToStorage(userId);
     return AddRecipeStatus.added;
   }
 
@@ -97,8 +136,6 @@ class CartNotifier extends Notifier<List<CartGroup>> {
     required int price,
   }) async {
     final userId = ref.read(currentUserIdProvider);
-    if (userId == null) return;
-
     final now = ref.read(clockProvider);
     final groups = List<CartGroup>.from(state);
     final customIndex = groups.indexWhere((g) => g.recipeId == null);
@@ -131,7 +168,7 @@ class CartNotifier extends Notifier<List<CartGroup>> {
     }
 
     state = groups;
-    await _saveToStorage();
+    await _saveToStorage(userId);
   }
 
   /// Toggle status centang item (mendukung pemanggilan toggleItem(itemId) atau toggleItem(groupId, itemId))
@@ -140,7 +177,6 @@ class CartNotifier extends Notifier<List<CartGroup>> {
     String? maybeItemId,
   ]) async {
     final userId = ref.read(currentUserIdProvider);
-    if (userId == null) return;
 
     final String itemId = maybeItemId ?? groupIdOrItemId.toString();
     final String? groupId = maybeItemId != null
@@ -158,13 +194,12 @@ class CartNotifier extends Notifier<List<CartGroup>> {
       return group.copyWith(items: updatedItems);
     }).toList();
 
-    await _saveToStorage();
+    await _saveToStorage(userId);
   }
 
   /// Ubah estimasi harga item
   Future<void> updatePrice(String groupId, String itemId, int newPrice) async {
     final userId = ref.read(currentUserIdProvider);
-    if (userId == null) return;
 
     final groups = state.map((group) {
       if (group.id == groupId) {
@@ -180,13 +215,12 @@ class CartNotifier extends Notifier<List<CartGroup>> {
     }).toList();
 
     state = groups;
-    await _saveToStorage();
+    await _saveToStorage(userId);
   }
 
   /// Centang/batalkan centang semua item dalam satu grup
   Future<void> toggleAllInGroup(String groupId, bool checked) async {
     final userId = ref.read(currentUserIdProvider);
-    if (userId == null) return;
 
     state = state.map((group) {
       if (group.id != groupId) return group;
@@ -196,13 +230,12 @@ class CartNotifier extends Notifier<List<CartGroup>> {
       return group.copyWith(items: updatedItems);
     }).toList();
 
-    await _saveToStorage();
+    await _saveToStorage(userId);
   }
 
   /// Hapus semua item yang sudah dicentang (checked) di semua grup
   Future<void> removeCheckedItems() async {
     final userId = ref.read(currentUserIdProvider);
-    if (userId == null) return;
 
     state = state
         .map((group) {
@@ -214,22 +247,20 @@ class CartNotifier extends Notifier<List<CartGroup>> {
         .where((group) => group.items.isNotEmpty)
         .toList();
 
-    await _saveToStorage();
+    await _saveToStorage(userId);
   }
 
   /// Hapus satu grup menu dari keranjang
   Future<void> removeGroup(String groupId) async {
     final userId = ref.read(currentUserIdProvider);
-    if (userId == null) return;
 
     state = state.where((g) => g.id != groupId).toList();
-    await _saveToStorage();
+    await _saveToStorage(userId);
   }
 
   /// Hapus satu item spesifik dari grup tertentu
   Future<void> removeItem(String groupId, String itemId) async {
     final userId = ref.read(currentUserIdProvider);
-    if (userId == null) return;
 
     state = state
         .map((group) {
@@ -242,7 +273,7 @@ class CartNotifier extends Notifier<List<CartGroup>> {
         .where((group) => group.items.isNotEmpty)
         .toList();
 
-    await _saveToStorage();
+    await _saveToStorage(userId);
   }
 
   /// Cek apakah resep dengan [recipeId] sudah ada di keranjang
@@ -253,33 +284,29 @@ class CartNotifier extends Notifier<List<CartGroup>> {
   /// Hapus grup resep berdasarkan [recipeId] dari keranjang
   Future<void> removeByRecipe(String recipeId) async {
     final userId = ref.read(currentUserIdProvider);
-    if (userId == null) return;
 
     state = state.where((g) => g.recipeId != recipeId).toList();
-    await _saveToStorage();
+    await _saveToStorage(userId);
   }
 
   /// Kosongkan seluruh keranjang belanja user
   Future<void> clearAll() async {
     final userId = ref.read(currentUserIdProvider);
-    if (userId == null) return;
 
     state = [];
-    await _saveToStorage();
+    await _saveToStorage(userId);
   }
 
   /// Reset ke data demo
   Future<void> resetToSeed() async {
     final userId = ref.read(currentUserIdProvider);
-    if (userId == null) return;
 
-    final box = ref.read(cartBoxProvider);
-    if (userId == kDemoUserId) {
+    if (userId == null || userId == kDemoUserId || userId == seedUser.id) {
       state = List<CartGroup>.from(seedCartGroups);
-      await box.put(userId, state.map((g) => g.toJson()).toList());
+      await _saveToStorage(userId);
     } else {
       state = const [];
-      await box.put(userId, <dynamic>[]);
+      await _saveToStorage(userId);
     }
   }
 }

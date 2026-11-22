@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:foodie/app/router.dart';
 import 'package:foodie/core/theme/app_theme.dart';
+import 'package:foodie/data/seed_helper.dart';
 import 'package:foodie/data/user.dart';
 import 'package:foodie/models/models.dart';
 import 'package:foodie/pages/groceries_page.dart';
@@ -79,6 +80,14 @@ void main() {
           await prefs.setString(
             CartNotifier.prefKey,
             jsonEncode(testGroups.map((g) => g.toJson()).toList()),
+          );
+          await boxes.cart.put(
+            seedUser.id,
+            testGroups.map((g) => g.toJson()).toList(),
+          );
+          await boxes.cart.put(
+            kDemoUserId,
+            testGroups.map((g) => g.toJson()).toList(),
           );
 
           final router = createRouter(

@@ -200,7 +200,7 @@ void main() {
       },
     );
 
-    testWidgets('Inline price edit updates item price and total', (
+    testWidgets('Price edit sheet updates item price and total', (
       tester,
     ) async {
       tester.view.physicalSize = const Size(440, 956);
@@ -234,17 +234,20 @@ void main() {
       await tester.tap(priceTarget);
       await tester.pumpAndSettle();
 
-      // Inline price editor input should appear
-      final checkIcon = find.byIcon(LucideIcons.check);
-      expect(checkIcon, findsOneWidget);
+      // Sheet "Atur harga" should appear
+      expect(find.text('Atur harga'), findsOneWidget);
+      expect(find.text('Beras'), findsWidgets);
 
       // Change price from 3000 to 5000
-      final inlineInput = find.byType(TextField).last;
-      await tester.enterText(inlineInput, '5000');
+      final sheetInput = find.descendant(
+        of: find.byType(SingleChildScrollView),
+        matching: find.byType(TextField),
+      );
+      await tester.enterText(sheetInput, '5000');
       await tester.pumpAndSettle();
 
-      // Confirm inline edit
-      await tester.tap(checkIcon);
+      // Tap Simpan
+      await tester.tap(find.text('Simpan'));
       await tester.pumpAndSettle();
 
       // Price updated to Rp 5.000

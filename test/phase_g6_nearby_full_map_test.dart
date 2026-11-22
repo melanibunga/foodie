@@ -14,12 +14,9 @@ import 'package:foodie/providers/places_provider.dart';
 import 'package:foodie/providers/storage_provider.dart';
 import 'package:foodie/services/location_service.dart';
 import 'package:foodie/services/place_service.dart';
-import 'package:foodie/services/route_service.dart';
 import 'package:foodie/widgets/app_header.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:hive/hive.dart';
-import 'package:latlong2/latlong.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 
 class _FakeBox<T> implements Box<T> {
   final Map<dynamic, T> _storage = {};
@@ -143,26 +140,6 @@ class _FakeDioAdapter implements HttpClientAdapter {
 
   @override
   void close({bool force = false}) {}
-}
-
-class _MockSuccessfulRouteService implements RouteService {
-  @override
-  Future<RouteResult> getFootRoute({
-    required LatLng start,
-    required LatLng destination,
-    CancelToken? cancelToken,
-  }) async {
-    return RouteResult(
-      points: [
-        start,
-        LatLng((start.latitude + destination.latitude) / 2, start.longitude),
-        destination,
-      ],
-      distanceMeters: 250.0,
-      durationSeconds: 180.0,
-      isStraightLineFallback: false,
-    );
-  }
 }
 
 void main() {
@@ -417,9 +394,6 @@ void main() {
               locationServiceProvider.overrideWithValue(
                 const MockLocationService(),
               ),
-              routeServiceProvider.overrideWithValue(
-                _MockSuccessfulRouteService(),
-              ),
             ],
             child: MaterialApp.router(
               theme: AppTheme.lightTheme,
@@ -434,21 +408,19 @@ void main() {
         expect(find.byType(AppHeader), findsOneWidget);
         expect(find.byType(NearbyPage), findsOneWidget);
 
-        // 2. Kolom pencarian melayang di atas dengan placeholder "Cari warung makan…"
+        // 2. Kolom pencarian di atas kartu
         expect(find.text('Cari warung makan…'), findsOneWidget);
-        expect(find.byIcon(LucideIcons.search), findsWidgets);
 
-        // 3. Tombol Pusatkan kanan bawah
-        expect(find.text('Pusatkan'), findsOneWidget);
-        expect(find.byIcon(LucideIcons.crosshair), findsOneWidget);
+        // 3. Kartu Peta
+        expect(find.text('Warung Makan Terdekat'), findsOneWidget);
+        expect(find.text('Peta Penuh'), findsOneWidget);
+        expect(find.text('Open Maps'), findsOneWidget);
 
         // 4. Atribusi lisensi OpenStreetMap wajib
         expect(find.text('© OpenStreetMap contributors'), findsOneWidget);
 
-        // 5. Elemen lama TIDAK ADA (sesuai instruksi HAPUS bagian lama)
-        expect(find.text('Pilihan Di Sekitarmu'), findsNothing);
-        expect(find.text('Buka sekarang'), findsNothing);
-        expect(find.text('Harga hemat'), findsNothing);
+        // 5. Daftar Pilihan Di Sekitarmu
+        expect(find.text('Pilihan Di Sekitarmu'), findsOneWidget);
 
         // Drain toast timer bila ada
         await tester.pump(const Duration(milliseconds: 2300));
@@ -456,7 +428,7 @@ void main() {
     );
 
     testWidgets(
-      'Pencarian nama tempat di search bar menampilkan dropdown melayang dan tap hasil memunculkan kartu info',
+      'Pencarian nama tempat di search bar menampilkan dropdown melayang',
       (tester) async {
         tester.view.physicalSize = const Size(440, 956);
         tester.view.devicePixelRatio = 1.0;
@@ -502,9 +474,6 @@ void main() {
               locationServiceProvider.overrideWithValue(
                 const MockLocationService(),
               ),
-              routeServiceProvider.overrideWithValue(
-                _MockSuccessfulRouteService(),
-              ),
             ],
             child: MaterialApp.router(
               theme: AppTheme.lightTheme,
@@ -522,55 +491,7 @@ void main() {
         await tester.pump();
 
         // Dropdown hasil pencarian muncul dengan nama tempat
-        expect(find.text('Sate Klatak Mak Adi'), findsOneWidget);
-
-        // Tap hasil pencarian
-        await tester.tap(find.text('Sate Klatak Mak Adi'));
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 300));
-
-        // Kartu info tempat terpilih melayang muncul di bawah
-        expect(find.text('Sate Klatak Mak Adi'), findsOneWidget);
-        expect(find.text('sate, indonesian'), findsOneWidget);
-        expect(find.text('Buka'), findsOneWidget);
-        expect(find.text('Rute'), findsOneWidget);
-        expect(find.byKey(const ValueKey('close-place-card')), findsOneWidget);
-
-        // Tap tombol Rute
-        await tester.tap(find.text('Rute'));
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 100));
-
-        // Toast feedback "Membuka rute ke ..."
-        expect(
-          find.text('Membuka rute ke Sate Klatak Mak Adi'),
-          findsOneWidget,
-        );
-
-        // Tunggu timer toast selesai
-        await tester.pump(const Duration(milliseconds: 2300));
-        await tester.pump();
-
-        // Kartu berubah menjadi minimalis dengan tombol Keluar Rute
-        expect(find.byKey(const ValueKey('exit-route-btn')), findsOneWidget);
-        expect(find.text('Keluar Rute'), findsOneWidget);
-
-        // Tap tombol Keluar Rute
-        await tester.tap(find.byKey(const ValueKey('exit-route-btn')));
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 100));
-        expect(find.text('Keluar dari panduan rute'), findsOneWidget);
-
-        // Tunggu timer toast selesai
-        await tester.pump(const Duration(milliseconds: 2300));
-        await tester.pump();
-
-        // Tap tombol tutup (x) kartu info
-        await tester.tap(find.byKey(const ValueKey('close-place-card')));
-        await tester.pump();
-
-        // Kartu info tertutup
-        expect(find.byKey(const ValueKey('close-place-card')), findsNothing);
+        expect(find.text('Sate Klatak Mak Adi'), findsWidgets);
       },
     );
   });

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../core/theme/app_palette.dart';
 import '../core/theme/app_text.dart';
+import '../models/models.dart';
 import '../pages/about_page.dart';
 import '../pages/cook_page.dart';
 import '../pages/cooked_page.dart';
@@ -17,6 +18,7 @@ import '../pages/home_page.dart';
 import '../pages/login_page.dart';
 import '../pages/meal_plan_page.dart';
 import '../pages/my_recipes_page.dart';
+import '../pages/nearby_full_map_page.dart';
 import '../pages/nearby_page.dart';
 import '../pages/profile_page.dart';
 import '../pages/recipe_detail_page.dart';
@@ -156,6 +158,15 @@ GoRouter createRouter({
         builder: (context, state) => const ProfilePage(),
       ),
       GoRoute(path: '/about', builder: (context, state) => const AboutPage()),
+
+      // Nearby Peta Penuh Interaktif (di luar shell)
+      GoRoute(
+        path: '/nearby/map',
+        builder: (context, state) {
+          final place = state.extra as Place?;
+          return NearbyFullMapPage(initialSelectedPlace: place);
+        },
+      ),
 
       // Detail & Cooking Mode
       GoRoute(

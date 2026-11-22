@@ -4,7 +4,6 @@ import 'package:hive/hive.dart';
 
 import '../models/models.dart';
 import '../services/place_service.dart';
-import '../services/route_service.dart';
 import 'location_provider.dart';
 import 'storage_provider.dart';
 
@@ -63,11 +62,6 @@ final placeServiceProvider = Provider<PlaceService>((ref) {
       ref.read(placesFallbackToastProvider.notifier).show(message);
     },
   );
-});
-
-/// Provider singleton RouteService
-final routeServiceProvider = Provider<RouteService>((ref) {
-  return OsrmRouteService();
 });
 
 /// Provider asinkron daftar tempat makan sekitar

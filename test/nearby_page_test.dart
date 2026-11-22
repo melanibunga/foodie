@@ -2,24 +2,23 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:foodie/app/router.dart';
 import 'package:foodie/core/theme/app_theme.dart';
 import 'package:foodie/data/user.dart';
+import 'package:foodie/pages/nearby_full_map_page.dart';
 import 'package:foodie/pages/nearby_page.dart';
 import 'package:foodie/providers/auth_provider.dart';
 import 'package:foodie/providers/location_provider.dart';
 import 'package:foodie/providers/places_provider.dart';
 import 'package:foodie/providers/storage_provider.dart';
 import 'package:foodie/services/location_service.dart';
-import 'package:foodie/services/route_service.dart';
 import 'package:foodie/widgets/app_header.dart';
-import 'package:foodie/widgets/illustrated_map.dart';
+import 'package:foodie/widgets/real_map_view.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:hive/hive.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 class _FakeBox<T> implements Box<T> {
   final Map<dynamic, T> _storage = {};
@@ -107,22 +106,6 @@ class _MockLocationService extends LocationService {
       const UserCoordinates(latitude: -7.7653, longitude: 110.3789);
 }
 
-class _MockRouteService implements RouteService {
-  @override
-  Future<RouteResult> getFootRoute({
-    required LatLng start,
-    required LatLng destination,
-    CancelToken? cancelToken,
-  }) async {
-    return RouteResult(
-      points: [start, destination],
-      distanceMeters: 300.0,
-      durationSeconds: 240.0,
-      isStraightLineFallback: false,
-    );
-  }
-}
-
 class _FakeDioAdapter implements HttpClientAdapter {
   _FakeDioAdapter();
 
@@ -176,9 +159,9 @@ class _FakeDioAdapter implements HttpClientAdapter {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  group('Nearby Page (/nearby) Tests — PRD §17.6 Peta Penuh', () {
+  group('Nearby Page (/nearby) Tests — Card Map Layout', () {
     testWidgets(
-      'NearbyPage renders AppHeader, search bar, full map, tombol Pusatkan, dan atribusi OSM',
+      'NearbyPage renders AppHeader, search bar, map card, Open Maps button, dan Pilihan Di Sekitarmu',
       (tester) async {
         tester.view.physicalSize = const Size(440, 956);
         tester.view.devicePixelRatio = 1.0;
@@ -200,7 +183,6 @@ void main() {
               locationServiceProvider.overrideWithValue(
                 const _MockLocationService(),
               ),
-              routeServiceProvider.overrideWithValue(_MockRouteService()),
             ],
             child: MaterialApp.router(
               theme: AppTheme.lightTheme,
@@ -215,100 +197,118 @@ void main() {
         expect(find.byType(NearbyPage), findsOneWidget);
         expect(find.byType(AppHeader), findsOneWidget);
 
-        // 2. Kolom pencarian melayang
+        // 2. Search bar di atas kartu
         expect(find.text('Cari warung makan…'), findsOneWidget);
 
-        // 3. Peta nyata (FlutterMap) mengisi layar
+        // 3. Kartu Peta
+        expect(find.text('Warung Makan Terdekat'), findsOneWidget);
         expect(
-          find.byWidgetPredicate((w) => w is FlutterMap || w is IllustratedMap),
+          find.text('Buka Maps untuk menemukan warung makan di sekitarmu.'),
           findsOneWidget,
         );
+        expect(find.text('Peta Penuh'), findsOneWidget);
+        expect(find.text('Open Maps'), findsOneWidget);
+        expect(find.byType(RealMapView), findsOneWidget);
 
-        // 4. Tombol Pusatkan & Atribusi lisensi
-        expect(find.text('Pusatkan'), findsOneWidget);
-        expect(find.text('© OpenStreetMap contributors'), findsOneWidget);
+        // 4. Daftar Pilihan Di Sekitarmu di bawah kartu
+        expect(find.text('Pilihan Di Sekitarmu'), findsOneWidget);
+        expect(find.text('Warung Bu Sari'), findsWidgets);
+        expect(find.text('Ayam Bakar Pak Hadi'), findsWidgets);
 
-        // 5. Elemen lama sudah dibersihkan
-        expect(find.text('Pilihan Di Sekitarmu'), findsNothing);
-        expect(find.text('Buka sekarang'), findsNothing);
-        expect(find.text('Harga hemat'), findsNothing);
+        // 5. Pastikan TIDAK ADA tombol Rute lama
+        expect(find.text('Rute'), findsNothing);
+        expect(find.text('Keluar Rute'), findsNothing);
 
-        // Drain toast timer
+        // Drain toast timer bila ada
         await tester.pump(const Duration(milliseconds: 2300));
         await tester.pump();
       },
     );
 
-    testWidgets(
-      'Pencarian nama tempat di search bar menampilkan dropdown melayang dan kartu info',
-      (tester) async {
-        tester.view.physicalSize = const Size(440, 956);
-        tester.view.devicePixelRatio = 1.0;
-        addTearDown(() => tester.view.resetPhysicalSize());
+    testWidgets('Tap Peta Penuh navigates ke route /nearby/map', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(440, 956);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
 
-        final boxes = _createFakeBoxes();
-        final dio = Dio()..httpClientAdapter = _FakeDioAdapter();
+      final boxes = _createFakeBoxes();
+      final dio = Dio()..httpClientAdapter = _FakeDioAdapter();
 
-        final router = createRouter(
-          initialLocation: '/nearby',
-          getAuthState: () => const AuthState(isLoggedIn: true, user: seedUser),
-        );
+      final router = createRouter(
+        initialLocation: '/nearby',
+        getAuthState: () => const AuthState(isLoggedIn: true, user: seedUser),
+      );
 
-        await tester.pumpWidget(
-          ProviderScope(
-            overrides: [
-              foodieBoxesProvider.overrideWithValue(boxes),
-              placeDioProvider.overrideWithValue(dio),
-              locationServiceProvider.overrideWithValue(
-                const _MockLocationService(),
-              ),
-              routeServiceProvider.overrideWithValue(_MockRouteService()),
-            ],
-            child: MaterialApp.router(
-              theme: AppTheme.lightTheme,
-              routerConfig: router,
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            foodieBoxesProvider.overrideWithValue(boxes),
+            placeDioProvider.overrideWithValue(dio),
+            locationServiceProvider.overrideWithValue(
+              const _MockLocationService(),
             ),
+          ],
+          child: MaterialApp.router(
+            theme: AppTheme.lightTheme,
+            routerConfig: router,
           ),
-        );
+        ),
+      );
 
-        await tester.pumpAndSettle();
+      await tester.pumpAndSettle();
 
-        // Ketik kata kunci di kolom pencarian
-        await tester.enterText(find.byType(TextField), 'Sari');
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 500));
-        await tester.pump();
+      // Tap pill Peta Penuh
+      await tester.tap(find.text('Peta Penuh'));
+      await tester.pumpAndSettle();
 
-        // Dropdown hasil pencarian menampilkan nama tempat
-        expect(find.text('Warung Bu Sari'), findsOneWidget);
+      // Halaman Peta Penuh terbuka
+      expect(find.byType(NearbyFullMapPage), findsOneWidget);
+      expect(find.byIcon(LucideIcons.arrowLeft), findsOneWidget);
+      expect(find.text('Open Maps'), findsOneWidget);
+    });
 
-        // Tap hasil
-        await tester.tap(find.text('Warung Bu Sari'));
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 300));
+    testWidgets('Pencarian nama tempat di search bar menampilkan dropdown', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(440, 956);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
 
-        // Kartu info tempat terpilih melayang muncul di bawah
-        expect(find.text('Warung Bu Sari'), findsOneWidget);
-        expect(find.text('Rute'), findsOneWidget);
-        expect(find.byKey(const ValueKey('close-place-card')), findsOneWidget);
+      final boxes = _createFakeBoxes();
+      final dio = Dio()..httpClientAdapter = _FakeDioAdapter();
 
-        // Tap tombol Rute
-        await tester.tap(find.text('Rute'));
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 100));
+      final router = createRouter(
+        initialLocation: '/nearby',
+        getAuthState: () => const AuthState(isLoggedIn: true, user: seedUser),
+      );
 
-        expect(find.text('Membuka rute ke Warung Bu Sari'), findsOneWidget);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            foodieBoxesProvider.overrideWithValue(boxes),
+            placeDioProvider.overrideWithValue(dio),
+            locationServiceProvider.overrideWithValue(
+              const _MockLocationService(),
+            ),
+          ],
+          child: MaterialApp.router(
+            theme: AppTheme.lightTheme,
+            routerConfig: router,
+          ),
+        ),
+      );
 
-        // Drain toast timer
-        await tester.pump(const Duration(milliseconds: 2300));
-        await tester.pump();
+      await tester.pumpAndSettle();
 
-        // Tap tutup kartu
-        await tester.tap(find.byKey(const ValueKey('close-place-card')));
-        await tester.pump();
+      // Ketik kata kunci di kolom pencarian
+      await tester.enterText(find.byType(TextField), 'Sari');
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pump();
 
-        expect(find.byKey(const ValueKey('close-place-card')), findsNothing);
-      },
-    );
+      // Dropdown hasil pencarian menampilkan nama tempat
+      expect(find.text('Warung Bu Sari'), findsWidgets);
+    });
   });
 }

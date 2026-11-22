@@ -12,7 +12,6 @@ import 'package:foodie/providers/auth_provider.dart';
 import 'package:foodie/providers/location_provider.dart';
 import 'package:foodie/providers/storage_provider.dart';
 import 'package:foodie/services/location_service.dart';
-import 'package:foodie/widgets/illustrated_map.dart';
 import 'package:foodie/widgets/real_map_view.dart';
 import 'package:geolocator/geolocator.dart';
 
@@ -43,6 +42,9 @@ class MockLocationService extends LocationService {
 
   @override
   Future<UserCoordinates?> getCurrentPosition() async => position;
+
+  @override
+  Future<UserCoordinates?> getLastKnownPosition() async => position;
 }
 
 void main() {
@@ -66,9 +68,8 @@ void main() {
       tester,
     ) async {
       final boxes = await initTestBoxes();
-      final prefs = await SharedPreferences.getInstance();
-
-      await prefs.setString('foodie:themeMode', 'dark');
+      await boxes.session.put('currentUserId', 'user_1');
+      await boxes.settings.put('user_1', {'darkMode': true});
 
       final container = ProviderContainer(
         overrides: [foodieBoxesProvider.overrideWithValue(boxes)],
@@ -141,65 +142,50 @@ void main() {
       },
     );
 
-    testWidgets(
-      'NearbyPage allows toggling between IllustratedMap and RealMapView',
-      (tester) async {
-        tester.view.physicalSize = const Size(440, 956);
-        tester.view.devicePixelRatio = 1.0;
-        addTearDown(() => tester.view.resetPhysicalSize());
+    testWidgets('NearbyPage renders RealMapView with card preview', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(440, 956);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
 
-        final boxes = await initTestBoxes();
+      final boxes = await initTestBoxes();
 
-        const mockService = MockLocationService(
-          serviceEnabled: true,
-          permission: LocationPermission.whileInUse,
-        );
+      const mockService = MockLocationService(
+        serviceEnabled: true,
+        permission: LocationPermission.whileInUse,
+      );
 
-        final router = createRouter(
-          initialLocation: '/nearby',
-          getAuthState: () => const AuthState(isLoggedIn: true, user: seedUser),
-        );
+      final router = createRouter(
+        initialLocation: '/nearby',
+        getAuthState: () => const AuthState(isLoggedIn: true, user: seedUser),
+      );
 
-        await tester.pumpWidget(
-          ProviderScope(
-            overrides: [
-              foodieBoxesProvider.overrideWithValue(boxes),
-              locationServiceProvider.overrideWithValue(mockService),
-            ],
-            child: MaterialApp.router(
-              theme: AppTheme.lightTheme,
-              darkTheme: AppTheme.darkTheme,
-              routerConfig: router,
-            ),
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            foodieBoxesProvider.overrideWithValue(boxes),
+            locationServiceProvider.overrideWithValue(mockService),
+          ],
+          child: MaterialApp.router(
+            theme: AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
+            routerConfig: router,
           ),
-        );
+        ),
+      );
 
-        await tester.pumpAndSettle();
+      await tester.pumpAndSettle();
 
-        // Initially renders RealMapView (PRD §14.12)
-        expect(find.byType(NearbyPage), findsOneWidget);
-        expect(find.byType(RealMapView), findsOneWidget);
-        expect(find.text('Ilustrasi'), findsOneWidget);
+      // Renders NearbyPage and RealMapView
+      expect(find.byType(NearbyPage), findsOneWidget);
+      expect(find.byType(RealMapView), findsOneWidget);
+      expect(find.text('Peta Penuh'), findsOneWidget);
 
-        // Tap "Ilustrasi" button
-        await tester.tap(find.text('Ilustrasi'));
-        await tester.pumpAndSettle();
-
-        // Switches to IllustratedMap
-        expect(find.byType(IllustratedMap), findsOneWidget);
-        expect(find.text('Peta Nyata'), findsOneWidget);
-
-        // Tap "Peta Nyata" to switch back
-        await tester.tap(find.text('Peta Nyata'));
-        await tester.pumpAndSettle();
-
-        expect(find.byType(RealMapView), findsOneWidget);
-
-        // Drain pending toast timer
-        await tester.pump(const Duration(milliseconds: 2300));
-        await tester.pumpAndSettle();
-      },
-    );
+      // Drain pending toast timer
+      await tester.pump(const Duration(milliseconds: 2300));
+      await tester.pumpAndSettle();
+    });
 
     testWidgets('RealMapView renders place markers and responds to selection', (
       tester,
@@ -213,7 +199,7 @@ void main() {
             body: RealMapView(
               places: seedPlaces,
               selectedPlaceId: 'warung-bu-sari',
-              onSelectPlace: (id) => selectedId = id,
+              onSelectPlaceId: (id) => selectedId = id,
             ),
           ),
         ),
@@ -222,10 +208,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(RealMapView), findsOneWidget);
-      expect(find.text('Radius 1 km'), findsOneWidget);
-      expect(find.text('Pusatkan'), findsOneWidget);
 
-      await tester.tap(find.text('2'));
+      await tester.tap(
+        find.byKey(const ValueKey('marker-tap-ayam-bakar-pak-hadi')),
+      );
       await tester.pumpAndSettle();
       expect(selectedId, 'ayam-bakar-pak-hadi');
     });
