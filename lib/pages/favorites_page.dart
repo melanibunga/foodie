@@ -14,15 +14,6 @@ import '../widgets/ui/app_chip.dart';
 import '../widgets/ui/empty_state.dart';
 import '../widgets/ui/sticky_bottom_bar.dart';
 
-/// Halaman Menu Favoritmu (/favorites) sesuai PRD §6.9, §7.6 dan design/bookmark.jpg:
-/// - Tanpa header global dan tanpa bottom nav.
-/// - Judul "Menu Favoritmu" (26/700 olive) + badge amber 42x42 berisi jumlah resep di kanan.
-/// - Sub: "Simpan idenya, masak kapan saja." (13 sage).
-/// - Search putih radius ≈ 14, ikon kaca pembesar, placeholder "Cari nama menu favorit...".
-/// - Label "Filter bahan utama" (13/700) + chip: Semua (aktif secara default) + bahan utama dinamis.
-/// - Grid 2 kolom FavoriteRecipeCard (aksi trash maroon).
-/// - Tombol olive pill "Kembali Ke Beranda" (lebar ≈ 355, tinggi 48, 700) sticky di bawah (bottom ≈ 24).
-/// - Dialog konfirmasi hapus favorit sesuai PRD §7.6.
 class FavoritesPage extends ConsumerStatefulWidget {
   const FavoritesPage({super.key});
 

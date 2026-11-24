@@ -5,7 +5,6 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../models/models.dart';
 
-/// Default koordinat (Yogyakarta / Seturan) sesuai PRD §14.12 bila lokasi belum didapat
 const LatLng kDefaultNearbyCenter = LatLng(-7.7554, 110.3800);
 
 /// Pembuat URL Google Maps eksternal sesuai PRD & spesifikasi Nearby:

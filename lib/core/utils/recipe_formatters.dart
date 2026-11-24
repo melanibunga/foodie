@@ -1,7 +1,5 @@
 import '../../models/models.dart';
 
-/// Formatter dan parser cerdas untuk bahan-bahan resep (Ingredient) dan langkah memasak (RecipeStep)
-/// sesuai PRD §17 (Fase G3) agar tampilan Detail Menu rapi dan bebas dari error/duplikasi API.
 class RecipeFormatters {
   /// Bersihkan dan rapikan daftar bahan dari berbagai format mentah API
   static List<Ingredient> formatIngredients(List<Ingredient> rawList) {

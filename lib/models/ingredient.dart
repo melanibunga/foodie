@@ -1,4 +1,3 @@
-/// Model bahan masakan sesuai PRD §9
 class Ingredient {
   final String id;
   final String name;

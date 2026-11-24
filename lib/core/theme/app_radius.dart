@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Design tokens untuk border radius sesuai PRD §4.
+/// Design tokens untuk border radius 
 abstract final class AppRadius {
   // Nilai numerik
   static const double kCard = 16.0;

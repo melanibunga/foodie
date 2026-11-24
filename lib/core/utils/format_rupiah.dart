@@ -1,5 +1,3 @@
-/// Format integer ke representasi mata uang Rupiah sesuai PRD §9:
-/// `Rp 12.000` (titik pemisah ribuan, spasi setelah "Rp").
 String formatRupiah(int amount) {
   final isNegative = amount < 0;
   final absVal = amount.abs().toString();

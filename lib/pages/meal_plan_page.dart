@@ -535,7 +535,11 @@ class _MealPlanCardItem extends ConsumerWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(LucideIcons.alertCircle, size: 38.0, color: palette.danger),
+              Icon(
+                LucideIcons.alertCircle,
+                size: 38.0,
+                color: palette.danger,
+              ),
               const SizedBox(height: 12.0),
               Text(
                 'Resep tidak dapat dimuat',

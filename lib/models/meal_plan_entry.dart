@@ -1,4 +1,3 @@
-/// Model entri rencana makan harian sesuai PRD §9
 class MealPlanEntry {
   final String id;
   final String date; // Format: YYYY-MM-DD

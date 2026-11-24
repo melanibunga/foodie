@@ -1166,9 +1166,7 @@ class _RecipeDetailPageState extends ConsumerState<RecipeDetailPage> {
                         boxShadow: t > 0.05
                             ? [
                                 BoxShadow(
-                                  color: palette.shadowColor.withValues(
-                                    alpha: 0.1 * t,
-                                  ),
+                                  color: palette.shadowColor.withValues(alpha: 0.1 * t),
                                   blurRadius: 8.0 * t,
                                   offset: Offset(0, 2.0 * t),
                                 ),

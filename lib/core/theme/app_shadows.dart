@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'app_colors.dart';
 
-/// Design tokens untuk bayangan (BoxShadow) sesuai PRD §4.
 abstract final class AppShadows {
-  /// Bayangan kartu: BoxShadow(color: olive @ 6%, offset (0,2), blur 8)
   static const List<BoxShadow> card = [
     BoxShadow(
       color: AppColors.shadowOlive,
@@ -13,12 +11,10 @@ abstract final class AppShadows {
     ),
   ];
 
-  /// Bayangan bottom nav: BoxShadow(color: black @ 18%, offset (0,8), blur 24)
   static const List<BoxShadow> bottomNav = [
     BoxShadow(color: AppColors.shadowNav, offset: Offset(0, 8), blurRadius: 24),
   ];
 
-  /// Bayangan kolom app shell (saat lebar layar > 440 px di web/tablet)
   static const List<BoxShadow> shellColumn = [
     BoxShadow(
       color: AppColors.shadowShell,

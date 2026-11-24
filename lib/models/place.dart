@@ -1,4 +1,3 @@
-/// Model tempat makan / warung sekitar (Nearby) sesuai PRD §9, §14.12, dan §17.6
 class Place {
   final String id;
   final String name;

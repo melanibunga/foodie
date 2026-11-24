@@ -1,4 +1,3 @@
-/// Model pengaturan pengguna sesuai PRD §9
 class UserSettings {
   final bool mealReminder;
   final bool darkMode;

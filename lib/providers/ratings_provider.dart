@@ -48,9 +48,8 @@ RatingSummary calculateRatingSummary({
   required Map<String, int> allRatingsForRecipe,
   String? currentUserId,
 }) {
-  final userRating = currentUserId != null
-      ? allRatingsForRecipe[currentUserId]
-      : null;
+  final userRating =
+      currentUserId != null ? allRatingsForRecipe[currentUserId] : null;
   final hasUser = userRating != null;
 
   final n = allRatingsForRecipe.length;
@@ -87,9 +86,8 @@ EffectiveRating calculateEffectiveRating({
   return calculateRatingSummary(
     baseRating: baseRating,
     baseReviews: baseReviews,
-    allRatingsForRecipe: userRating != null
-        ? {'default_user': userRating}
-        : const {},
+    allRatingsForRecipe:
+        userRating != null ? {'default_user': userRating} : const {},
     currentUserId: userRating != null ? 'default_user' : null,
   );
 }
@@ -162,25 +160,23 @@ final ratingsProvider = NotifierProvider<RatingsNotifier, Map<String, int>>(() {
 });
 
 /// Provider untuk mengambil semua rating dari seluruh user untuk resep tertentu {userId: rating}
-final allRecipeRatingsProvider = Provider.family<Map<String, int>, String>((
-  ref,
-  recipeId,
-) {
-  // Watch ratingsProvider agar otomatis reaktif saat user aktif memberi rating
-  ref.watch(ratingsProvider);
-  final box = ref.watch(ratingsBoxProvider);
-  final raw = box.get(recipeId);
-  if (raw is Map) {
-    final Map<String, int> result = {};
-    raw.forEach((k, v) {
-      if (v is num) {
-        result[k.toString()] = v.toInt();
+final allRecipeRatingsProvider =
+    Provider.family<Map<String, int>, String>((ref, recipeId) {
+      // Watch ratingsProvider agar otomatis reaktif saat user aktif memberi rating
+      ref.watch(ratingsProvider);
+      final box = ref.watch(ratingsBoxProvider);
+      final raw = box.get(recipeId);
+      if (raw is Map) {
+        final Map<String, int> result = {};
+        raw.forEach((k, v) {
+          if (v is num) {
+            result[k.toString()] = v.toInt();
+          }
+        });
+        return result;
       }
+      return const {};
     });
-    return result;
-  }
-  return const {};
-});
 
 /// Provider family untuk mengambil rating user aktif untuk satu resep
 final userRatingProvider = Provider.family<int?, String>((ref, recipeId) {

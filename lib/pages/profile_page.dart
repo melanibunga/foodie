@@ -124,9 +124,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     if (!mounted || action == null) return;
 
     if (action == 'test_notif') {
-      await ref
-          .read(notificationServiceProvider)
-          .sendTestNotification(delay: const Duration(seconds: 5));
+      await ref.read(notificationServiceProvider).sendTestNotification(
+            delay: const Duration(seconds: 5),
+          );
       if (mounted) {
         showAppToast(context, 'Notifikasi uji akan muncul dalam 5 detik');
       }

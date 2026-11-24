@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
 
-/// Tipografi Poppins sesuai tabel peran PRD §4 dan §16.
-/// Semua gaya menggunakan fontFamily: 'Poppins' dan height = tinggi baris / ukuran font.
-/// TextStyle di AppText TIDAK membawa warna tetap agar warna selalu mengikuti palet tema.
 abstract final class AppText {
   static const String fontFamily = 'Poppins';
 

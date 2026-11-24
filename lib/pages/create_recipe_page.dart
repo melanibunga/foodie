@@ -160,7 +160,9 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
       context: context,
       isScrollControlled: true,
       builder: (sheetContext) {
-        return _IngredientsSheetContent(initialIngredients: _ingredients);
+        return _IngredientsSheetContent(
+          initialIngredients: _ingredients,
+        );
       },
     );
 
@@ -1347,7 +1349,9 @@ class _CreateRecipePageState extends ConsumerState<CreateRecipePage> {
 class _IngredientsSheetContent extends StatefulWidget {
   final List<Ingredient> initialIngredients;
 
-  const _IngredientsSheetContent({required this.initialIngredients});
+  const _IngredientsSheetContent({
+    required this.initialIngredients,
+  });
 
   @override
   State<_IngredientsSheetContent> createState() =>
@@ -1473,7 +1477,10 @@ class _IngredientsSheetContentState extends State<_IngredientsSheetContent> {
     final isUnitFocused = _unitFocusNode.hasFocus;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 24.0,
+        vertical: 8.0,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1483,7 +1490,9 @@ class _IngredientsSheetContentState extends State<_IngredientsSheetContent> {
             children: [
               Text(
                 'Tambah Bahan',
-                style: AppText.sectionTitle.copyWith(color: palette.textStrong),
+                style: AppText.sectionTitle.copyWith(
+                  color: palette.textStrong,
+                ),
               ),
               IconButton(
                 icon: Icon(LucideIcons.x, color: palette.textStrong),
@@ -1499,7 +1508,9 @@ class _IngredientsSheetContentState extends State<_IngredientsSheetContent> {
           // Input Nama Bahan
           Text(
             'Nama Bahan',
-            style: AppText.formLabel.copyWith(color: palette.textStrong),
+            style: AppText.formLabel.copyWith(
+              color: palette.textStrong,
+            ),
           ),
           const SizedBox(height: 6.0),
           Container(
@@ -1550,7 +1561,9 @@ class _IngredientsSheetContentState extends State<_IngredientsSheetContent> {
                     ),
                     const SizedBox(height: 6.0),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14.0),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14.0,
+                      ),
                       decoration: BoxDecoration(
                         color: palette.chip,
                         borderRadius: BorderRadius.circular(10.0),
@@ -1565,7 +1578,9 @@ class _IngredientsSheetContentState extends State<_IngredientsSheetContent> {
                           vertical: 32.0,
                           horizontal: 20.0,
                         ),
-                        style: AppText.body.copyWith(color: palette.textBody),
+                        style: AppText.body.copyWith(
+                          color: palette.textBody,
+                        ),
                         decoration: InputDecoration(
                           hintText: 'Mis. 4',
                           hintStyle: TextStyle(
@@ -1596,7 +1611,9 @@ class _IngredientsSheetContentState extends State<_IngredientsSheetContent> {
                     ),
                     const SizedBox(height: 6.0),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14.0),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14.0,
+                      ),
                       decoration: BoxDecoration(
                         color: palette.chip,
                         borderRadius: BorderRadius.circular(10.0),
@@ -1611,7 +1628,9 @@ class _IngredientsSheetContentState extends State<_IngredientsSheetContent> {
                           vertical: 32.0,
                           horizontal: 20.0,
                         ),
-                        style: AppText.body.copyWith(color: palette.textBody),
+                        style: AppText.body.copyWith(
+                          color: palette.textBody,
+                        ),
                         decoration: InputDecoration(
                           hintText: 'g, sdm, butir…',
                           hintStyle: TextStyle(
@@ -1681,9 +1700,12 @@ class _IngredientsSheetContentState extends State<_IngredientsSheetContent> {
                       child: Row(
                         children: filtered.map((u) {
                           final isSelected =
-                              currentUnit.toLowerCase() == u.toLowerCase();
+                              currentUnit.toLowerCase() ==
+                              u.toLowerCase();
                           return Padding(
-                            padding: const EdgeInsets.only(right: 6.0),
+                            padding: const EdgeInsets.only(
+                              right: 6.0,
+                            ),
                             child: AppChip(
                               label: u,
                               selected: isSelected,
@@ -1710,7 +1732,9 @@ class _IngredientsSheetContentState extends State<_IngredientsSheetContent> {
           // Input Estimasi Harga
           Text(
             'Estimasi Harga (Rp, opsional)',
-            style: AppText.formLabel.copyWith(color: palette.textStrong),
+            style: AppText.formLabel.copyWith(
+              color: palette.textStrong,
+            ),
           ),
           const SizedBox(height: 6.0),
           Container(
@@ -1723,7 +1747,9 @@ class _IngredientsSheetContentState extends State<_IngredientsSheetContent> {
               controller: _priceController,
               focusNode: _priceFocusNode,
               keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+              ],
               textInputAction: TextInputAction.done,
               onSubmitted: (_) => _addIngredient(),
               scrollPadding: const EdgeInsets.symmetric(
@@ -1777,7 +1803,9 @@ class _IngredientsSheetContentState extends State<_IngredientsSheetContent> {
           if (_tempIngredients.isNotEmpty) ...[
             Text(
               'Bahan Terdaftar:',
-              style: AppText.formLabel.copyWith(color: palette.textStrong),
+              style: AppText.formLabel.copyWith(
+                color: palette.textStrong,
+              ),
             ),
             const SizedBox(height: 8.0),
             ..._tempIngredients.asMap().entries.map((entry) {

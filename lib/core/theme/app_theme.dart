@@ -42,14 +42,14 @@ abstract final class AppTheme {
         titleTextStyle: AppText.pageTitle.copyWith(color: palette.textStrong),
       ),
       cardTheme: CardThemeData(
-        color: palette.surface,
+        color: Color.fromARGB(255, 131, 23, 23),
         elevation: 0,
         margin: EdgeInsets.zero,
         surfaceTintColor: Colors.transparent,
         shape: const RoundedRectangleBorder(borderRadius: AppRadius.card),
       ),
       dialogTheme: DialogThemeData(
-        backgroundColor: palette.surface,
+        backgroundColor: Color.fromARGB(255, 145, 20, 20),
         surfaceTintColor: Colors.transparent,
         shape: const RoundedRectangleBorder(borderRadius: AppRadius.cardLarge),
       ),

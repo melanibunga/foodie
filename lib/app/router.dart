@@ -28,7 +28,6 @@ import '../pages/splash_page.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/app_bottom_nav.dart';
 
-/// Listenable untuk memberitahu GoRouter bila status auth berubah sesuai PRD §8.
 class RouterNotifier extends ChangeNotifier {
   final Ref _ref;
 
@@ -45,7 +44,6 @@ final routerNotifierProvider = Provider<RouterNotifier>((ref) {
   return RouterNotifier(ref);
 });
 
-/// Factory pembuat GoRouter yang mendukung guard otentikasi.
 GoRouter createRouter({
   Listenable? refreshListenable,
   AuthState Function()? getAuthState,
@@ -89,7 +87,7 @@ GoRouter createRouter({
       ),
 
       // ShellRoute untuk tab utama dengan floating bottom nav (Home, Search, Add, Meal Plan, Nearby)
-      // /add kembali ke dalam shell (dengan bottom nav aktif) sesuai PRD §15.5
+      // /add kembali ke dalam shell (dengan bottom nav aktif) 
       ShellRoute(
         builder: (context, state, child) {
           final palette = context.palette;
